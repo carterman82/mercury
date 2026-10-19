@@ -1,8 +1,10 @@
-export type ProviderKind = 'ollama' | 'lmstudio';
+export type ProviderKind = 'ollama' | 'lmstudio' | 'openai' | 'claude';
+export type ModelCategory = 'local' | 'openai' | 'claude';
+export const modelCategory = (provider: ProviderKind): ModelCategory => provider === 'ollama' || provider === 'lmstudio' ? 'local' : provider;
 export type AgentRole = 'planner' | 'critic' | 'synthesizer' | 'coder';
 export type SessionStatus = 'draft' | 'planning' | 'awaiting_input' | 'awaiting_review' | 'implementing' | 'awaiting_command' | 'completed' | 'failed' | 'cancelled' | 'interrupted';
 
-export interface ModelConnection { id: string; provider: ProviderKind; label: string; url: string; apiToken?: string; hasToken?: boolean; }
+export interface ModelConnection { id: string; provider: ProviderKind; label: string; url: string; apiToken?: string; hasToken?: boolean; auth?: 'chatgpt'; }
 
 export interface ModelProfile {
   provider: ProviderKind;
@@ -50,6 +52,9 @@ export interface DesktopApi {
   openProject(): Promise<Project | null>;
   createSession(projectId: string, objective: string): Promise<Session>;
   updateSettings(settings: Settings): Promise<void>;
+  connectChatGPT(id?: string): Promise<void>;
+  cancelChatGPTSignIn(): Promise<void>;
+  disconnectConnection(id: string): Promise<void>;
   discover(connection: ModelConnection): Promise<ModelInfo[]>;
   autoDiscover(force?: boolean): Promise<DiscoveryResult>;
   probe(profile: ModelProfile): Promise<boolean>;

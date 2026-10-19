@@ -1,39 +1,49 @@
 import React, { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import type { AgentRole, DiscoveryResult, ModelConnection, ModelInfo, ModelProfile, PlanContent, ProviderKind, Session, Settings, Snapshot } from '../shared/types';
+import type { AgentRole, ModelConnection, ModelInfo, ModelProfile, PlanContent, ProviderKind, Session, Settings, Snapshot } from '../shared/types';
 import './style.css';
 import { ChatPanel } from './ChatPanel';
 import { Markdown } from './Markdown';
+import { ModelSelect as ProfileSelect } from './ModelSelect';
 
 const roles: AgentRole[] = ['planner', 'critic', 'synthesizer', 'coder'];
 const emptyPlan: PlanContent = { objective: '', assumptions: [], steps: [{ title: '', details: '', checks: [] }], blockers: [] };
 const lines = (value: string) => value.split('\n').map(x => x.trim()).filter(Boolean);
 const initial: Snapshot = { projects: [], sessions: [], chats: [], settings: { connections: [], defaultModel: null, overrides: {} }, activeRole: null, activeChatId: null };
 
-function ProfileSelect({ label, value, models, onChange, onOther, optional = false }: { label: string; value?: ModelProfile | null; models: ModelInfo[]; onChange: (profile?: ModelProfile) => void; onOther: () => void; optional?: boolean }) {
-  const key = (connectionId: string, model: string) => JSON.stringify([connectionId, model]);
-  const selected = value ? key(value.connectionId ?? `local-${value.provider}`, value.model) : '';
-  const savedMissing = value && !models.some(item => key(item.connectionId, item.id) === selected);
-  return <label className="field"><span>{label}</span><select value={selected} onChange={event => {
-    if (event.target.value === '__other__') { onOther(); return; }
-    const model = models.find(item => key(item.connectionId, item.id) === event.target.value);
-    onChange(model ? { provider: model.provider, connectionId: model.connectionId, model: model.id, contextLimit: model.contextLimit ?? 8192 } : undefined);
-  }}><option value="">{optional ? 'Use default model' : 'Choose a detected model'}</option>{savedMissing && <option value={selected}>{value.model} (currently unavailable)</option>}{[...models].sort((a, b) => Number(b.available) - Number(a.available) || a.connectionLabel.localeCompare(b.connectionLabel) || a.label.localeCompare(b.label)).map(model => <option key={key(model.connectionId, model.id)} value={key(model.connectionId, model.id)}>{model.connectionLabel} · {model.label}{model.available ? '' : ' (not loaded)'}{model.toolCapable === false ? ' (no tool support)' : ''}</option>)}<option value="__other__">Other…</option></select></label>;
-}
-
 function SettingsPanel({ settings, onClose, onSave, run }: { settings: Settings; onClose: () => void; onSave: (settings: Settings) => Promise<void>; run: (job: () => Promise<unknown>) => void }) {
   const [draft, setDraft] = useState<Settings>(structuredClone(settings));
   const [models, setModels] = useState<ModelInfo[]>([]);
-  const [found, setFound] = useState<DiscoveryResult | null>(null);
   const [scanning, setScanning] = useState(false);
   const [other, setOther] = useState(false);
   const [manual, setManual] = useState<{ provider: ProviderKind; label: string; url: string; apiToken: string }>({ provider: 'lmstudio', label: '', url: '', apiToken: '' });
   const [manualError, setManualError] = useState('');
+  const [connecting, setConnecting] = useState(false);
+  const [signingIn, setSigningIn] = useState(false);
+  const [cloudKey, setCloudKey] = useState('');
+  const [cloudProvider, setCloudProvider] = useState<'openai' | 'claude'>('claude');
+  const syncAccounts = async () => {
+    const latest = await window.desktop.snapshot();
+    setDraft(current => ({ ...current, connections: latest.settings.connections,
+      defaultModel: current.defaultModel && latest.settings.connections.some(item => item.id === current.defaultModel?.connectionId) ? current.defaultModel : null,
+      overrides: Object.fromEntries(Object.entries(current.overrides).filter(([, profile]) => latest.settings.connections.some(item => item.id === profile.connectionId))) }));
+    await refresh(true);
+  };
+  const connect = async (job: () => Promise<void>) => {
+    setConnecting(true); setManualError('');
+    try { await job(); await syncAccounts(); }
+    catch (error) { setManualError(error instanceof Error ? error.message : String(error)); }
+    finally { setConnecting(false); }
+  };
+  const signIn = async (id?: string) => {
+    setSigningIn(true);
+    try { await connect(() => window.desktop.connectChatGPT(id)); }
+    finally { setSigningIn(false); }
+  };
   const refresh = async (force = false) => {
     setScanning(true);
     try {
       const result = await window.desktop.autoDiscover(force);
-      setFound(result);
       setModels(result.models);
       setDraft(current => ({ ...current, connections: [...current.connections, ...result.connections.filter(item => !current.connections.some(saved => saved.provider === item.provider && saved.url === item.url))] }));
     } catch (error) { setManualError(String(error)); }
@@ -57,12 +67,31 @@ function SettingsPanel({ settings, onClose, onSave, run }: { settings: Settings;
     if (profile) overrides[role] = profile; else delete overrides[role];
     return { ...current, overrides };
   });
-  return <div className="modal-backdrop"><section className="modal settings-modal"><header><div><small>CONNECTIONS</small><h2>Local models</h2></div><button className="ghost" onClick={onClose}>Close</button></header>
-    <p>Running Ollama and LM Studio servers are found automatically, including servers shared by Tailscale. Select a model below.</p>
-    <div className="discovery-head"><strong>Detected connections</strong><button onClick={() => void refresh(true)} disabled={scanning}>{scanning ? 'Scanning…' : 'Refresh'}</button></div>
-    {found?.applications.length ? <p className="hint">Installed apps: {found.applications.join(', ')}</p> : null}
-    {found?.connections.length ? found.connections.map(connection => <div className="detected-server" key={connection.id}><span><strong>{connection.label}</strong><small>{connection.url}</small></span><span>{found.models.filter(model => model.connectionId === connection.id).length} models</span></div>) : <p className="hint">{scanning ? 'Checking local and Tailscale servers…' : 'No running model servers found.'}</p>}
-    {found?.diagnostics.filter(item => !item.includes('127.0.0.1')).map((item, index) => <p className="hint" key={index}>{item}</p>)}
+  const hasModels = models.length > 0;
+  return <div className="modal-backdrop"><section className="modal settings-modal"><header><div><small>CONNECTIONS</small><h2>Models and accounts</h2></div><button className="ghost" onClick={() => {
+    if (signingIn) run(() => window.desktop.cancelChatGPTSignIn());
+    onClose();
+  }}>Close</button></header>
+    <section className="cloud-accounts"><h3>Cloud accounts</h3>
+      <button disabled={connecting} onClick={() => void signIn()}>{signingIn ? 'Waiting for browser sign-in…' : 'Continue with ChatGPT'}</button>
+      {signingIn && <button onClick={() => void window.desktop.cancelChatGPTSignIn().catch(error => setManualError(String(error)))}>Cancel sign-in</button>}
+      <button disabled={connecting && !signingIn} className="text-button" onClick={() => {
+        setCloudProvider('openai'); setCloudKey('');
+        if (signingIn) void window.desktop.cancelChatGPTSignIn().catch(error => setManualError(String(error)));
+      }}>Use an OpenAI API key (separate billing)</button>
+      <button className="text-button" onClick={() => void window.desktop.openLink('https://chatgpt.com/#settings')}>Manage ChatGPT usage</button>
+      <div className="cloud-key-form"><label className="field"><span>API provider</span><select disabled={connecting} value={cloudProvider} onChange={event => { setCloudProvider(event.target.value as 'openai' | 'claude'); setCloudKey(''); }}><option value="claude">Claude</option><option value="openai">OpenAI</option></select></label><label className="field"><span>API key</span><input disabled={connecting} type="password" autoComplete="off" value={cloudKey} onChange={event => setCloudKey(event.target.value)} placeholder={cloudProvider === 'claude' ? 'Claude Console API key' : 'OpenAI API key'} /></label><button disabled={connecting || !cloudKey.trim()} onClick={() => void connect(async () => {
+        const connection: ModelConnection = { id: `api-${cloudProvider}`, provider: cloudProvider, label: `${cloudProvider === 'claude' ? 'Claude' : 'OpenAI'} API`, url: cloudProvider === 'claude' ? 'https://api.anthropic.com' : 'https://api.openai.com', apiToken: cloudKey.trim() };
+        await window.desktop.discover(connection);
+        const latest = await window.desktop.snapshot();
+        await window.desktop.updateSettings({ ...latest.settings, connections: [...latest.settings.connections.filter(item => item.id !== connection.id), connection] });
+        setCloudKey('');
+      })}>Connect API key</button></div>
+      {draft.connections.filter(item => item.provider === 'openai' || item.provider === 'claude').map(connection => <div className="detected-server" key={connection.id}><span><strong>{connection.label}</strong><small>{connection.auth === 'chatgpt' ? 'ChatGPT plan' : 'API billing'} · {connection.hasToken ? 'Connected' : 'Credentials needed'}</small></span><span>{connection.auth === 'chatgpt' && <button disabled={connecting} onClick={() => void signIn(connection.id)}>Reconnect</button>}<button disabled={connecting} onClick={() => void connect(() => window.desktop.disconnectConnection(connection.id))}>Disconnect</button></span></div>)}
+      {manualError && <p className="hint danger" role="alert">{manualError}</p>}
+    </section>
+    <div className="discovery-head"><button onClick={() => void refresh(true)} disabled={scanning}>{scanning ? 'Scanning…' : 'Refresh models'}</button></div>
+    {!hasModels && !scanning && <p className="hint">No models found.</p>}
     <button className="text-button" onClick={() => setOther(value => !value)}>Other: add a server address</button>
     {other && <div className="other-server"><label className="field"><span>Server type</span><select value={manual.provider} onChange={event => setManual(current => ({ ...current, provider: event.target.value as ProviderKind }))}><option value="lmstudio">LM Studio</option><option value="ollama">Ollama</option></select></label><label className="field"><span>Name</span><input value={manual.label} onChange={event => setManual(current => ({ ...current, label: event.target.value }))} placeholder="My model server" /></label><label className="field"><span>Server address</span><input value={manual.url} onChange={event => setManual(current => ({ ...current, url: event.target.value }))} placeholder="http://host:1234" /></label><label className="field"><span>API token (if required)</span><input type="password" value={manual.apiToken} onChange={event => setManual(current => ({ ...current, apiToken: event.target.value }))} autoComplete="off" /></label><button onClick={addOther}>Check and add</button>{manualError && <p className="hint danger">{manualError}</p>}</div>}
     <div className="model-grid"><ProfileSelect label="Default model" value={draft.defaultModel} models={models} onOther={() => setOther(true)} onChange={profile => setDraft(current => ({ ...current, defaultModel: profile ?? null }))} />
@@ -70,7 +99,7 @@ function SettingsPanel({ settings, onClose, onSave, run }: { settings: Settings;
     <label className="field compact"><span>Context limit for default model</span><input type="number" min={2048} value={draft.defaultModel?.contextLimit ?? 8192} onChange={event => setDraft(current => ({ ...current, defaultModel: current.defaultModel ? { ...current.defaultModel, contextLimit: Number(event.target.value) } : null }))} disabled={!draft.defaultModel} /></label>
     </details>
     <p className="hint">Agents run one at a time. Coding checks tool use before editing. An unloaded model may fail until it is loaded in its server.</p>
-    <footer><button className="primary" onClick={() => run(async () => { await onSave(draft); onClose(); })}>Save settings</button></footer>
+    <footer><button className="primary" disabled={connecting} onClick={() => run(async () => { await onSave(draft); onClose(); })}>Save settings</button></footer>
   </section></div>;
 }
 

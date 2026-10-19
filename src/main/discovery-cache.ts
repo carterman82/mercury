@@ -1,11 +1,11 @@
 import { z } from 'zod';
 import type { DiscoveryResult, Settings } from '../shared/types';
 
-const provider = z.enum(['ollama', 'lmstudio']);
+const provider = z.enum(['ollama', 'lmstudio', 'openai', 'claude']);
 const recordSchema = z.object({
   version: z.literal(1), key: z.string(), scannedAt: z.number().nonnegative(),
   result: z.object({
-    connections: z.array(z.object({ id: z.string(), provider, label: z.string(), url: z.string().url(), hasToken: z.boolean().optional() })),
+    connections: z.array(z.object({ id: z.string(), provider, label: z.string(), url: z.string().url(), hasToken: z.boolean().optional(), auth: z.literal('chatgpt').optional() })),
     models: z.array(z.object({ provider, connectionId: z.string(), connectionLabel: z.string(), id: z.string(), label: z.string(), available: z.boolean(), contextLimit: z.number().optional(), toolCapable: z.boolean().optional() })),
     applications: z.array(z.string()), diagnostics: z.array(z.string()),
   }),
@@ -13,7 +13,7 @@ const recordSchema = z.object({
 type CacheRecord = z.infer<typeof recordSchema>;
 
 export function discoveryKey(settings: Settings): string {
-  return JSON.stringify(settings.connections.map(({ id, provider, label, url, hasToken }) => ({ id, provider, label, url, hasToken: Boolean(hasToken) })).sort((a, b) => a.id.localeCompare(b.id)));
+  return JSON.stringify(settings.connections.map(({ id, provider, label, url, hasToken, auth }) => ({ id, provider, label, url, hasToken: Boolean(hasToken), auth })).sort((a, b) => a.id.localeCompare(b.id)));
 }
 
 export class DiscoveryCache {

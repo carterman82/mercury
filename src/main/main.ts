@@ -11,12 +11,14 @@ import { DiscoveryCache, discoveryKey } from './discovery-cache';
 import { Runner } from './runner';
 import { Store } from './store';
 import { ChatService } from './chat';
+import { ChatGPTAuth } from './chatgpt-auth';
+import { cloudEndpoint } from './cloud-providers';
 
 declare const MAIN_WINDOW_VITE_DEV_SERVER_URL: string | undefined;
 declare const MAIN_WINDOW_VITE_NAME: string;
 
-const providerSchema = z.enum(['ollama', 'lmstudio']);
-const connectionSchema = z.object({ id: z.string().min(1).max(100), provider: providerSchema, label: z.string().min(1).max(120), url: z.string().url(), apiToken: z.string().max(4096).optional(), hasToken: z.boolean().optional() });
+const providerSchema = z.enum(['ollama', 'lmstudio', 'openai', 'claude']);
+const connectionSchema = z.object({ id: z.string().min(1).max(100), provider: providerSchema, label: z.string().min(1).max(120), url: z.string().url(), apiToken: z.string().max(4096).optional(), hasToken: z.boolean().optional(), auth: z.literal('chatgpt').optional() });
 const profileSchema = z.object({ provider: providerSchema, connectionId: z.string().optional(), endpoint: z.string().url().optional(), model: z.string().min(1), contextLimit: z.number().int().min(2048).max(1_000_000), toolVerified: z.boolean().optional() });
 const settingsSchema = z.object({
   connections: z.array(connectionSchema).max(50),
@@ -53,11 +55,17 @@ app.whenReady().then(async () => {
     app.setPath('userData', directory);
   }
   store = new Store(path.join(app.getPath('userData'), 'state.sqlite'));
-  providers = new LocalProviders(() => store.settings(), id => {
+  const readSecret = (id: string) => {
     const encrypted = store.secret(id);
     if (!encrypted) return undefined;
     return safeStorage.decryptString(Buffer.from(encrypted, 'base64'));
-  }, () => discovery.invalidate());
+  };
+  const writeSecret = (id: string, value: string | null) => {
+    if (value && !safeStorage.isEncryptionAvailable()) throw new Error('Secure credential storage is unavailable on this computer.');
+    store.saveSecret(id, value ? safeStorage.encryptString(value).toString('base64') : null);
+  };
+  const chatGPT = new ChatGPTAuth(readSecret, writeSecret, url => shell.openExternal(url));
+  providers = new LocalProviders(() => store.settings(), readSecret, () => discovery.invalidate(), id => chatGPT.token(id));
   runner = new Runner(store, providers, notify);
   chats = new ChatService(store, providers, notify, () => runner.running);
   discovery = new DiscoveryCache(settings => autoDiscover(settings, providers), store.discoveryCache(), value => store.saveDiscoveryCache(value));
@@ -70,6 +78,28 @@ app.whenReady().then(async () => {
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   window.webContents.on('will-navigate', event => event.preventDefault());
   handle('snapshot', () => snapshot());
+  handle('cancelChatGPTSignIn', () => chatGPT.cancelSignIn());
+  handle('connectChatGPT', async (_event, input?: string) => {
+    if (!safeStorage.isEncryptionAvailable()) throw new Error('Secure credential storage is unavailable on this computer.');
+    const id = z.string().max(100).optional().parse(input);
+    if (id && !store.settings().connections.some(item => item.id === id && item.auth === 'chatgpt')) throw new Error('ChatGPT account not found.');
+    const account = await chatGPT.signIn(id);
+    const settings = store.settings();
+    const connection: ModelConnection = { ...account, provider: 'openai', url: 'https://api.openai.com', auth: 'chatgpt', hasToken: true };
+    settings.connections = [...settings.connections.filter(item => item.id !== account.id), connection];
+    store.saveSettings(settings);
+    discovery.invalidate(); notify();
+  });
+  handle('disconnectConnection', (_event, raw: string) => {
+    const id = z.string().min(1).max(100).parse(raw);
+    if (runner.running || chats.activeId) throw new Error('Stop the active response before disconnecting an account.');
+    const settings = store.settings();
+    settings.connections = settings.connections.filter(item => item.id !== id);
+    if (settings.defaultModel?.connectionId === id) settings.defaultModel = null;
+    settings.overrides = Object.fromEntries(Object.entries(settings.overrides).filter(([, profile]) => profile.connectionId !== id));
+    writeSecret(id, null); writeSecret(`${id}-registration`, null);
+    store.saveSettings(settings); discovery.invalidate(); notify();
+  });
   handle('openProject', async () => {
     const chosen = await dialog.showOpenDialog(window!, { properties: ['openDirectory'] });
     if (chosen.canceled || !chosen.filePaths[0]) return null;
@@ -95,7 +125,14 @@ app.whenReady().then(async () => {
     const previousKey = discoveryKey(store.settings());
     const settings = settingsSchema.parse(incoming);
     if (new Set(settings.connections.map(item => item.id)).size !== settings.connections.length) throw new Error('Connections must have unique IDs.');
-    for (const connection of settings.connections) endpoint(connection.url);
+    for (const connection of settings.connections) {
+      endpoint(connection.url);
+      if (connection.provider === 'openai' || connection.provider === 'claude') cloudEndpoint(connection);
+      const previous = store.settings().connections.find(item => item.id === connection.id);
+      if (previous && store.secret(connection.id) && (previous.provider !== connection.provider || previous.url !== connection.url) && connection.apiToken === undefined) throw new Error('Enter new credentials when changing a connection address or provider.');
+      if (connection.auth === 'chatgpt' && (previous?.auth !== 'chatgpt' || connection.apiToken !== undefined)) throw new Error('Use Continue with ChatGPT to connect this account.');
+      if (previous?.auth === 'chatgpt' && connection.auth !== 'chatgpt') throw new Error('Disconnect the ChatGPT account before changing authentication.');
+    }
     for (const profile of [settings.defaultModel, ...Object.values(settings.overrides)]) {
       if (!profile) continue;
       const connection = settings.connections.find(item => item.id === profile.connectionId);
@@ -114,6 +151,9 @@ app.whenReady().then(async () => {
   handle('discover', (_event, input: ModelConnection) => {
     const connection = connectionSchema.parse(input);
     endpoint(connection.url);
+    const previous = store.settings().connections.find(item => item.id === connection.id);
+    if (previous && connection.apiToken === undefined && (previous.provider !== connection.provider || previous.url !== connection.url || previous.auth !== connection.auth)) throw new Error('Saved credentials can only be used with their original connection.');
+    if (connection.auth === 'chatgpt' && !store.settings().connections.some(item => item.id === connection.id && item.auth === 'chatgpt')) throw new Error('Connect ChatGPT first.');
     return providers.discover(connection);
   });
   handle('autoDiscover', (_event, force?: boolean) => discovery.get(store.settings(), z.boolean().optional().parse(force) ?? false));

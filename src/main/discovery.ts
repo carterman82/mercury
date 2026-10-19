@@ -61,7 +61,7 @@ export async function autoDiscover(settings: Settings, providers: LocalProviders
   const diagnostics: string[] = [];
   const candidates = new Map<string, ModelConnection>();
   for (const item of [...settings.connections, ...local, ...await tailscalePeers(), ...await otherVpnPeers()]) {
-    const key = `${item.provider}:${item.url.replace(/\/$/, '').toLowerCase()}`;
+    const key = item.provider === 'openai' || item.provider === 'claude' ? item.id : `${item.provider}:${item.url.replace(/\/$/, '').toLowerCase()}`;
     if (!candidates.has(key)) candidates.set(key, item);
   }
   const results = await Promise.all([...candidates.values()].map(async connection => {

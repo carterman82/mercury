@@ -1,5 +1,6 @@
 import type { ModelConnection, ModelInfo, ModelProfile, Settings, ToolRequest } from '../shared/types';
 import { ReasoningStream } from './reasoning';
+import { cloudChat, cloudDiscover, cloudEndpoint } from './cloud-providers';
 
 export interface ChatResult { text: string; reasoning?: string; tools: ToolRequest[]; usage?: { input?: number; output?: number }; }
 export interface ChatInput { profile: ModelProfile; messages: unknown[]; tools?: unknown[]; signal: AbortSignal; onText?: (delta: string) => void; onReasoning?: (delta: string) => void; }
@@ -17,13 +18,13 @@ export function endpoint(raw: string): string {
   return url.toString().replace(/\/$/, '');
 }
 
-async function requestJson(url: string, init?: RequestInit): Promise<any> {
+export async function requestJson(url: string, init?: RequestInit): Promise<any> {
   const response = await fetch(url, { ...init, redirect: 'error' });
   if (!response.ok) throw new Error(`Model server returned HTTP ${response.status}: ${(await response.text()).slice(0, 500)}`);
   return response.json();
 }
 
-async function* streamLines(response: Response, signal: AbortSignal): AsyncGenerator<string> {
+export async function* streamLines(response: Response, signal: AbortSignal): AsyncGenerator<string> {
   if (!response.ok) throw new Error(`Model server returned HTTP ${response.status}: ${(await response.text()).slice(0, 500)}`);
   if (!response.body) throw new Error('Model server did not provide a response stream.');
   const reader = response.body.getReader();
@@ -48,20 +49,36 @@ async function* streamLines(response: Response, signal: AbortSignal): AsyncGener
 }
 
 export class LocalProviders implements ModelProvider {
-  constructor(private settings: () => Settings, private tokenFor: (id: string) => string | undefined = () => undefined, private connectionFailed: () => void = () => {}) {}
+  constructor(private settings: () => Settings, private tokenFor: (id: string) => string | undefined = () => undefined, private connectionFailed: () => void = () => {}, private chatGPTToken: (id: string) => Promise<string> = async () => { throw new Error('ChatGPT sign-in is unavailable.'); }) {}
+
+  private async cloudToken(connection: ModelConnection): Promise<string> {
+    const token = connection.auth === 'chatgpt' ? await this.chatGPTToken(connection.id) : connection.apiToken || this.tokenFor(connection.id);
+    if (!token) throw new Error(`Connect ${connection.provider === 'claude' ? 'Claude' : 'OpenAI'} in Model settings first.`);
+    return token;
+  }
 
   private headers(id?: string, oneTimeToken?: string): Record<string, string> {
     const token = oneTimeToken || (id ? this.tokenFor(id) : undefined);
+    if (token && !oneTimeToken) {
+      const connection = this.settings().connections.find(item => item.id === id);
+      if (!connection || connection.auth || connection.provider === 'openai' || connection.provider === 'claude') throw new Error('Saved credentials need a matching local connection.');
+    }
     return token ? { authorization: `Bearer ${token}` } : {};
   }
 
   private url(profile: ModelProfile): string {
     const selected = this.settings().connections.find(item => item.id === profile.connectionId);
+    if (selected && selected.provider !== profile.provider) throw new Error('The model needs a matching saved connection.');
+    if (selected && profile.endpoint && endpoint(profile.endpoint) !== endpoint(selected.url)) throw new Error('Change the saved connection address in Model settings.');
     const legacy = this.settings().connections.find(item => item.provider === profile.provider);
     return endpoint(profile.endpoint ?? selected?.url ?? legacy?.url ?? '');
   }
 
   async discover(connection: ModelConnection): Promise<ModelInfo[]> {
+    if (connection.provider === 'openai' || connection.provider === 'claude') {
+      cloudEndpoint(connection);
+      return cloudDiscover(connection, await this.cloudToken(connection));
+    }
     const base = endpoint(connection.url);
     const kind = connection.provider;
     const controller = new AbortController();
@@ -82,6 +99,13 @@ export class LocalProviders implements ModelProvider {
   }
 
   async chat(input: ChatInput): Promise<ChatResult> {
+    if (input.profile.provider === 'openai' || input.profile.provider === 'claude') {
+      const connection = this.settings().connections.find(item => item.id === input.profile.connectionId && item.provider === input.profile.provider);
+      if (!connection) throw new Error('This cloud account is disconnected. Connect it in Model settings.');
+      cloudEndpoint(connection);
+      try { return await cloudChat(connection, await this.cloudToken(connection), input); }
+      catch (error) { this.connectionFailed(); throw error; }
+    }
     const base = this.url(input.profile);
     const isOllama = input.profile.provider === 'ollama';
     const controller = new AbortController();

@@ -47,7 +47,21 @@ test('chats with individual models, switches models, stops, and restores history
     await expect(page.getByRole('button', { name: 'Refresh models' })).toBeEnabled({ timeout: 25_000 });
     await page.getByRole('button', { name: 'Refresh models' }).click();
     await expect(page.getByLabel('Chat model').locator('option').filter({ hasText: 'echo-two' })).toHaveCount(1, { timeout: 25_000 });
+    await expect(page.getByRole('button', { name: 'Refresh models' })).toBeEnabled({ timeout: 25_000 });
     await expect(page.locator('.chat-composer').getByLabel('Chat model')).toBeVisible();
+    const category = page.getByLabel('Model provider', { exact: true });
+    await expect(category).toHaveValue('local');
+    await category.selectOption('openai');
+    await expect(page.getByLabel('Chat model')).toContainText('Connect OpenAI');
+    await expect(page.getByRole('button', { name: 'Send ↑' })).toBeDisabled();
+    await category.selectOption('claude');
+    await expect(page.getByLabel('Chat model')).toContainText('Connect Claude');
+    await page.getByLabel('Chat model').selectOption('__other__');
+    await expect(page.getByRole('button', { name: 'Continue with ChatGPT' })).toBeVisible();
+    await expect(page.getByLabel('API key', { exact: true })).toHaveAttribute('type', 'password');
+    await expect(page.getByRole('button', { name: 'Connect API key' })).toBeDisabled();
+    await page.getByRole('button', { name: 'Close', exact: true }).click();
+    await category.selectOption('local');
     await expect(page.locator('.chat-toolbar select')).toHaveCount(0);
     const cachedListings = modelListings;
     for (let index = 0; index < 2; index++) {
@@ -85,15 +99,15 @@ test('chats with individual models, switches models, stops, and restores history
     await richAnswer.locator('summary').click();
     await expect(richAnswer.locator('script, iframe')).toHaveCount(0);
     expect(await page.evaluate(() => (window as any).badMarkdown)).toBeUndefined();
-    const previousClipboard = await app.evaluate(({ clipboard }) => clipboard.readText());
-    try {
-      await richAnswer.getByRole('button', { name: 'Copy code' }).click();
-      expect(await app.evaluate(({ clipboard }) => clipboard.readText())).toBe('const total = 42;');
-    } finally { await app.evaluate(({ clipboard }, text) => clipboard.writeText(text), previousClipboard); }
+    // Verify the copy payload without touching the user's system clipboard.
+    await page.evaluate(() => Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async (text: string) => { (window as any).copiedText = text; } } }));
+    await richAnswer.getByRole('button', { name: 'Copy code' }).click();
+    await expect.poll(() => page.evaluate(() => (window as any).copiedText)).toBe('const total = 42;');
     await page.screenshot({ path: 'test-results/mercury-formatted.png' });
     await expect(page.getByLabel('Chat model')).toBeEnabled();
     await page.getByLabel('Message', { exact: true }).fill('wait');
     await page.getByRole('button', { name: 'Send ↑' }).click();
+    await expect(page.locator('.chat-assistant')).toHaveCount(4);
     await page.locator('.chat-assistant').last().locator('summary').click();
     await expect(page.locator('.chat-assistant').last().locator('.thinking-body')).toContainText('Partial reasoning');
     await page.getByRole('button', { name: 'Stop response' }).click();
@@ -120,8 +134,8 @@ test('desktop shell opens model settings', async () => {
     const page = await app.firstWindow();
     await expect(page.getByRole('heading', { name: 'Chat', exact: true })).toBeVisible();
     await page.getByRole('button', { name: /Model settings/ }).click();
-    await expect(page.getByRole('heading', { name: 'Local models' })).toBeVisible();
-    await page.locator('.model-grid select').first().selectOption('__other__');
+    await expect(page.getByRole('heading', { name: 'Models and accounts' })).toBeVisible();
+    await page.getByLabel('Default model', { exact: true }).selectOption('__other__');
     await expect(page.getByLabel('Server address')).toBeVisible();
   } finally { await app.close(); rmSync(data, { recursive: true, force: true }); }
 });
@@ -136,10 +150,10 @@ test('finds the shared LM Studio models and verifies streamed tool use', async (
     const page = await app.firstWindow();
     await page.getByRole('button', { name: /Model settings/ }).click();
     await expect(page.locator('.model-grid option').filter({ hasText: /Shared LM Studio.*Qwen3\.8 27B/ }).first()).toHaveCount(1, { timeout: 20_000 });
-    await page.locator('.model-grid select').first().selectOption(JSON.stringify(['shared-lmstudio', 'qwen3.8-27b-mlx']));
+    await page.getByLabel('Default model', { exact: true }).selectOption(JSON.stringify(['shared-lmstudio', 'qwen3.8-27b-mlx']));
     await page.getByRole('button', { name: 'Save settings' }).click();
     await page.getByRole('button', { name: /Model settings/ }).click();
-    await expect(page.locator('.model-grid select').first()).toHaveValue(JSON.stringify(['shared-lmstudio', 'qwen3.8-27b-mlx']));
+    await expect(page.getByLabel('Default model', { exact: true })).toHaveValue(JSON.stringify(['shared-lmstudio', 'qwen3.8-27b-mlx']));
     const capable = await page.evaluate(() => (window as any).desktop.probe({ provider: 'lmstudio', connectionId: 'shared-lmstudio', model: 'qwen3.8-27b-mlx', contextLimit: 8192 }));
     expect(capable).toBe(true);
     await page.getByRole('button', { name: 'Close', exact: true }).click();
@@ -205,7 +219,7 @@ test('plans, waits for approval, edits, asks before a command, and restores the 
     await page.getByLabel('Server address').fill(`http://127.0.0.1:${address.port}`);
     await page.getByLabel('API token (if required)').fill('fixture-secret');
     await page.getByRole('button', { name: 'Check and add' }).click();
-    await page.locator('.model-grid select').first().selectOption({ label: 'Fixture server · fake-local' });
+    await page.getByLabel('Default model', { exact: true }).selectOption({ label: 'fake-local · Fixture server' });
     await page.getByRole('button', { name: 'Save settings' }).click();
     await page.getByPlaceholder(/Describe the change/).fill('Update note');
     await page.getByRole('button', { name: /Start planning/ }).click();
@@ -233,4 +247,3 @@ test('plans, waits for approval, edits, asks before a command, and restores the 
     rmSync(data, { recursive: true, force: true });
   }
 });
-

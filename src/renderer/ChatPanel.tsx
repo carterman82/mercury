@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import type { DiscoveryResult, ModelProfile, Snapshot } from '../shared/types';
 import { CopyButton, Markdown } from './Markdown';
 import { ThinkingPanel } from './ThinkingPanel';
+import { ModelSelect } from './ModelSelect';
 
 export function ChatPanel({ state, chatId, onSelect, openSettings }: { state: Snapshot; chatId: string | null; onSelect: (id: string) => void; openSettings: () => void }) {
   const chat = state.chats.find(item => item.id === chatId);
@@ -30,10 +31,8 @@ export function ChatPanel({ state, chatId, onSelect, openSettings }: { state: Sn
     } catch (error) { setError(String(error)); }
     finally { setScanning(false); }
   };
-  useEffect(() => { void refresh(); }, []);
-  const key = (connectionId: string | undefined, model: string) => JSON.stringify([connectionId, model]);
+  useEffect(() => { void refresh(); }, [JSON.stringify(state.settings.connections)]);
   const models = [...(discovery?.models ?? [])].sort((a, b) => Number(b.available) - Number(a.available) || a.label.localeCompare(b.label));
-  const selected = profile ? key(profile.connectionId, profile.model) : '';
   const send = async () => {
     if (!profile || !message.trim() || blocked) return;
     const text = message.trim();
@@ -48,11 +47,7 @@ export function ChatPanel({ state, chatId, onSelect, openSettings }: { state: Sn
     } catch (error) { setError(error instanceof Error ? error.message : String(error)); setMessage(current => current || text); }
     finally { setPending(false); }
   };
-  const modelPicker = <div className="chat-model-picker composer-model-picker"><label className="field"><span className="sr-only">Chat model</span><select disabled={blocked} value={selected} onChange={event => {
-      if (event.target.value === '__other__') { openSettings(); return; }
-      const model = models.find(item => key(item.connectionId, item.id) === event.target.value);
-      setProfile(model ? { provider: model.provider, connectionId: model.connectionId, model: model.id, contextLimit: Math.min(model.contextLimit ?? 8192, 32768) } : null);
-    }}><option value="">{scanning ? 'Finding models…' : 'Choose a model'}</option>{profile && !models.some(item => key(item.connectionId, item.id) === selected) && <option value={selected}>{profile.model}</option>}{models.map(model => <option key={key(model.connectionId, model.id)} value={key(model.connectionId, model.id)}>{model.label} · {model.connectionLabel}{model.available ? '' : ' (not loaded)'}</option>)}<option value="__other__">Other…</option></select></label><button type="button" className="ghost" onClick={() => void refresh(true)} disabled={scanning || blocked} title="Refresh models" aria-label="Refresh models">↻</button></div>;
+  const modelPicker = <div className="chat-model-picker composer-model-picker"><ModelSelect label="Chat model" value={profile} models={models} disabled={blocked} scanning={scanning} onChange={value => setProfile(value ?? null)} onOther={openSettings} /><button type="button" className="ghost" onClick={() => void refresh(true)} disabled={scanning || blocked} title="Refresh models" aria-label="Refresh models">↻</button></div>;
   return <section className="chat-layout">
     <header className="chat-toolbar"><div><h1>Chat</h1><p>Try a model. Ask anything.</p></div></header>
     <div className="chat-scroll" ref={scroll} onScroll={() => { if (scroll.current) follow.current = scroll.current.scrollHeight - scroll.current.scrollTop - scroll.current.clientHeight < 140; }}><div className="sr-only" role="status">{chat?.status === 'streaming' ? 'Model response in progress' : ''}</div>
@@ -63,7 +58,7 @@ export function ChatPanel({ state, chatId, onSelect, openSettings }: { state: Sn
           <div className="chat-message-content">{item.role === 'user' ? item.content : item.content.trim() ? <Markdown content={item.content} /> : !active ? <span className="empty">No answer received.</span> : null}</div>
           {item.role === 'assistant' && !active && item.content.trim() && <div className="response-actions"><CopyButton label="Copy response" text={item.content} />{item.startedAt && item.completedAt && <span>{Math.max(1, Math.round((item.completedAt - item.startedAt) / 1000))}s</span>}</div>}
         </article>;
-      })}{chat.status === 'interrupted' && <p className="chat-notice">This response was interrupted when Mercury closed. Send a message to continue.</p>}{chat.error && <p className="chat-notice" role="alert">{chat.error}</p>}<div ref={end} /></div> : <div className="chat-empty"><div className="mercury-orbit">M</div><h2>Hello from Mercury.</h2><p>Pick a model above and start a conversation.</p><div className="prompt-suggestions">{['What can you help me with?', 'Explain how local AI models work.', 'Write a small Python guessing game.'].map(prompt => <button key={prompt} onClick={() => setMessage(prompt)}>{prompt}<span>↗</span></button>)}</div></div>}</div>
+      })}{chat.status === 'interrupted' && <p className="chat-notice">This response was interrupted when Mercury closed. Send a message to continue.</p>}{chat.error && <p className="chat-notice" role="alert">{chat.error}</p>}<div ref={end} /></div> : <div className="chat-empty"><div className="mercury-orbit">M</div><h2>Hello from Mercury.</h2><p>Pick a model below and start a conversation.</p><div className="prompt-suggestions">{['What can you help me with?', 'Explain how local AI models work.', 'Write a small Python guessing game.'].map(prompt => <button key={prompt} onClick={() => setMessage(prompt)}>{prompt}<span>↗</span></button>)}</div></div>}</div>
     <div className="chat-compose-area">{error && <p className="chat-notice" role="alert">{error}</p>}<form className="chat-composer" onSubmit={event => { event.preventDefault(); void send(); }}><textarea aria-label="Message" placeholder="Message Mercury…" rows={2} value={message} maxLength={30000} onChange={event => setMessage(event.target.value)} onKeyDown={event => { if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); void send(); } }} /><div className="compose-actions">{modelPicker}{state.activeChatId === chatId && state.activeChatId ? <button type="button" onClick={() => void window.desktop.stopChat(state.activeChatId!).catch(error => setError(String(error)))}>Stop response</button> : <button type="submit" className="primary" disabled={!profile || !message.trim() || blocked}>Send ↑</button>}</div></form><p className="composer-hint">Enter to send · Shift + Enter for a new line</p></div>
   </section>;
 }
