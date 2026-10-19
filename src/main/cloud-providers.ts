@@ -76,11 +76,12 @@ export async function cloudChat(connection: ModelConnection, token: string, inpu
     if (event.type === 'error' || event.type === 'response.failed' || event.type === 'response.incomplete') throw new Error(event.error?.message ?? event.response?.error?.message ?? `Model request failed: ${event.type}.`);
     if (claude) {
       if (event.type === 'message_start') usage = { input: event.message?.usage?.input_tokens };
-      if (event.type === 'content_block_start' && event.content_block?.type === 'tool_use') calls.set(event.index, { id: event.content_block.id, name: event.content_block.name, arguments: '' });
+      if (event.type === 'content_block_start' && event.content_block?.type === 'tool_use') { input.onToolProgress?.(); calls.set(event.index, { id: event.content_block.id, name: event.content_block.name, arguments: '' }); }
       if (event.type === 'content_block_delta') {
         if (event.delta.type === 'text_delta') { text += event.delta.text; input.onText?.(event.delta.text); }
         if (event.delta.type === 'thinking_delta') { reasoning += event.delta.thinking; input.onReasoning?.(event.delta.thinking); }
         if (event.delta.type === 'input_json_delta') {
+          input.onToolProgress?.();
           const call = calls.get(event.index);
           if (call) call.arguments += event.delta.partial_json;
         }
@@ -93,8 +94,9 @@ export async function cloudChat(connection: ModelConnection, token: string, inpu
     } else {
       if (event.type === 'response.output_text.delta') { text += event.delta; input.onText?.(event.delta); }
       if (event.type === 'response.reasoning_summary_text.delta') { reasoning += event.delta; input.onReasoning?.(event.delta); }
-      if (event.type === 'response.output_item.added' && event.item?.type === 'function_call') calls.set(event.output_index, { id: event.item.call_id, name: event.item.name, arguments: event.item.arguments ?? '' });
+      if (event.type === 'response.output_item.added' && event.item?.type === 'function_call') { input.onToolProgress?.(); calls.set(event.output_index, { id: event.item.call_id, name: event.item.name, arguments: event.item.arguments ?? '' }); }
       if (event.type === 'response.function_call_arguments.delta') {
+        input.onToolProgress?.();
         const call = calls.get(event.output_index);
         if (call) call.arguments += event.delta;
       }

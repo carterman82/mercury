@@ -1,10 +1,46 @@
 import type { ForgeConfig } from '@electron-forge/shared-types';
 import { MakerSquirrel } from '@electron-forge/maker-squirrel';
 import { VitePlugin } from '@electron-forge/plugin-vite';
+import { promises as fs } from 'node:fs';
+import path from 'node:path';
+import { createRequire, isBuiltin } from 'node:module';
+
+async function copyRuntimePackages(target: string): Promise<void> {
+  const modules = path.resolve('node_modules');
+  const copied = new Set<string>();
+  const copy = async (name: string, from = process.cwd()): Promise<void> => {
+    if (name.startsWith('@types/') || isBuiltin(name)) return;
+    const require = createRequire(path.join(from, 'package.json'));
+    for (const directory of require.resolve.paths(name) ?? []) {
+      const source = path.join(directory, name);
+      const manifest = await fs.readFile(path.join(source, 'package.json'), 'utf8').then(raw => JSON.parse(raw), () => null);
+      if (manifest?.name === name) {
+        if (copied.has(source)) return;
+        copied.add(source);
+        const relative = path.relative(modules, source);
+        if (relative.startsWith('..') || path.isAbsolute(relative)) throw new Error('Runtime dependency is outside project node_modules.');
+        await fs.cp(source, path.join(target, relative), { recursive: true });
+        for (const dependency of Object.keys(manifest.dependencies ?? {})) await copy(dependency, source);
+        for (const dependency of Object.keys(manifest.optionalDependencies ?? {})) { try { await copy(dependency, source); } catch { /* Platform-specific optional module. */ } }
+        return;
+      }
+    }
+    throw new Error(`Could not locate runtime package ${name}.`);
+  };
+  for (const dependency of ['docx', 'exceljs', 'pptxgenjs', 'tesseract.js', '@tesseract.js-data/eng']) await copy(dependency);
+}
 
 const config: ForgeConfig = {
   buildIdentifier: () => process.env.LOCAL_PLAN_AGENT_BUILD_ID ?? '',
-  packagerConfig: { asar: true, name: 'Mercury' },
+  // Playwright is a built-in capability rather than an import in the UI bundle,
+  // so copy its runtime explicitly into every packaged app.
+  packagerConfig: { asar: true, name: 'Mercury', extraResource: ['node_modules/playwright', 'node_modules/playwright-core', '.build-resources/pdf-runtime', '.build-resources/file-runtime'] },
+  hooks: { generateAssets: async () => {
+    const target = path.join('.build-resources', 'pdf-runtime', 'node_modules');
+    await fs.mkdir(target, { recursive: true });
+    for (const dependency of ['pdfjs-dist', '@napi-rs']) await fs.cp(path.join('node_modules', dependency), path.join(target, dependency), { recursive: true });
+    await copyRuntimePackages(path.join('.build-resources', 'file-runtime', 'node_modules'));
+  } },
   makers: [new MakerSquirrel({})],
   plugins: [new VitePlugin({
     build: [

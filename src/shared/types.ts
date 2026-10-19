@@ -41,7 +41,8 @@ export interface Session {
   assignments: Record<AgentRole, ModelProfile> | null;
 }
 export interface Project { id: string; path: string; name: string; }
-export interface ChatMessage { id: string; role: 'user' | 'assistant'; content: string; model?: string; reasoning?: string; startedAt?: number; thinkingEndedAt?: number; completedAt?: number; }
+export interface ChatFile { id: string; name: string; size: number; kind: 'upload' | 'generated'; format?: string; readStatus?: 'readable' | 'partial' | 'metadata'; note?: string; }
+export interface ChatMessage { id: string; role: 'user' | 'assistant'; content: string; files?: ChatFile[]; model?: string; reasoning?: string; notice?: string; startedAt?: number; thinkingEndedAt?: number; completedAt?: number; }
 export interface ChatThread { id: string; title: string; profile: ModelProfile; messages: ChatMessage[]; status: 'idle' | 'streaming' | 'stopped' | 'failed' | 'interrupted'; error?: string; updatedAt: number; }
 export interface Snapshot { projects: Project[]; sessions: Session[]; chats: ChatThread[]; settings: Settings; activeRole: AgentRole | null; activeChatId: string | null; }
 export interface ToolRequest { id: string; name: string; arguments: unknown; }
@@ -58,7 +59,9 @@ export interface DesktopApi {
   discover(connection: ModelConnection): Promise<ModelInfo[]>;
   autoDiscover(force?: boolean): Promise<DiscoveryResult>;
   probe(profile: ModelProfile): Promise<boolean>;
-  sendChat(chatId: string | null, profile: ModelProfile, message: string): Promise<string>;
+  addChatFiles(files: File[]): Promise<ChatFile[]>;
+  saveChatFile(fileId: string): Promise<string | null>;
+  sendChat(chatId: string | null, profile: ModelProfile, message: string, attachmentIds?: string[]): Promise<string>;
   stopChat(chatId: string): Promise<void>;
   openLink(url: string): Promise<void>;
   plan(sessionId: string, feedback?: string): Promise<void>;

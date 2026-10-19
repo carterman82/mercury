@@ -10,3 +10,7 @@
 ::-webkit-scrollbar-thumb:hover{background-color:#555}
 ::-webkit-scrollbar-thumb:active{background-color:#666}
 ::-webkit-scrollbar-button{display:none}
+.chat-file button{flex-shrink:0;max-width:42%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:12px}
+.file-extraction-note{display:block;font-size:11px;line-height:1.5;color:#b6a799;margin-top:7px}
+.chat-layout{position:relative}.chat-drop-overlay{position:absolute;inset:12px;z-index:10;display:grid;place-items:center;border:2px dashed var(--orange);border-radius:16px;background:#19130fec;pointer-events:none;text-align:center;color:#ffd0aa}.chat-drop-overlay span{display:block;font-size:42px;margin-bottom:12px;color:var(--orange)}.chat-drop-overlay strong{display:block;font-size:20px}.chat-drop-overlay p{font-size:13px;color:#b6a799;margin:12px 0 0}
+.chat-files{display:flex;flex-direction:column;gap:8px;margin-top:12px}.chat-file{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 15px;background:#211b16;border:1px solid #51402f;border-radius:10px;font-size:13px}.chat-file>span{overflow-wrap:anywhere;min-width:0}.chat-file small{display:block;margin-top:5px;letter-spacing:0}.pending-files{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}.pending-files>span{background:#30271f;border:1px solid #51402f;border-radius:7px;padding:3px 8px;font-size:12px;overflow-wrap:anywhere}.pending-files button{padding:2px 7px;margin-left:6px;border:0;background:transparent}

@@ -3,7 +3,7 @@ import { ReasoningStream } from './reasoning';
 import { cloudChat, cloudDiscover, cloudEndpoint } from './cloud-providers';
 
 export interface ChatResult { text: string; reasoning?: string; tools: ToolRequest[]; usage?: { input?: number; output?: number }; }
-export interface ChatInput { profile: ModelProfile; messages: unknown[]; tools?: unknown[]; signal: AbortSignal; onText?: (delta: string) => void; onReasoning?: (delta: string) => void; }
+export interface ChatInput { profile: ModelProfile; messages: unknown[]; tools?: unknown[]; signal: AbortSignal; disableThinking?: boolean; onText?: (delta: string) => void; onReasoning?: (delta: string) => void; onToolProgress?: () => void; }
 export interface ModelProvider {
   discover(connection: ModelConnection): Promise<ModelInfo[]>;
   chat(input: ChatInput): Promise<ChatResult>;
@@ -115,7 +115,7 @@ export class LocalProviders implements ModelProvider {
     if (input.signal.aborted) abort();
     const tools = input.tools?.length ? { tools: input.tools } : {};
     const body = isOllama
-      ? { model: input.profile.model, messages: input.messages, ...tools, stream: true, options: { num_ctx: input.profile.contextLimit } }
+      ? { model: input.profile.model, messages: input.messages, ...tools, stream: true, ...(input.disableThinking ? { think: /gpt-oss/i.test(input.profile.model) ? 'low' : false } : {}), options: { num_ctx: input.profile.contextLimit } }
       : { model: input.profile.model, messages: input.messages, ...tools, stream: true };
     try {
       const response = await fetch(isOllama ? `${base}/api/chat` : `${base}/v1/chat/completions`, {
@@ -142,6 +142,7 @@ export class LocalProviders implements ModelProvider {
           const delta = chunk.message?.content ?? '';
           if (typeof delta === 'string') content.push(delta);
           for (const call of chunk.message?.tool_calls ?? []) {
+            input.onToolProgress?.();
             const index = ollamaCallIndex++;
             calls.set(index, { id: `call_${index}`, name: String(call.function?.name ?? ''), arguments: JSON.stringify(call.function?.arguments ?? {}) });
           }
@@ -151,6 +152,7 @@ export class LocalProviders implements ModelProvider {
           thinking(delta.reasoning_content ?? delta.reasoning);
           if (typeof delta.content === 'string') content.push(delta.content);
           for (const item of delta.tool_calls ?? []) {
+            input.onToolProgress?.();
             const prior = calls.get(item.index) ?? { id: `call_${item.index}`, name: '', arguments: '' };
             if (item.id) prior.id = item.id;
             if (item.function?.name) prior.name += item.function.name;

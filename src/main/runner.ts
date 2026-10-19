@@ -6,15 +6,18 @@ import { CommandGate, runCommand } from './commands';
 import { LocalProviders } from './providers';
 import { Store } from './store';
 import { Workspace } from './workspace';
+import { discoverPlugins } from './plugins';
 
 const readTools = [
   { type: 'function', function: { name: 'list_files', description: 'List project files', parameters: { type: 'object', properties: {}, additionalProperties: false } } },
   { type: 'function', function: { name: 'read_file', description: 'Read numbered lines of a project file and obtain its content hash', parameters: { type: 'object', properties: { path: { type: 'string' }, start: { type: 'integer' }, end: { type: 'integer' } }, required: ['path'] } } },
   { type: 'function', function: { name: 'search_text', description: 'Search project text for a literal phrase', parameters: { type: 'object', properties: { query: { type: 'string' } }, required: ['query'] } } },
+  { type: 'function', function: { name: 'discover_plugins', description: 'Find built-in and project-local plugins relevant to a task. This only reports plugins; it never installs or executes one.', parameters: { type: 'object', properties: { query: { type: 'string' } }, required: ['query'] } } },
 ];
 const codeTools = [
   ...readTools,
   { type: 'function', function: { name: 'edit_file', description: 'Replace a whole file. Read its hash first; use null only to create a file.', parameters: { type: 'object', properties: { path: { type: 'string' }, expectedHash: { anyOf: [{ type: 'string' }, { type: 'null' }] }, content: { type: 'string' } }, required: ['path', 'expectedHash', 'content'] } } },
+  { type: 'function', function: { name: 'create_pdf', description: 'Create a new simple text PDF in the project. It refuses to overwrite an existing PDF.', parameters: { type: 'object', properties: { path: { type: 'string' }, content: { type: 'string' } }, required: ['path', 'content'] } } },
   { type: 'function', function: { name: 'run_command', description: 'Request user approval to run one project command', parameters: { type: 'object', properties: { command: { type: 'string' } }, required: ['command'] } } },
   { type: 'function', function: { name: 'finish', description: 'Finish implementation with a summary of changes and verification results', parameters: { type: 'object', properties: { summary: { type: 'string' }, verification: { type: 'string' } }, required: ['summary', 'verification'] } } },
 ];
@@ -22,10 +25,12 @@ const readSchema = z.discriminatedUnion('name', [
   z.object({ name: z.literal('list_files'), arguments: z.object({}) }),
   z.object({ name: z.literal('read_file'), arguments: z.object({ path: z.string(), start: z.number().int().optional(), end: z.number().int().optional() }) }),
   z.object({ name: z.literal('search_text'), arguments: z.object({ query: z.string() }) }),
+  z.object({ name: z.literal('discover_plugins'), arguments: z.object({ query: z.string().min(1).max(500) }) }),
 ]);
 const codeSchema = z.discriminatedUnion('name', [
   ...readSchema.options,
   z.object({ name: z.literal('edit_file'), arguments: z.object({ path: z.string(), expectedHash: z.string().nullable(), content: z.string() }) }),
+  z.object({ name: z.literal('create_pdf'), arguments: z.object({ path: z.string(), content: z.string().max(512_000) }) }),
   z.object({ name: z.literal('run_command'), arguments: z.object({ command: z.string().min(1).max(2_000) }) }),
   z.object({ name: z.literal('finish'), arguments: z.object({ summary: z.string(), verification: z.string() }) }),
 ]);
@@ -90,12 +95,20 @@ export class Runner {
     if (parsed.name === 'list_files') return JSON.stringify(await workspace.list());
     if (parsed.name === 'read_file') return JSON.stringify(await workspace.read(args.path, args.start, args.end));
     if (parsed.name === 'search_text') return JSON.stringify(await workspace.search(args.query));
+    if (parsed.name === 'discover_plugins') return JSON.stringify(await discoverPlugins(workspace.root, args.query));
     if (parsed.name === 'edit_file') {
       this.event(session, 'tool', `Editing ${args.path}`, role);
       const change = await workspace.edit(args.path, args.expectedHash, args.content);
       session.changes.push(change);
       this.event(session, 'change', `Changed ${change.path}`, role);
       return JSON.stringify({ changed: change.path });
+    }
+    if (parsed.name === 'create_pdf') {
+      this.event(session, 'tool', `Creating PDF ${args.path}`, role);
+      const change = await workspace.createPdf(args.path, args.content);
+      session.changes.push(change);
+      this.event(session, 'change', `Created ${change.path}`, role);
+      return JSON.stringify({ created: change.path });
     }
     if (parsed.name === 'run_command') {
       this.event(session, 'tool', `Requested command: ${args.command}`, role);
@@ -118,7 +131,7 @@ export class Runner {
     this.activeRole = role;
     this.onChange();
     const profile = session.assignments![role];
-    const messages: any[] = [{ role: 'system', content: `You are the ${role} agent in a local coding assistant. Follow the user's objective and project evidence. Only use offered tools. Never claim unrun checks passed. Keep responses concise.` }, { role: 'user', content: prompt }];
+    const messages: any[] = [{ role: 'system', content: `You are the ${role} agent in a local coding assistant. Follow the user's objective and project evidence. Only use offered tools. When a task may need a specialized capability, call discover_plugins before proceeding; it is safe and informational. Never claim unrun checks passed. Keep responses concise.` }, { role: 'user', content: prompt }];
     let finalText = '';
     let repairedToolError = false;
     for (let turn = 0; turn < maxTurns; turn++) {

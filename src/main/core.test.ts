@@ -6,6 +6,8 @@ import { randomUUID } from 'node:crypto';
 import type { ChatInput, ChatResult } from './providers';
 import type { Session } from '../shared/types';
 import { hash, Workspace } from './workspace';
+import { makePdf } from './pdf';
+import { discoverPlugins } from './plugins';
 import { Store } from './store';
 import { Runner } from './runner';
 import { LocalProviders } from './providers';
@@ -32,6 +34,23 @@ describe('workspace boundaries', () => {
     await workspace.edit('nested/new.txt', null, 'created');
     expect(readFileSync(path.join(root, 'nested/new.txt'), 'utf8')).toBe('created');
     await expect(workspace.edit('nested/new.txt', null, 'overwrite')).rejects.toThrow(/changed/);
+  });
+  it('creates and reads a text PDF without allowing an overwrite', async () => {
+    const root = fixture();
+    const workspace = new Workspace(root);
+    await workspace.createPdf('notes/summary.pdf', 'Mercury PDF\nSecond line');
+    await expect(workspace.read('notes/summary.pdf')).resolves.toMatchObject({ content: expect.stringContaining('Mercury PDF') });
+    await expect(workspace.createPdf('notes/summary.pdf', 'overwrite')).rejects.toThrow(/already exists/);
+    await expect(workspace.edit('notes/summary.pdf', null, 'not a PDF')).rejects.toThrow(/create_pdf/);
+    writeFileSync(path.join(root, 'unreadable.pdf'), makePdf('Still readable'));
+  });
+  it('finds only relevant declarative plugins and never runs them', async () => {
+    const root = fixture();
+    const pluginDir = path.join(root, '.mercury', 'plugins', 'diagrams');
+    mkdirSync(pluginDir, { recursive: true });
+    writeFileSync(path.join(pluginDir, 'plugin.json'), JSON.stringify({ id: 'diagram-helper', name: 'Diagram helper', description: 'Creates architecture diagrams.', keywords: ['diagram', 'architecture'] }));
+    await expect(discoverPlugins(root, 'browser testing')).resolves.toEqual(expect.arrayContaining([expect.objectContaining({ id: 'playwright', source: 'built-in' })]));
+    await expect(discoverPlugins(root, 'architecture diagram')).resolves.toEqual(expect.arrayContaining([expect.objectContaining({ id: 'diagram-helper', source: 'project' })]));
   });
 });
 
@@ -105,6 +124,16 @@ describe('approval and recovery', () => {
 });
 
 describe('provider streams', () => {
+  it('requests disabled Ollama thinking only during a recovery attempt', async () => {
+    const fetcher = vi.fn(async (_url: unknown, _init?: RequestInit) => new Response(JSON.stringify({ message: { content: 'Done' }, done: true }) + '\n'));
+    vi.stubGlobal('fetch', fetcher);
+    const providers = new LocalProviders(() => ({ connections: [{ id: 'fixture', provider: 'ollama', label: 'Test', url: 'http://127.0.0.1:11434' }], defaultModel: null, overrides: {} }));
+    const request: ChatInput = { profile: { provider: 'ollama', connectionId: 'fixture', model: 'qwen-test', contextLimit: 8192 }, messages: [], signal: new AbortController().signal };
+    await providers.chat(request);
+    await providers.chat({ ...request, disableThinking: true });
+    expect(JSON.parse(fetcher.mock.calls[0][1]!.body as string)).not.toHaveProperty('think');
+    expect(JSON.parse(fetcher.mock.calls[1][1]!.body as string)).toHaveProperty('think', false);
+  });
   it.each(['ollama', 'lmstudio'] as const)('separates streamed %s reasoning from the answer', async provider => {
     const chunks = provider === 'ollama'
       ? [{ message: { thinking: 'Check ' } }, { message: { thinking: 'the arithmetic.' } }, { message: { content: '**42**' }, done: true }].map(item => JSON.stringify(item) + '\n').join('')

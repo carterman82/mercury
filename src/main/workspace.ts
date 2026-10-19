@@ -2,6 +2,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import type { ChangeRecord } from '../shared/types';
+import { extractPdfText, makePdf } from './pdf';
 
 const excluded = new Set(['.git', 'node_modules', 'dist', 'build', 'out', '.vite', '.next', 'coverage']);
 const MAX_FILE = 512_000;
@@ -67,7 +68,15 @@ export class Workspace {
   async read(relative: string, startLine = 1, endLine = 200): Promise<{ content: string; hash: string }> {
     const filename = await this.resolve(relative);
     const stat = await fs.stat(filename);
-    if (!stat.isFile() || stat.size > MAX_FILE) throw new Error('File is not a readable text file or exceeds 512 KB.');
+    if (!stat.isFile() || stat.size > MAX_FILE) throw new Error('File is not a readable file or exceeds 512 KB.');
+    if (path.extname(filename).toLowerCase() === '.pdf') {
+      const bytes = await fs.readFile(filename);
+      const full = extractPdfText(bytes);
+      const lines = full.split(/\r?\n/);
+      const start = Math.max(1, Math.floor(startLine));
+      const end = Math.min(lines.length, start + 199, Math.max(start, Math.floor(endLine)));
+      return { content: lines.slice(start - 1, end).map((line, i) => `${start + i}: ${line}`).join('\n').slice(0, 20_000), hash: hash(bytes.toString('base64'))! };
+    }
     const full = await fs.readFile(filename, 'utf8');
     if (full.includes('\0')) throw new Error('Binary files are not supported.');
     const lines = full.split(/\r?\n/);
@@ -90,6 +99,7 @@ export class Workspace {
     return results;
   }
   async edit(relative: string, expectedHash: string | null, next: string): Promise<ChangeRecord> {
+    if (path.extname(relative).toLowerCase() === '.pdf') throw new Error('Use create_pdf for PDFs; existing binary PDFs are never overwritten.');
     if (Buffer.byteLength(next) > MAX_FILE) throw new Error('Edit exceeds the 512 KB file limit.');
     const filename = await this.resolve(relative, true);
     const before = await fs.readFile(filename, 'utf8').catch((error: any) => { if (error.code === 'ENOENT') return null; throw error; });
@@ -101,5 +111,22 @@ export class Workspace {
       await fs.rename(temporary, filename);
     } finally { await fs.rm(temporary, { force: true }).catch(() => {}); }
     return { path: relative.replaceAll('\\', '/'), before, after: next, at: Date.now() };
+  }
+  async createPdf(relative: string, content: string): Promise<ChangeRecord> {
+    if (path.extname(relative).toLowerCase() !== '.pdf') throw new Error('PDF files must use the .pdf extension.');
+    if (Buffer.byteLength(content) > MAX_FILE) throw new Error('PDF source text exceeds the 512 KB limit.');
+    const filename = await this.resolve(relative);
+    const before = await fs.readFile(filename).then(bytes => `[binary PDF: ${bytes.length} bytes]`, (error: any) => {
+      if (error.code === 'ENOENT') return null;
+      throw error;
+    });
+    if (before !== null) throw new Error(`PDF already exists: ${relative}`);
+    await fs.mkdir(path.dirname(filename), { recursive: true });
+    const temporary = path.join(path.dirname(filename), `.${path.basename(filename)}.${randomUUID()}.tmp`);
+    try {
+      await fs.writeFile(temporary, makePdf(content), { flag: 'wx' });
+      await fs.rename(temporary, filename);
+    } finally { await fs.rm(temporary, { force: true }).catch(() => {}); }
+    return { path: relative.replaceAll('\\', '/'), before: null, after: `[binary PDF created from ${content.length} characters]`, at: Date.now() };
   }
 }

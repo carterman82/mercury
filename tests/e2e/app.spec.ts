@@ -80,7 +80,7 @@ test('chats with individual models, switches models, stops, and restores history
     await page.getByRole('button', { name: 'Send ↑' }).click();
     await expect(page.locator('.chat-assistant').last()).toContainText('echo-two answered');
     expect(requests[1].messages).toEqual(expect.arrayContaining([{ role: 'user', content: 'hello' }, { role: 'assistant', content: 'echo-one answered' }]));
-    expect(requests.every(item => !item.tools)).toBe(true);
+    expect(requests.every(item => item.tools?.some((tool: any) => tool.function?.name === 'create_pdf'))).toBe(true);
     await expect(page.getByLabel('Chat model')).toBeEnabled();
     await page.getByLabel('Message', { exact: true }).fill('format');
     await page.getByRole('button', { name: 'Send ↑' }).click();

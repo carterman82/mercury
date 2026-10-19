@@ -13,6 +13,9 @@ import { Store } from './store';
 import { ChatService } from './chat';
 import { ChatGPTAuth } from './chatgpt-auth';
 import { cloudEndpoint } from './cloud-providers';
+import { ChatFiles } from './chat-files';
+import { readChatPdf, renderChatPdf } from './chat-pdf';
+import { FileFormats } from './file-formats';
 
 declare const MAIN_WINDOW_VITE_DEV_SERVER_URL: string | undefined;
 declare const MAIN_WINDOW_VITE_NAME: string;
@@ -67,7 +70,10 @@ app.whenReady().then(async () => {
   const chatGPT = new ChatGPTAuth(readSecret, writeSecret, url => shell.openExternal(url));
   providers = new LocalProviders(() => store.settings(), readSecret, () => discovery.invalidate(), id => chatGPT.token(id));
   runner = new Runner(store, providers, notify);
-  chats = new ChatService(store, providers, notify, () => runner.running);
+  const pdfRuntime = app.isPackaged ? path.join(process.resourcesPath, 'pdf-runtime', 'node_modules', 'pdfjs-dist') : path.join(app.getAppPath(), 'node_modules', 'pdfjs-dist');
+  const formats = new FileFormats(app.isPackaged ? path.join(process.resourcesPath, 'file-runtime') : app.getAppPath(), app.isPackaged ? path.join(process.resourcesPath, 'pdf-runtime') : app.getAppPath());
+  const chatFiles = new ChatFiles(path.join(app.getPath('userData'), 'chat-files'), renderChatPdf, bytes => readChatPdf(bytes, pdfRuntime, image => formats.ocr(image)), formats);
+  chats = new ChatService(store, providers, notify, () => runner.running, chatFiles);
   discovery = new DiscoveryCache(settings => autoDiscover(settings, providers), store.discoveryCache(), value => store.saveDiscoveryCache(value));
 
   window = new BrowserWindow({
@@ -158,7 +164,24 @@ app.whenReady().then(async () => {
   });
   handle('autoDiscover', (_event, force?: boolean) => discovery.get(store.settings(), z.boolean().optional().parse(force) ?? false));
   handle('probe', async (_event, profile: ModelProfile) => { noChat(); if (runner.running) throw new Error('Wait for the current agent run.'); return providers.probe(profileSchema.parse(profile)); });
-  handle('sendChat', (_event, id: string | null, profile: ModelProfile, message: string) => chats.send(z.string().uuid().nullable().parse(id), profileSchema.parse(profile), z.string().trim().min(1).max(30_000).parse(message)));
+  handle('addChatFiles', async (_event, raw: string[]) => {
+    const paths = z.array(z.string().min(1).max(32768)).min(1).max(8).parse(raw);
+    return Promise.all(paths.map(filename => chatFiles.import(filename)));
+  });
+  handle('saveChatFile', async (_event, raw: string) => {
+    const id = z.string().uuid().parse(raw);
+    const file = await chatFiles.get(id);
+    const chosen = await dialog.showSaveDialog(window!, { defaultPath: path.join(app.getPath('downloads'), file.name) });
+    if (chosen.canceled || !chosen.filePath) return null;
+    await fs.writeFile(chosen.filePath, await chatFiles.bytes(id));
+    return chosen.filePath;
+  });
+  handle('sendChat', (_event, id: string | null, profile: ModelProfile, message: string, rawIds?: string[]) => {
+    const ids = z.array(z.string().uuid()).max(8).optional().parse(rawIds) ?? [];
+    const text = z.string().trim().max(30_000).parse(message);
+    if (!text && !ids.length) throw new Error('Add a message or attach a file.');
+    return chats.send(z.string().uuid().nullable().parse(id), profileSchema.parse(profile), text || 'Please read the attached files.', ids);
+  });
   handle('stopChat', (_event, id: string) => chats.stop(z.string().uuid().parse(id)));
   handle('openLink', (_event, raw: string) => {
     const url = new URL(z.string().url().max(8000).parse(raw));

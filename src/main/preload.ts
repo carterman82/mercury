@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer } from 'electron';
+import { contextBridge, ipcRenderer, webUtils } from 'electron';
 import type { DesktopApi, Snapshot } from '../shared/types';
 
 const call = <T>(name: string, ...args: unknown[]): Promise<T> => ipcRenderer.invoke(`api:${name}`, ...args);
@@ -18,7 +18,14 @@ const api: DesktopApi = {
   discover: connection => call('discover', connection),
   autoDiscover: force => call('autoDiscover', force),
   probe: profile => call('probe', profile),
-  sendChat: (id, profile, message) => call('sendChat', id, profile, message),
+  addChatFiles: async files => {
+    if (!files.length || files.length > 8) throw new Error('Drop between one and eight files.');
+    const paths = files.map(file => webUtils.getPathForFile(file));
+    if (paths.some(filename => !filename)) throw new Error('Drop files from your computer. Browser-generated files are not supported.');
+    return call('addChatFiles', paths);
+  },
+  saveChatFile: id => call('saveChatFile', id),
+  sendChat: (id, profile, message, attachments) => call('sendChat', id, profile, message, attachments),
   stopChat: id => call('stopChat', id),
   openLink: url => call('openLink', url),
   plan: (id, feedback) => call('plan', id, feedback),
