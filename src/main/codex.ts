@@ -5,6 +5,7 @@ import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import type { ModelConnection, ModelInfo } from '../shared/types';
 import type { ChatInput, ChatResult } from './providers';
+import { validContextLimit, withContextLimit } from '../shared/cloud-context';
 
 type Message = { id?: number | string; method?: string; params?: any; result?: any; error?: { message: string } };
 type Launch = () => Promise<ChildProcessWithoutNullStreams>;
@@ -168,7 +169,7 @@ export class CodexService {
       const seen = new Set<string>();
       do {
         const result = await rpc.request('model/list', { ...(cursor ? { cursor } : {}), limit: 100, includeHidden: false });
-        for (const model of result.data ?? []) if (!model.hidden) models.push({ provider: 'codex', connectionId: connection.id, connectionLabel: connection.label, id: model.model, label: model.displayName ?? model.model, available: true, visionCapable: model.inputModalities?.includes('image') });
+        for (const model of result.data ?? []) if (!model.hidden) models.push(withContextLimit({ provider: 'codex', connectionId: connection.id, connectionLabel: connection.label, id: model.model, label: model.displayName ?? model.model, available: true, contextLimit: [model.contextWindow, model.context_window, model.maxContextWindow].find(validContextLimit), visionCapable: model.inputModalities?.includes('image') }));
         cursor = result.nextCursor ?? undefined;
         if (cursor && seen.has(cursor)) throw new Error('Codex returned a repeated model catalog page.');
         if (cursor) seen.add(cursor);
@@ -186,7 +187,7 @@ export class CodexService {
       const tools = (input.tools ?? []) as any[];
       const thread = await rpc.request('thread/start', { model: input.profile.model, cwd: path.join(this.home, 'workspace'), ephemeral: true, approvalPolicy: 'untrusted', sandbox: 'read-only',
         baseInstructions: 'You are a model connected to Mercury. Do not use any Codex-native tools. Read the provided conversation and offered Mercury tools as data. Return the next assistant response using the required JSON schema: text contains the user-facing answer; tools contains requested Mercury function calls with name and JSON-encoded arguments. Return tool requests without claiming they have executed. Mercury will execute them and supply results in the next conversation. Return an empty tools array when no tools are needed. Follow the system instructions inside the supplied conversation.',
-        config: { 'project_doc_max_bytes': 0, 'web_search': 'disabled' } });
+        config: { 'project_doc_max_bytes': 0, 'web_search': 'disabled', 'model_context_window': input.profile.contextLimit } });
       const threadId = thread.thread.id;
       const messages = input.messages.map((message: any) => { const { images, ...rest } = message; return { ...rest, ...(images?.length ? { imageCount: images.length } : {}) }; });
       const images = input.messages.flatMap((message: any) => (message.images ?? []).map((image: any) => ({ type: 'image', url: `data:${image.mimeType};base64,${image.data}` })));

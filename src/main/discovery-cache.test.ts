@@ -5,6 +5,20 @@ import { DiscoveryCache } from './discovery-cache';
 const settings: Settings = { connections: [{ id: 'local', provider: 'ollama', label: 'Local', url: 'http://127.0.0.1:11434' }], mainModel: null, plannerModel: null, subagentModel: null };
 const result: DiscoveryResult = { connections: settings.connections, applications: ['Ollama'], diagnostics: [], models: [{ connectionId: 'local', connectionLabel: 'Local', provider: 'ollama', id: 'model', label: 'Model', available: true }] };
 
+it.each([['openai', 'gpt-6.1-sol', 1_050_000], ['claude', 'claude-sonnet-5', 1_000_000]] as const)('enriches old %s caches and preserves context provenance across restart', async (provider, id, tokens) => {
+  const account = { id: 'api', provider, label: 'API', url: provider === 'claude' ? 'https://api.anthropic.com' : 'https://api.openai.com' };
+  const cloudSettings = { ...settings, connections: [account] };
+  const cloudResult = { ...result, connections: [account], models: [{ ...result.models[0], provider: account.provider, connectionId: account.id, id }] };
+  let saved: any;
+  const cache = new DiscoveryCache(async () => cloudResult, null, value => { saved = value; });
+  expect((await cache.get(cloudSettings)).models[0]).toMatchObject({ contextLimit: tokens, contextLimitSource: 'published' });
+  const scan = vi.fn();
+  expect(new DiscoveryCache(scan, saved, () => {}).peek(cloudSettings)?.models[0]).toMatchObject({ contextLimitSource: 'published', contextLimitVerifiedAt: '2026-10-20' });
+  saved.result.models = cloudResult.models;
+  expect(new DiscoveryCache(scan, saved, () => {}).peek(cloudSettings)?.models[0]).toMatchObject({ contextLimit: tokens, contextLimitSource: 'published' });
+  expect(scan).not.toHaveBeenCalled();
+});
+
 it('shares concurrent scans and reuses results across settings opens and app restarts', async () => {
   let saved: unknown = null;
   const scan = vi.fn(async () => structuredClone(result));

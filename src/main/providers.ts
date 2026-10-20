@@ -6,13 +6,24 @@ import { hasImages, imageUnsupported, localImageMessages, ModelHttpError, textOn
 import { ModelRequests } from './model-requests';
 import { InactivityWatchdog } from './inactivity';
 import { ThinkingLimitError } from './thinking-guard';
+import { isSubscription, openAIRoutes } from '../shared/openai-routing';
 
 export interface ChatResult { text: string; reasoning?: string; tools: ToolRequest[]; usage?: { input?: number; output?: number }; }
-export interface ChatInput { profile: ModelProfile; messages: unknown[]; tools?: unknown[]; signal: AbortSignal; disableThinking?: boolean; onRequestState?: (state: 'queued' | 'running') => void; onImageFallback?: (reason?: string) => void; onText?: (delta: string) => void; onReasoning?: (delta: string) => void; onToolProgress?: () => void; }
+export interface ChatInput { profile: ModelProfile; messages: unknown[]; tools?: unknown[]; signal: AbortSignal; disableThinking?: boolean; onRoutingNotice?: (notice: string) => void; onRequestState?: (state: 'queued' | 'running') => void; onImageFallback?: (reason?: string) => void; onText?: (delta: string) => void; onReasoning?: (delta: string) => void; onToolProgress?: () => void; }
 export interface ModelProvider {
   discover(connection: ModelConnection): Promise<ModelInfo[]>;
   chat(input: ChatInput): Promise<ChatResult>;
   probe(profile: ModelProfile, signal?: AbortSignal): Promise<boolean>;
+}
+
+function subscriptionUnavailable(error: unknown): boolean {
+  if (error instanceof ModelHttpError && ([401, 403, 404, 408, 429].includes(error.status) || error.status >= 500)) return true;
+  if (error instanceof TypeError && /fetch|network|connection/i.test(error.message)) return true;
+  const message = error instanceof Error ? error.message : '';
+  if (/context|invalid|malformed|native tool|unoffered|too large/i.test(message)) return false;
+  if (/^(?:Reconnect (?:your )?ChatGPT|Connect your ChatGPT account)/i.test(message)) return true;
+  if (/^Codex response timed out/i.test(message)) return true;
+  return /(?:usage|rate|plan|subscription|quota).{0,50}(?:limit|exhaust|reach|exceed|unavailable)|(?:signed out|sign.in.{0,30}(?:unavailable|expired|required)|disconnected|ECONNREFUSED|ECONNRESET|ENOTFOUND|Codex.{0,40}(?:not found|not installed|unavailable|exited))/i.test(message);
 }
 
 export function endpoint(raw: string): string {
@@ -54,6 +65,7 @@ export async function* streamLines(response: Response, signal: AbortSignal): Asy
 }
 
 export class LocalProviders implements ModelProvider {
+  private cloudModels: ModelInfo[] = [];
   private textOnlyModels = new Map<string, number>();
   private modelMetadata = new Map<string, { parallel?: number; vision?: boolean; canonical: string }>();
   private requests: ModelRequests;
@@ -84,6 +96,7 @@ export class LocalProviders implements ModelProvider {
   }
 
   rememberModels(models: ModelInfo[], connections: ModelConnection[]): void {
+    this.cloudModels = models.filter(model => ['openai', 'codex'].includes(model.provider) && connections.some(connection => connection.id === model.connectionId && connection.provider === model.provider)).map(model => ({ ...model }));
     for (const model of models) {
       const connection = connections.find(item => item.id === model.connectionId && item.provider === model.provider);
       if (!connection || !['lmstudio', 'ollama'].includes(model.provider)) continue;
@@ -96,11 +109,15 @@ export class LocalProviders implements ModelProvider {
   async discover(connection: ModelConnection): Promise<ModelInfo[]> {
     if (connection.provider === 'codex') {
       if (!this.codex) throw new Error('Codex is unavailable. Connect it in Model settings.');
-      return this.codex.discover(connection);
+      const models = await this.codex.discover(connection);
+      this.rememberCloudConnection(connection, models);
+      return models;
     }
     if (connection.provider === 'openai' || connection.provider === 'claude') {
       cloudEndpoint(connection);
-      return cloudDiscover(connection, await this.cloudToken(connection));
+      const models = await cloudDiscover(connection, await this.cloudToken(connection));
+      this.rememberCloudConnection(connection, models);
+      return models;
     }
     const base = endpoint(connection.url);
     const kind = connection.provider;
@@ -108,8 +125,27 @@ export class LocalProviders implements ModelProvider {
     const timer = setTimeout(() => controller.abort(), 10_000);
     try {
       if (kind === 'ollama') {
-        const data = await requestJson(`${base}/api/tags`, { signal: controller.signal, headers: this.headers(connection.id, connection.apiToken) });
-        return (data.models ?? []).map((model: any) => ({ provider: kind, connectionId: connection.id, connectionLabel: connection.label, id: String(model.name), label: String(model.name), available: true }));
+        const init = { signal: controller.signal, headers: this.headers(connection.id, connection.apiToken) };
+        const [data, running] = await Promise.all([
+          requestJson(`${base}/api/tags`, init),
+          requestJson(`${base}/api/ps`, init).catch(() => null),
+        ]);
+        const models: ModelInfo[] = (data.models ?? []).map((model: any) => ({ provider: kind, connectionId: connection.id, connectionLabel: connection.label, id: String(model.name), label: String(model.name), available: Boolean(running?.models?.some((loaded: any) => loaded.name === model.name || (model.digest && loaded.digest === model.digest))) }));
+        // Fetch architecture context metadata without loading models. Bound parallel
+        // requests and tolerate older servers that only implement the model list.
+        let next = 0;
+        await Promise.all(Array.from({ length: Math.min(4, models.length) }, async () => {
+          while (next < models.length) {
+            const model = models[next++];
+            try {
+              const details = await requestJson(`${base}/api/show`, { ...init, method: 'POST', headers: { ...init.headers, 'content-type': 'application/json' }, body: JSON.stringify({ model: model.id }) });
+              const info = details.model_info ?? {};
+              const maximum = info[`${info['general.architecture']}.context_length`] ?? Object.entries(info).find(([key]) => key.endsWith('.context_length'))?.[1];
+              if (Number.isSafeInteger(maximum) && maximum >= 2048) model.contextLimit = maximum;
+            } catch { /* Keep the catalog usable when optional metadata is absent. */ }
+          }
+        }));
+        return models;
       }
       const data = await requestJson(`${base}/api/v1/models`, { signal: controller.signal, headers: this.headers(connection.id, connection.apiToken) });
       return (data.models ?? data.data ?? []).filter((model: any) => !model.type || model.type === 'llm').map((model: any) => {
@@ -128,7 +164,36 @@ export class LocalProviders implements ModelProvider {
     } finally { clearTimeout(timer); }
   }
 
+  private rememberCloudConnection(connection: ModelConnection, models: ModelInfo[]): void {
+    this.cloudModels = [...this.cloudModels.filter(model => model.connectionId !== connection.id), ...models.filter(model => model.provider === 'openai' || model.provider === 'codex')];
+  }
+
   async chat(input: ChatInput): Promise<ChatResult> {
+    const connections = this.settings().connections;
+    const routes = openAIRoutes(input.profile, connections, this.cloudModels);
+    for (let index = 0; index < routes.length; index++) {
+      input.signal.throwIfAborted();
+      const profile = routes[index];
+      const connection = connections.find(item => item.id === profile.connectionId && item.provider === profile.provider);
+      if (connection && (profile.provider === 'openai' || profile.provider === 'codex')) input.onRoutingNotice?.(isSubscription(connection)
+        ? `Using ${connection!.label} subscription for ${profile.model}.`
+        : `Using ${connection!.label} for ${profile.model}; API charges apply. No matching subscription is available for this request.`);
+      let emitted = false;
+      try {
+        return await this.chatOnConnection({ ...input, profile,
+          onText: delta => { if (delta) emitted = true; input.onText?.(delta); },
+          onReasoning: delta => { if (delta) emitted = true; input.onReasoning?.(delta); },
+          onToolProgress: () => { emitted = true; input.onToolProgress?.(); },
+        });
+      } catch (error) {
+        input.signal.throwIfAborted();
+        if (emitted || index === routes.length - 1 || !isSubscription(connection) || !subscriptionUnavailable(error)) throw error;
+      }
+    }
+    throw new Error('No model connection is available.');
+  }
+
+  private async chatOnConnection(input: ChatInput): Promise<ChatResult> {
     const connection = this.settings().connections.find(item => item.id === input.profile.connectionId && item.provider === input.profile.provider);
     const base = input.profile.provider === 'openai' || input.profile.provider === 'claude' ? connection?.url ?? input.profile.endpoint ?? '' : this.url(input.profile);
     const metadata = this.modelMetadata.get(JSON.stringify([input.profile.provider, base, input.profile.model]));

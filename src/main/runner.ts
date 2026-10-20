@@ -85,7 +85,7 @@ export class Runner {
     if (role === 'main' && call.name === 'delegate_task') {
       this.event(session, 'tool', 'Subagent is analyzing the delegated task.', 'subagent');
       try {
-        const findings = await delegateTask(this.providers, session.assignments!.subagent, call.arguments, signal, readTools.filter((tool: any) => tool.function.name !== 'discover_plugins'), async read => this.useTool(workspace, read, 'subagent', session, signal, gate));
+        const findings = await delegateTask(this.providers, session.assignments!.subagent, call.arguments, signal, readTools.filter((tool: any) => tool.function.name !== 'discover_plugins'), async read => this.useTool(workspace, read, 'subagent', session, signal, gate), notice => this.event(session, 'status', notice, 'subagent'));
         this.event(session, 'message', findings, 'subagent');
         return findings;
       } catch (error) {
@@ -143,7 +143,7 @@ export class Runner {
       if (signal.aborted) throw signal.reason;
       const current = session.events.length;
       this.event(session, 'message', '', role);
-      const result = await this.providers.chat({ profile, messages, tools: role === 'main' ? codeTools : readTools, signal, onText: delta => {
+      const result = await this.providers.chat({ profile, messages, tools: role === 'main' ? codeTools : readTools, signal, onRoutingNotice: notice => this.event(session, 'status', notice, role), onText: delta => {
         const item = session.events[current];
         if (item) { item.text = (item.text + delta).slice(0, 50_000); this.save(session); }
       } });

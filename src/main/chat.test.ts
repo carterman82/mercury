@@ -21,6 +21,18 @@ function fixture() {
 }
 afterEach(() => { stores.splice(0).forEach(store => store.close()); directories.splice(0).forEach(directory => rmSync(directory, { recursive: true, force: true })); });
 
+it('retains routing and billing notices in saved replies without duplicate notices', async () => {
+  const store = fixture();
+  const provider = { chat: async (input: ChatInput) => {
+    input.onRoutingNotice?.('Using ChatGPT subscription.');
+    input.onRoutingNotice?.('Using OpenAI API; API charges apply.');
+    input.onRoutingNotice?.('Using ChatGPT subscription.');
+    return { text: 'Answer', tools: [] };
+  } } as unknown as ModelProvider;
+  const id = await new ChatService(store, provider, () => {}, () => false).send(null, profile, 'Hello');
+  expect(store.chat(id).messages.at(-1)?.notice).toBe('Using ChatGPT subscription.\nUsing OpenAI API; API charges apply.');
+});
+
 it.each([true, false])('delegates conversation-file analysis with explicit Subagent selection: %s', async explicit => {
   const store = fixture();
   store.saveSettings({ ...store.settings(), subagentModel: explicit ? { ...profile, model: 'small' } : null });

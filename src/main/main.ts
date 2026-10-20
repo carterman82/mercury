@@ -28,7 +28,7 @@ declare const MAIN_WINDOW_VITE_NAME: string;
 
 const providerSchema = z.enum(['ollama', 'lmstudio', 'openai', 'claude', 'codex']);
 const connectionSchema = z.object({ id: z.string().min(1).max(100), provider: providerSchema, label: z.string().min(1).max(120), url: z.string().url(), apiToken: z.string().max(4096).optional(), hasToken: z.boolean().optional(), auth: z.literal('chatgpt').optional(), deviceId: z.string().max(200).optional(), deviceLabel: z.string().max(200).optional(), maxConcurrentRequests: z.number().int().min(1).max(32).optional() });
-const profileSchema = z.object({ provider: providerSchema, connectionId: z.string().optional(), endpoint: z.string().url().optional(), model: z.string().min(1), contextLimit: z.number().int().min(2048).max(1_000_000), toolVerified: z.boolean().optional() });
+const profileSchema = z.object({ provider: providerSchema, connectionId: z.string().optional(), endpoint: z.string().url().optional(), model: z.string().min(1), contextLimit: z.number().int().min(2048).max(Number.MAX_SAFE_INTEGER), contextMode: z.enum(['auto', 'manual']).optional(), toolVerified: z.boolean().optional() });
 const settingsSchema = z.object({
   connections: z.array(connectionSchema).max(50),
   mainModel: profileSchema.nullable(),

@@ -48,6 +48,7 @@ it('plans once, pins all roles, delegates project reads, and leaves the final ac
   const requests: ChatInput[] = [];
   const providers = { chat: async (input: ChatInput) => {
     requests.push(input);
+    input.onRoutingNotice?.(`Connection for ${input.profile.model}; API charges apply.`);
     if (input.profile.model === 'planner') return { text: JSON.stringify(plan), tools: [] };
     if (input.profile.model === 'small') {
       if (input.messages.length === 2) return { text: '', tools: [{ id: 'read', name: 'read_file', arguments: { path: 'note.txt' } }] };
@@ -66,6 +67,7 @@ it('plans once, pins all roles, delegates project reads, and leaves the final ac
   expect(requests.map(request => request.profile.model)).toEqual(['planner', 'main', 'small', 'small', 'main']);
   expect(store.session(session.id).status).toBe('completed');
   expect(store.session(session.id).events.some(event => event.role === 'subagent' && event.text === 'Found evidence in note.txt')).toBe(true);
+  for (const role of ['planner', 'main', 'subagent']) expect(store.session(session.id).events.some(event => event.role === role && event.kind === 'status' && event.text.includes('API charges apply'))).toBe(true);
   expect(readFileSync(path.join(root, 'note.txt'), 'utf8')).toBe('Evidence');
 });
 

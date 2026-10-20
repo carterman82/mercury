@@ -1,3 +1,6 @@
+import { ConnectionProgress } from './ConnectionProgress';
+import { contextLimitDetails } from '../shared/cloud-context';
+import { refreshModelContext } from '../shared/model-context';
 import { useDiscovery } from './useDiscovery';
 import { connectionGroups } from '../shared/connections';
 import React, { useEffect, useState } from 'react';
@@ -26,6 +29,7 @@ function SettingsPanel({ settings, onClose, onSave, run }: { settings: Settings;
   const [manual, setManual] = useState<{ provider: ProviderKind; label: string; url: string; apiToken: string }>({ provider: 'lmstudio', label: '', url: '', apiToken: '' });
   const [manualError, setManualError] = useState('');
   const [connecting, setConnecting] = useState(false);
+  const [busyMessage, setBusyMessage] = useState('Connecting…');
   const [signingIn, setSigningIn] = useState(false);
   const [codexSignIn, setCodexSignIn] = useState(false);
   const [cloudKey, setCloudKey] = useState('');
@@ -41,31 +45,31 @@ function SettingsPanel({ settings, onClose, onSave, run }: { settings: Settings;
     });
     await refresh(true);
   };
-  const connect = async (job: () => Promise<void>) => {
-    setConnecting(true); setManualError('');
-    try { await job(); await syncAccounts(); }
+  const connect = async (job: () => Promise<void>, message = 'Updating connection…') => {
+    setBusyMessage(message); setConnecting(true); setManualError('');
+    try { await job(); setBusyMessage('Loading your models…'); await syncAccounts(); }
     catch (error) { setManualError(error instanceof Error ? error.message : String(error)); }
     finally { setConnecting(false); }
   };
   const signIn = async (id?: string) => {
     setSigningIn(true);
-    try { await connect(() => window.desktop.connectChatGPT(id)); }
+    try { await connect(() => window.desktop.connectChatGPT(id), 'Connecting with ChatGPT…'); }
     finally { setSigningIn(false); }
   };
   useEffect(() => {
     if (!discovery) return;
-    setDraft(current => ({ ...current, connections: [...current.connections.map(saved => {
+    setDraft(current => ({ ...current, ...Object.fromEntries(modelRoles.map(({ key }) => [key, current[key] ? refreshModelContext(current[key]!, discovery.models) : null])), connections: [...current.connections.map(saved => {
       const found = discovery.connections.find(item => item.id === saved.id);
       return found ? { ...saved, deviceId: found.deviceId, deviceLabel: found.deviceLabel } : saved;
     }), ...discovery.connections.filter(item => !current.connections.some(saved => saved.id === item.id))] }));
   }, [discovery]);
   const connectCodex = async () => {
     setCodexSignIn(true);
-    try { await connect(() => window.desktop.connectCodex()); }
+    try { await connect(() => window.desktop.connectCodex(), 'Connecting with Codex…'); }
     finally { setCodexSignIn(false); }
   };
   const addOther = () => run(async () => {
-    setManualError('');
+    setConnecting(true); setBusyMessage('Checking model server…'); setManualError('');
     const id = `other-${manual.provider}-${crypto.randomUUID()}`;
     const connection: ModelConnection = { id, provider: manual.provider, label: manual.label.trim() || `${manual.provider === 'ollama' ? 'Ollama' : 'LM Studio'} (Other)`, url: manual.url.trim(), ...(manual.apiToken ? { apiToken: manual.apiToken } : {}) };
     try {
@@ -75,9 +79,12 @@ function SettingsPanel({ settings, onClose, onSave, run }: { settings: Settings;
       setOther(false);
       setManual({ provider: 'lmstudio', label: '', url: '', apiToken: '' });
     } catch (error) { setManualError(String(error)); }
+    finally { setConnecting(false); }
   });
   const hasModels = models.length > 0;
-  return <div className="modal-backdrop"><section className="modal settings-modal"><header><div><small>CONNECTIONS</small><h2>Models and accounts</h2></div><button className="ghost" onClick={() => {
+  const busy = connecting || scanning;
+  const cancelSignIn = signingIn ? () => run(() => window.desktop.cancelChatGPTSignIn()) : codexSignIn ? () => run(() => window.desktop.cancelCodexSignIn()) : undefined;
+  return <div className={`modal-backdrop ${busy ? 'is-busy' : ''}`}><section className="modal settings-modal" aria-busy={busy}><div className="settings-content" inert={busy}><header><div><small>CONNECTIONS</small><h2>Models and accounts</h2></div><button className="ghost" onClick={() => {
     if (signingIn) run(() => window.desktop.cancelChatGPTSignIn());
     if (codexSignIn) run(() => window.desktop.cancelCodexSignIn());
     onClose();
@@ -107,17 +114,27 @@ function SettingsPanel({ settings, onClose, onSave, run }: { settings: Settings;
       <h3>{group.label}</h3>{group.connections.map(connection => <div className="connection-server" key={connection.id}>
         <div className="connection-heading"><span><strong>{connection.label}</strong><small>Connected{connection.provider === 'codex' ? ' · Codex · Experimental' : connection.auth === 'chatgpt' ? ' · ChatGPT plan' : connection.provider === 'openai' || connection.provider === 'claude' ? ' · API billing' : ''}</small></span>
         {(connection.provider === 'openai' || connection.provider === 'claude' || connection.provider === 'codex') && <span>{connection.provider === 'codex' && <button disabled={connecting} onClick={() => void connectCodex()}>Reconnect</button>}{connection.auth === 'chatgpt' && <button disabled={connecting} onClick={() => void signIn(connection.id)}>Reconnect</button>}<button disabled={connecting} onClick={() => void connect(() => window.desktop.disconnectConnection(connection.id))}>Disconnect</button></span>}</div>
-        <ul>{group.models.filter(model => model.connectionId === connection.id).map(model => <li key={JSON.stringify([model.connectionId, model.id])}>{model.label}{model.available ? '' : ' (not loaded)'}</li>)}</ul>
+        {(connection.provider === 'lmstudio' || connection.provider === 'ollama') ? [true, false].map(loaded => {
+          const list = group.models.filter(model => model.connectionId === connection.id && model.available === loaded);
+          return list.length ? <div className="model-load-group" key={String(loaded)}><h4>{loaded ? 'Loaded' : 'Not loaded'}</h4><ul>{list.map(model => <li key={JSON.stringify([model.connectionId, model.id])}>{model.label}</li>)}</ul></div> : null;
+        }) : <ul>{group.models.filter(model => model.connectionId === connection.id).map(model => <li key={JSON.stringify([model.connectionId, model.id])}>{model.label}</li>)}</ul>}
         {reachable.has(connection.id) && (connection.provider === 'lmstudio' || connection.provider === 'ollama') && <label className="field compact"><span>Concurrent requests per model · {connection.label}</span><input type="number" min={1} max={32} placeholder="Automatic" value={connection.maxConcurrentRequests ?? ''} onChange={event => { const limit = event.target.value ? Number(event.target.value) : undefined; setDraft(current => ({ ...current, connections: current.connections.map(item => item.id === connection.id ? { ...item, maxConcurrentRequests: limit } : item) })); }} /></label>}
       </div>)}
     </article>)}</section>
-    {hasModels && <section aria-label="Model roles"><h3>Model roles</h3><div className="model-grid">{modelRoles.map(({ key, label, description }) => <div className="model-role" key={key}>
-      <ProfileSelect hideUnavailable label={label} description={description} value={draft[key]} models={models} onOther={() => setOther(true)} optional={key !== 'mainModel'} onChange={profile => setDraft(current => ({ ...current, [key]: profile ?? null }))} />
-      {draft[key] && models.some(model => model.connectionId === draft[key]?.connectionId && model.id === draft[key]?.model) && <label className="field compact"><span>Context limit · {label}</span><input type="number" min={2048} max={1000000} value={draft[key]!.contextLimit} onChange={event => { const contextLimit = Number(event.target.value); setDraft(current => ({ ...current, [key]: current[key] ? { ...current[key]!, contextLimit } : null })); }} /></label>}
-    </div>)}</div></section>}
+    {hasModels && <section aria-label="Model roles"><h3>Model roles</h3><div className="model-grid">{modelRoles.map(({ key, label, description }) => {
+      const selected = models.find(model => model.provider === draft[key]?.provider && model.connectionId === draft[key]?.connectionId && model.id === draft[key]?.model);
+      const context = contextLimitDetails(selected);
+      return <div className="model-role" key={key}>
+      <ProfileSelect hideUnavailable label={label} description={description} value={draft[key]} models={models} connections={draft.connections} onOther={() => setOther(true)} optional={key !== 'mainModel'} onChange={profile => setDraft(current => ({ ...current, [key]: profile ?? null }))} />
+      {draft[key] && selected && <><label className="field compact"><span>Context limit · {label}</span><input type="number" min={2048} max={context?.tokens} aria-describedby={`context-source-${key}`} value={draft[key]!.contextLimit} onChange={event => { const contextLimit = Number(event.target.value); setDraft(current => ({ ...current, [key]: current[key] ? { ...current[key]!, contextLimit, contextMode: 'manual' } : null })); }} /></label>
+        <p className="hint" id={`context-source-${key}`}>{context?.source === 'published' ? `Published model limit · ${context.tokens.toLocaleString()} tokens · Verified ${context.verifiedAt}. Your account may have a lower limit.` : context ? `Reported by connection · ${context.tokens.toLocaleString()} tokens` : 'Maximum unknown. Set a working limit for this model.'}</p>
+        {context && draft[key]!.contextMode === 'manual' && <button className="text-button" aria-label={`Use model maximum · ${label}`} onClick={() => setDraft(current => ({ ...current, [key]: current[key] ? { ...current[key]!, contextLimit: context.tokens, contextMode: 'auto' } : null }))}>Use model maximum</button>}
+      </>}
+    </div>; })}</div></section>}
+    <p className="hint">Context defaults to the reported or published model maximum. You can lower it manually.</p>
     <p className="hint">Unset Planner and Subagent models use Main. Subagents return read-only findings; Main handles changes. Project implementation starts after plan approval.</p>
-    <footer><button className="primary" disabled={connecting} onClick={() => run(async () => { await onSave(draft); onClose(); })}>Save settings</button></footer>
-  </section></div>;
+    <footer><button className="primary" disabled={connecting} onClick={() => run(async () => { setBusyMessage('Saving settings…'); setConnecting(true); try { await onSave(draft); onClose(); } finally { setConnecting(false); } })}>Save settings</button></footer>
+  </div></section>{busy && <ConnectionProgress message={connecting ? busyMessage : 'Refreshing models…'} browserSignIn={signingIn || codexSignIn} onCancel={cancelSignIn} />}</div>;
 }
 
 function PlanEditor({ session, run }: { session: Session; run: (job: () => Promise<unknown>) => void }) {

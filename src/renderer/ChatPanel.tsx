@@ -1,3 +1,4 @@
+import { modelProfile, refreshModelContext } from '../shared/model-context';
 import { useDiscovery } from './useDiscovery';
 import React, { useEffect, useRef, useState } from 'react';
 import type { ChatFile, DiscoveryResult, ModelProfile, Snapshot } from '../shared/types';
@@ -38,12 +39,13 @@ export function ChatPanel({ state, chatId, onSelect, openSettings }: { state: Sn
     window.addEventListener('drop', preventNavigation);
     return () => { viewVersion.current++; window.removeEventListener('dragover', preventNavigation); window.removeEventListener('drop', preventNavigation); };
   }, []);
-  useEffect(() => { if (!chat && state.settings.mainModel) setProfile(state.settings.mainModel); }, [state.settings.mainModel]);
+  useEffect(() => { if (!chat && state.settings.mainModel) setProfile(state.settings.mainModel); }, [JSON.stringify(state.settings.mainModel)]);
   useEffect(() => { follow.current = true; }, [chatId]);
   useEffect(() => { if (follow.current && scroll.current) scroll.current.scrollTop = scroll.current.scrollHeight; }, [chat?.messages.at(-1)?.content, chat?.messages.at(-1)?.reasoning, chat?.messages.length]);
   useEffect(() => {
     const first = discovery?.models.find(item => item.available) ?? discovery?.models[0];
-    if (first) setProfile(current => current ?? { provider: first.provider, connectionId: first.connectionId, model: first.id, contextLimit: Math.min(first.contextLimit ?? 8192, 32768) });
+    if (first) setProfile(current => current ?? modelProfile(first));
+    if (!chat) setProfile(current => current ? refreshModelContext(current, discovery?.models ?? []) : current);
   }, [discovery]);
   const models = [...(discovery?.models ?? [])].sort((a, b) => Number(b.available) - Number(a.available) || a.label.localeCompare(b.label));
   const send = async () => {
@@ -76,7 +78,7 @@ export function ChatPanel({ state, chatId, onSelect, openSettings }: { state: Sn
     } catch (error) { if (version === viewVersion.current) setError(error instanceof Error ? error.message : String(error)); }
     finally { importing.current = false; setAttaching(false); }
   };
-  const modelPicker = <div className="chat-model-picker composer-model-picker"><ModelSelect label="Chat model" value={profile} models={models} disabled={blocked} scanning={scanning} onChange={value => setProfile(value ?? null)} onOther={openSettings} /><button type="button" className="ghost" onClick={() => void refresh(true)} disabled={scanning || blocked} title="Refresh models" aria-label="Refresh models">↻</button></div>;
+  const modelPicker = <div className="chat-model-picker composer-model-picker"><ModelSelect label="Chat model" value={profile} models={models} connections={state.settings.connections} disabled={blocked} scanning={scanning} onChange={value => setProfile(value ?? null)} onOther={openSettings} /><button type="button" className="ghost" onClick={() => void refresh(true)} disabled={scanning || blocked} title="Refresh models" aria-label="Refresh models">↻</button></div>;
   return <section className={`chat-layout ${dragging ? 'is-dragging' : ''}`} aria-label="Chat" onKeyDown={event => {
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'o') { event.preventDefault(); if (!blocked && !attaching) chooser.current?.click(); }
   }} onDragEnter={event => {

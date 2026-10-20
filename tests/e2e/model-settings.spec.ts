@@ -20,7 +20,7 @@ test('hides unavailable connections, restores cached models quietly, and persist
         { id: 'openai', provider: 'openai' as const, label: 'OpenAI API', url: 'https://api.openai.com' },
         { id: 'claude', provider: 'claude' as const, label: 'Claude API', url: 'https://api.anthropic.com' },
       ];
-      const models = connections.filter(item => item.id !== 'empty').map(item => ({ provider: item.provider, connectionId: item.id, connectionLabel: item.label, id: 'same-model', label: 'Same model', available: true }));
+      const models = connections.filter(item => item.id !== 'empty').map(item => ({ provider: item.provider, connectionId: item.id, connectionLabel: item.label, id: item.id === 'openai' ? 'gpt-6.1-sol' : item.id === 'claude' ? 'claude-sonnet-5' : 'same-model', label: 'Same model', available: item.id !== 'tail-ollama', contextLimit: ['openai', 'claude'].includes(item.id) ? undefined : item.id === 'tail-ollama' ? 65536 : 131072 }));
       await window.desktop.updateSettings({ connections, mainModel: { provider: 'lmstudio', connectionId: 'tail-lm', model: 'same-model', contextLimit: 8192 }, plannerModel: null, subagentModel: null });
       return { connections: connections.filter(item => item.id !== 'this-lm'), models: models.filter(item => item.connectionId !== 'this-lm'), applications: [], diagnostics: [] };
     });
@@ -28,10 +28,11 @@ test('hides unavailable connections, restores cached models quietly, and persist
       const state = globalThis as any;
       state.settingsFixture = fixture; state.explicitRefreshes = 0;
       // The context bridge is frozen. Mock IPC handlers in the isolated test app.
-      for (const name of ['autoDiscover', 'cachedDiscovery', 'connectCodex']) ipcMain.removeHandler('api:' + name);
+      for (const name of ['autoDiscover', 'cachedDiscovery', 'connectCodex', 'cancelCodexSignIn']) ipcMain.removeHandler('api:' + name);
       ipcMain.handle('api:cachedDiscovery', () => state.settingsFixture);
       ipcMain.handle('api:autoDiscover', () => { state.explicitRefreshes++; return state.settingsFixture; });
-      ipcMain.handle('api:connectCodex', () => { state.codexClicked = true; throw new Error('Fixture sign-in cancelled'); });
+      ipcMain.handle('api:connectCodex', () => { state.codexClicked = true; return new Promise((_resolve, reject) => { state.cancelFixtureSignIn = () => reject(new Error('Fixture sign-in cancelled')); }); });
+      ipcMain.handle('api:cancelCodexSignIn', () => state.cancelFixtureSignIn());
       const contents = BrowserWindow.getAllWindows()[0].webContents;
       const send = contents.send.bind(contents);
       contents.send = (channel: string, ...args: any[]) => {
@@ -45,6 +46,12 @@ test('hides unavailable connections, restores cached models quietly, and persist
     await expect(page.getByRole('heading', { name: 'API keys', exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Connect with Codex' })).toBeEnabled();
     await page.getByRole('button', { name: 'Connect with Codex' }).click();
+    await expect(page.getByRole('dialog', { name: 'Connecting with Codex…' })).toBeVisible();
+    await expect(page.locator('.settings-content')).toHaveAttribute('inert', '');
+    await expect(page.locator('.connection-spinner')).toBeVisible();
+    await page.screenshot({ path: 'test-results/model-settings-connecting.png' });
+    await page.getByRole('dialog').getByRole('button', { name: 'Cancel sign-in' }).click();
+    await expect(page.getByRole('dialog')).toHaveCount(0);
     await expect(page.getByRole('alert').filter({ hasText: 'Fixture sign-in cancelled' })).toBeVisible();
     expect(await app.evaluate(() => (globalThis as any).codexClicked)).toBe(true);
     await expect(page.getByRole('button', { name: /Manage ChatGPT usage|Use an OpenAI API key/ })).toHaveCount(0);
@@ -56,6 +63,9 @@ test('hides unavailable connections, restores cached models quietly, and persist
     await expect(local.locator('input')).toHaveCount(0);
     await expect(remote.locator('li')).toHaveCount(2);
     await expect(remote.locator('input')).toHaveCount(2);
+    await expect(remote.getByRole('heading', { name: 'Loaded', exact: true })).toBeVisible();
+    await expect(remote.getByRole('heading', { name: 'Not loaded', exact: true })).toBeVisible();
+    await expect(page.getByLabel('Context limit · Main model')).toHaveValue('131072');
     await expect(page.locator('.connection-box').filter({ hasText: 'Empty server' })).toHaveCount(0);
     await expect(page.getByText(/No models available/)).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'Scanning…' })).toHaveCount(0);
@@ -68,10 +78,36 @@ test('hides unavailable connections, restores cached models quietly, and persist
     await page.screenshot({ path: 'test-results/model-settings-connections.png' });
     await page.getByLabel('Planner model', { exact: true }).focus();
     await expect(page.getByRole('note').filter({ hasText: 'Plans project infrastructure' })).toBeVisible();
+    await expect(page.getByLabel('Planner model', { exact: true }).locator('optgroup[label=Loaded] option')).toHaveCount(1);
+    await expect(page.getByLabel('Planner model', { exact: true }).locator('optgroup[label="Not loaded"] option')).toHaveCount(1);
+    await expect(page.getByLabel('Planner model provider').locator('option[value=codex]')).toHaveCount(0);
+    await expect(page.getByLabel('Planner model provider').locator('option[value=openai]')).toHaveText('ChatGPT');
     await page.getByLabel('Planner model', { exact: true }).selectOption(JSON.stringify(['tail-lm', 'same-model']));
+    await expect(page.getByLabel('Context limit · Planner model')).toHaveValue('131072');
     await page.getByLabel('Subagent model', { exact: true }).focus();
     await page.getByLabel('Subagent model', { exact: true }).selectOption(JSON.stringify(['tail-ollama', 'same-model']));
     await expect(page.getByRole('note').filter({ hasText: 'Breaks down data' })).toBeVisible();
+    await expect(page.getByLabel('Context limit · Subagent model')).toHaveValue('65536');
+    await page.getByLabel('Main model provider').selectOption('openai');
+    await page.getByLabel('Main model', { exact: true }).selectOption(JSON.stringify(['openai', 'gpt-6.1-sol']));
+    await expect(page.getByRole('note').filter({ hasText: 'Subscription first:' })).toBeVisible();
+    await expect(page.getByRole('note').filter({ hasText: 'API charges apply' })).toBeVisible();
+    await expect(page.getByLabel('Context limit · Main model')).toHaveValue('1050000');
+    await expect(page.getByText(/Published model limit · 1,050,000/)).toBeVisible();
+    await page.getByLabel('Context limit · Main model').fill('65536');
+    await page.getByRole('button', { name: 'Use model maximum · Main model', exact: true }).click();
+    await expect(page.getByLabel('Context limit · Main model')).toHaveValue('1050000');
+    await page.screenshot({ path: 'test-results/model-settings-cloud-context.png' });
+    await page.getByLabel('Main model provider').selectOption('claude');
+    await page.getByLabel('Main model', { exact: true }).selectOption(JSON.stringify(['claude', 'claude-sonnet-5']));
+    await expect(page.getByLabel('Context limit · Main model')).toHaveValue('1000000');
+    await expect(page.getByText(/Published model limit · 1,000,000/)).toBeVisible();
+    await page.getByLabel('Context limit · Main model').fill('8192');
+    await page.getByRole('button', { name: 'Use model maximum · Main model', exact: true }).click();
+    await expect(page.getByLabel('Context limit · Main model')).toHaveValue('1000000');
+    await page.screenshot({ path: 'test-results/model-settings-sonnet-5.png' });
+    await page.getByLabel('Main model provider').selectOption('local');
+    await page.getByLabel('Main model', { exact: true }).selectOption(JSON.stringify(['tail-lm', 'same-model']));
     await page.getByLabel('Context limit · Main model').fill('16384');
     await page.screenshot({ path: 'test-results/model-settings-roles.png' });
     await page.setViewportSize({ width: 700, height: 900 });

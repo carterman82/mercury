@@ -4,6 +4,7 @@ import { requestJson, streamLines } from './providers';
 import { ModelHttpError, visualInputText, type ChatImage } from './vision';
 import { InactivityWatchdog } from './inactivity';
 import { ThinkingLimitError } from './thinking-guard';
+import { validContextLimit, withContextLimit } from '../shared/cloud-context';
 
 export function cloudEndpoint(connection: ModelConnection): string {
   const expected = connection.provider === 'openai' ? 'https://api.openai.com' : 'https://api.anthropic.com';
@@ -26,8 +27,9 @@ export async function cloudDiscover(connection: ModelConnection, token: string):
     for (const item of catalog) {
       const id = String(item.slug ?? item.id);
       if (data.models && item.visibility !== 'list') continue;
-      if (connection.provider === 'openai' && !data.models && !/^(gpt-|chatgpt-|o[1-9](?:-|$))/.test(id)) continue;
-      models.push({ provider: connection.provider, connectionId: connection.id, connectionLabel: connection.label, id, label: item.display_name ?? id, available: true, contextLimit: item.context_window ?? item.context_length });
+      if (connection.provider === 'openai' && !data.models && !/^(gpt-|chatgpt-|chat-latest$|o[1-9](?:-|$))/.test(id)) continue;
+      const reported = [item.max_input_tokens, item.context_window, item.context_length].find(validContextLimit);
+      models.push(withContextLimit({ provider: connection.provider, connectionId: connection.id, connectionLabel: connection.label, id, label: item.display_name ?? id, available: true, contextLimit: reported }));
     }
     after = connection.provider === 'claude' && data.has_more ? data.last_id : undefined;
     if (after && pages.has(after)) throw new Error('The model catalog returned a repeated page.');

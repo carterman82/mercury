@@ -39,6 +39,17 @@ function fixture(override?: (message: any, reply: (result: any) => void, notify:
 }
 const input = (): ChatInput => ({ profile: { provider: 'codex', connectionId: connection.id, model: 'catalog-model', contextLimit: 8192 }, messages: [{ role: 'user', content: 'Hello' }], signal: new AbortController().signal });
 
+it('resolves missing Codex model windows while preferring reported account limits', async () => {
+  const f = fixture((message, reply) => {
+    if (message.method !== 'model/list') return false;
+    reply({ data: [{ model: 'gpt-5.3-codex' }, { model: 'gpt-6.1-sol', contextWindow: 128_000 }] });
+    return true;
+  });
+  const models = await new CodexService('C:/test/codex', async () => {}, f.launch).discover(connection);
+  expect(models[0]).toMatchObject({ contextLimit: 400_000, contextLimitSource: 'published' });
+  expect(models[1]).toMatchObject({ contextLimit: 128_000, contextLimitSource: 'provider' });
+});
+
 it('uses Codex-managed browser login and discovers a separate model catalog', async () => {
   const f = fixture(); const open = vi.fn(async () => {});
   const service = new CodexService('C:/test/codex', open, f.launch);
@@ -79,7 +90,7 @@ it('completes structured inference and carries images without exposing Codex-nat
   request.messages = [{ role: 'user', content: 'See this', images: [{ mimeType: 'image/png', data: 'pixels' }] }];
   expect(await service.chat(request)).toEqual({ text: 'Answer', tools: [] });
   expect(onText).toHaveBeenCalledWith('Answer');
-  expect(f.requests.find(item => item.method === 'thread/start').params).toMatchObject({ ephemeral: true, sandbox: 'read-only', approvalPolicy: 'untrusted' });
+  expect(f.requests.find(item => item.method === 'thread/start').params).toMatchObject({ ephemeral: true, sandbox: 'read-only', approvalPolicy: 'untrusted', config: { model_context_window: request.profile.contextLimit } });
   const turn = f.requests.find(item => item.method === 'turn/start').params;
   expect(turn.input[1]).toEqual({ type: 'image', url: 'data:image/png;base64,pixels' });
   expect(turn.outputSchema.properties.tools).toBeDefined();

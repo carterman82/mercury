@@ -65,6 +65,8 @@ export class ChatService {
     const response: ChatMessage = { id: randomUUID(), role: 'assistant', content: '', model: profile.model, startedAt: Date.now() };
     chat.messages.push(response);
     this.save(chat);
+    const notices = new Set<string>();
+    const addNotice = (notice: string) => { notices.add(notice); response.notice = [...notices].join('\n'); this.save(chat); };
     let publishTimer: ReturnType<typeof setTimeout> | null = null;
     const publish = () => {
       if (!publishTimer) publishTimer = setTimeout(() => { publishTimer = null; this.save(chat); }, 75);
@@ -110,9 +112,8 @@ export class ChatService {
       const result = await generateChatTurn(this.providers, { profile, messages, tools: tools.length ? tools : undefined, signal: controller.signal, onRequestState: state => {
         response.queued = state === 'queued';
         this.save(chat);
-      }, onImageFallback: () => {
-        response.notice = 'This model does not support image input. Using extracted text instead; visual contents are unavailable.';
-        this.save(chat);
+      }, onRoutingNotice: addNotice, onImageFallback: () => {
+        addNotice('This model does not support image input. Using extracted text instead; visual contents are unavailable.');
       }, onText: delta => {
         if (controller.signal.aborted) return;
         if (delta.trim() && !response.thinkingEndedAt) response.thinkingEndedAt = Date.now();
@@ -125,8 +126,7 @@ export class ChatService {
         publish();
       } }, reason => {
         response.content = prefix;
-        response.notice = reason === 'repetition' ? 'Repetitive thinking detected. Trying once to answer directly.' : 'No model progress for two minutes. Trying once more.';
-        this.save(chat);
+        addNotice(reason === 'repetition' ? 'Repetitive thinking detected. Trying once to answer directly.' : 'No model progress for two minutes. Trying once more.');
       });
       if (controller.signal.aborted) throw controller.signal.reason;
       response.content = prefix + result.text;
@@ -148,7 +148,7 @@ export class ChatService {
               if (!allowed.has(args.id)) throw new Error('File is not attached to this conversation.');
               const text = await this.files!.text(args.id);
               return JSON.stringify({ content: text.slice(args.offset ?? 0, (args.offset ?? 0) + 12000), totalCharacters: text.length });
-            }) };
+            }, notice => { addNotice('Subagent: ' + notice); activity.result = notice; this.save(chat); }) };
             activity.result = (output as { findings: string }).findings;
           } else if (this.capabilities?.handles(call.name)) {
             output = await this.capabilities.execute(chat.id, call.name, call.arguments, controller.signal);

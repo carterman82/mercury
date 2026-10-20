@@ -1,6 +1,6 @@
 export type ProviderKind = 'ollama' | 'lmstudio' | 'openai' | 'claude' | 'codex';
-export type ModelCategory = 'local' | 'openai' | 'claude' | 'codex';
-export const modelCategory = (provider: ProviderKind): ModelCategory => provider === 'ollama' || provider === 'lmstudio' ? 'local' : provider;
+export type ModelCategory = 'local' | 'openai' | 'claude';
+export const modelCategory = (provider: ProviderKind): ModelCategory => provider === 'ollama' || provider === 'lmstudio' ? 'local' : provider === 'codex' ? 'openai' : provider;
 export type AgentRole = 'planner' | 'main' | 'subagent';
 export type HistoricalAgentRole = AgentRole | 'critic' | 'synthesizer' | 'coder';
 export type SessionStatus = 'draft' | 'planning' | 'awaiting_input' | 'awaiting_review' | 'implementing' | 'awaiting_command' | 'completed' | 'failed' | 'cancelled' | 'interrupted';
@@ -13,6 +13,7 @@ export interface ModelProfile {
   endpoint?: string;
   model: string;
   contextLimit: number;
+  contextMode?: 'auto' | 'manual';
   toolVerified?: boolean;
 }
 export interface Settings {
@@ -21,7 +22,7 @@ export interface Settings {
   plannerModel: ModelProfile | null;
   subagentModel: ModelProfile | null;
 }
-export interface ModelInfo { provider: ProviderKind; connectionId: string; connectionLabel: string; id: string; label: string; available: boolean; contextLimit?: number; toolCapable?: boolean; visionCapable?: boolean; parallelRequests?: number; }
+export interface ModelInfo { provider: ProviderKind; connectionId: string; connectionLabel: string; id: string; label: string; available: boolean; contextLimit?: number; contextLimitSource?: 'provider' | 'published'; contextLimitReference?: string; contextLimitVerifiedAt?: string; toolCapable?: boolean; visionCapable?: boolean; parallelRequests?: number; }
 export interface ModelRequestCount { key: string; provider: ProviderKind; endpoint: string; model: string; limit: number; active: number; queued: number; }
 export interface DiscoveryResult { connections: ModelConnection[]; models: ModelInfo[]; applications: string[]; diagnostics: string[]; }
 export interface PlanStep { title: string; details: string; checks: string[]; }

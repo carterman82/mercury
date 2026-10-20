@@ -17,6 +17,7 @@ test('chats with individual models, switches models, stops, and restores history
   const server = createServer(async (request, response) => {
     response.setHeader('content-type', 'application/json');
     if (request.url === '/api/tags') { modelListings++; response.end(JSON.stringify({ models: [{ name: 'echo-one' }, { name: 'echo-two' }] })); return; }
+    if (request.url === '/api/ps') { response.end(JSON.stringify({ models: [{ name: 'echo-one' }, { name: 'echo-two' }] })); return; }
     if (request.url !== '/api/chat') { response.statusCode = 404; response.end('{}'); return; }
     let raw = '';
     for await (const chunk of request) raw += chunk.toString();
@@ -52,7 +53,7 @@ test('chats with individual models, switches models, stops, and restores history
     const category = page.getByLabel('Model provider', { exact: true });
     await expect(category).toHaveValue('local');
     await category.selectOption('openai');
-    await expect(page.getByLabel('Chat model')).toContainText('Connect OpenAI');
+    await expect(page.getByLabel('Chat model')).toContainText('Connect ChatGPT');
     await expect(page.getByRole('button', { name: 'Send ↑' })).toBeDisabled();
     await category.selectOption('claude');
     await expect(page.getByLabel('Chat model')).toContainText('Connect Claude');
@@ -70,7 +71,9 @@ test('chats with individual models, switches models, stops, and restores history
       await page.getByRole('button', { name: 'Close', exact: true }).click();
     }
     expect(modelListings).toBeGreaterThanOrEqual(cachedListings);
-    await page.screenshot({ path: 'test-results/mercury-home.png' });
+    // Gallery captures are opt-in; settings visual checks capture their own screenshots.
+    if (process.env.MERCURY_CAPTURE_SCREENSHOTS) await page.screenshot({ animations: 'disabled', path: 'test-results/mercury-home.png' });
+    await page.getByLabel('Chat model').selectOption(JSON.stringify(['chat-fixture', 'echo-one']));
     await page.getByLabel('Message', { exact: true }).fill('hello');
     await page.getByRole('button', { name: 'Send ↑' }).click();
     await expect(page.locator('.chat-assistant')).toContainText('echo-one answered');
@@ -89,7 +92,7 @@ test('chats with individual models, switches models, stops, and restores history
     await expect(richAnswer.locator('.thinking-panel')).not.toHaveAttribute('open');
     await richAnswer.locator('summary').click();
     await expect(richAnswer.locator('.thinking-body')).toContainText('clear sections');
-    await page.screenshot({ path: 'test-results/mercury-thinking.png' });
+    if (process.env.MERCURY_CAPTURE_SCREENSHOTS) await page.screenshot({ animations: 'disabled', path: 'test-results/mercury-thinking.png' });
     finishFormat!();
     await expect(richAnswer.getByRole('heading', { name: 'A formatted answer' })).toBeVisible();
     await expect(richAnswer.locator('u')).toHaveText('underline');
@@ -103,7 +106,7 @@ test('chats with individual models, switches models, stops, and restores history
     await page.evaluate(() => Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async (text: string) => { (window as any).copiedText = text; } } }));
     await richAnswer.getByRole('button', { name: 'Copy code' }).click();
     await expect.poll(() => page.evaluate(() => (window as any).copiedText)).toBe('const total = 42;');
-    await page.screenshot({ path: 'test-results/mercury-formatted.png' });
+    if (process.env.MERCURY_CAPTURE_SCREENSHOTS) await page.screenshot({ animations: 'disabled', path: 'test-results/mercury-formatted.png' });
     await expect(page.getByLabel('Chat model')).toBeEnabled();
     await page.getByLabel('Message', { exact: true }).fill('wait');
     await page.getByRole('button', { name: 'Send ↑' }).click();
@@ -112,7 +115,7 @@ test('chats with individual models, switches models, stops, and restores history
     await expect(page.locator('.chat-assistant').last().locator('.thinking-body')).toContainText('Partial reasoning');
     await page.getByRole('button', { name: 'Stop response' }).click();
     await expect(page.getByLabel('Chat model')).toBeEnabled();
-    await page.screenshot({ path: 'test-results/mercury-chat.png' });
+    if (process.env.MERCURY_CAPTURE_SCREENSHOTS) await page.screenshot({ animations: 'disabled', path: 'test-results/mercury-chat.png' });
     await app.close();
     app = await electron.launch({ executablePath, env });
     page = await app.firstWindow();
@@ -163,7 +166,7 @@ test('finds the shared LM Studio models and verifies streamed tool use', async (
     await expect(page.locator('.chat-assistant')).toContainText('Mercury ready', { timeout: 30_000 });
     await expect(page.locator('.thinking-panel')).toHaveCount(1);
     await expect(page.getByLabel('Chat model')).toBeEnabled();
-    await page.screenshot({ path: 'test-results/mercury-live-chat.png' });
+    if (process.env.MERCURY_CAPTURE_SCREENSHOTS) await page.screenshot({ animations: 'disabled', path: 'test-results/mercury-live-chat.png' });
   } finally { await app.close(); rmSync(data, { recursive: true, force: true }); }
 });
 

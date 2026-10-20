@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { withContextLimit } from '../shared/cloud-context';
 import type { DiscoveryResult, Settings } from '../shared/types';
 
 const provider = z.enum(['ollama', 'lmstudio', 'openai', 'claude', 'codex']);
@@ -6,7 +7,7 @@ const recordSchema = z.object({
   version: z.literal(1), key: z.string(), scannedAt: z.number().nonnegative(),
   result: z.object({
     connections: z.array(z.object({ id: z.string(), provider, label: z.string(), url: z.string().url(), deviceId: z.string().optional(), deviceLabel: z.string().optional(), hasToken: z.boolean().optional(), auth: z.literal('chatgpt').optional() })),
-    models: z.array(z.object({ provider, connectionId: z.string(), connectionLabel: z.string(), id: z.string(), label: z.string(), available: z.boolean(), contextLimit: z.number().optional(), toolCapable: z.boolean().optional(), visionCapable: z.boolean().optional(), parallelRequests: z.number().int().min(1).max(32).optional() })),
+    models: z.array(z.object({ provider, connectionId: z.string(), connectionLabel: z.string(), id: z.string(), label: z.string(), available: z.boolean(), contextLimit: z.number().optional(), contextLimitSource: z.enum(['provider', 'published']).optional(), contextLimitReference: z.string().url().optional(), contextLimitVerifiedAt: z.string().optional(), toolCapable: z.boolean().optional(), visionCapable: z.boolean().optional(), parallelRequests: z.number().int().min(1).max(32).optional() })),
     applications: z.array(z.string()), diagnostics: z.array(z.string()),
   }),
 });
@@ -24,6 +25,7 @@ export class DiscoveryCache {
     const parsed = recordSchema.safeParse(saved);
     this.record = parsed.success ? parsed.data : null;
     try { if (this.record && !Array.isArray(JSON.parse(this.record.key))) this.record = null; } catch { this.record = null; }
+    if (this.record) this.record.result.models = this.record.result.models.map(withContextLimit);
   }
   invalidate(): void { this.generation++; this.record = null; this.persist(null); }
   peek(settings: Settings): DiscoveryResult | null {
@@ -49,7 +51,7 @@ export class DiscoveryCache {
     const generation = this.generation;
     const promise = this.scan(structuredClone(settings)).then(result => {
       // Parse strips credentials from the persisted discovery metadata.
-      const record = recordSchema.parse({ version: 1, key, scannedAt: this.now(), result });
+      const record = recordSchema.parse({ version: 1, key, scannedAt: this.now(), result: { ...result, models: result.models.map(withContextLimit) } });
       if (this.generation === generation && this.pending?.promise === promise) { this.record = record; this.persist(record); }
       return record.result;
     });
