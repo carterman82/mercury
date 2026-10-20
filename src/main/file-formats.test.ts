@@ -42,6 +42,9 @@ it('draws PNG and JPEG without an image model, and extracts English image text l
   expect(result.bytes.subarray(0, 8).toString('hex')).toBe('89504e470d0a1a0a');
   const jpeg = await formats.graphic({ ...input, name: 'message.jpg' });
   expect(jpeg.bytes.subarray(0, 2).toString('hex')).toBe('ffd8');
+  expect(await formats.visionImage(jpeg.bytes)).toEqual({ mimeType: 'image/jpeg', data: jpeg.bytes.toString('base64') });
+  expect(await formats.visionImage(result.bytes)).toEqual({ mimeType: 'image/png', data: result.bytes.toString('base64') });
+  expect(await formats.visionImage(Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"></svg>'))).toBeNull();
   const read = await formats.inspect('message.png', result.bytes);
   expect(read.text).toMatch(/Mercury file support 2026/i);
   expect(read.readStatus).toBe('partial'); expect(read.note).toContain('Visual objects');

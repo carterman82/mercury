@@ -1,9 +1,11 @@
 import type { ModelConnection, ModelInfo, ModelProfile, Settings, ToolRequest } from '../shared/types';
 import { ReasoningStream } from './reasoning';
 import { cloudChat, cloudDiscover, cloudEndpoint } from './cloud-providers';
+import { hasImages, imageUnsupported, localImageMessages, ModelHttpError, textOnlyMessages } from './vision';
+import { ModelRequests } from './model-requests';
 
 export interface ChatResult { text: string; reasoning?: string; tools: ToolRequest[]; usage?: { input?: number; output?: number }; }
-export interface ChatInput { profile: ModelProfile; messages: unknown[]; tools?: unknown[]; signal: AbortSignal; disableThinking?: boolean; onText?: (delta: string) => void; onReasoning?: (delta: string) => void; onToolProgress?: () => void; }
+export interface ChatInput { profile: ModelProfile; messages: unknown[]; tools?: unknown[]; signal: AbortSignal; disableThinking?: boolean; onRequestState?: (state: 'queued' | 'running') => void; onImageFallback?: (reason?: string) => void; onText?: (delta: string) => void; onReasoning?: (delta: string) => void; onToolProgress?: () => void; }
 export interface ModelProvider {
   discover(connection: ModelConnection): Promise<ModelInfo[]>;
   chat(input: ChatInput): Promise<ChatResult>;
@@ -20,12 +22,12 @@ export function endpoint(raw: string): string {
 
 export async function requestJson(url: string, init?: RequestInit): Promise<any> {
   const response = await fetch(url, { ...init, redirect: 'error' });
-  if (!response.ok) throw new Error(`Model server returned HTTP ${response.status}: ${(await response.text()).slice(0, 500)}`);
+  if (!response.ok) throw new ModelHttpError(response.status, (await response.text()).slice(0, 500));
   return response.json();
 }
 
 export async function* streamLines(response: Response, signal: AbortSignal): AsyncGenerator<string> {
-  if (!response.ok) throw new Error(`Model server returned HTTP ${response.status}: ${(await response.text()).slice(0, 500)}`);
+  if (!response.ok) throw new ModelHttpError(response.status, (await response.text()).slice(0, 500));
   if (!response.body) throw new Error('Model server did not provide a response stream.');
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
@@ -49,7 +51,11 @@ export async function* streamLines(response: Response, signal: AbortSignal): Asy
 }
 
 export class LocalProviders implements ModelProvider {
-  constructor(private settings: () => Settings, private tokenFor: (id: string) => string | undefined = () => undefined, private connectionFailed: () => void = () => {}, private chatGPTToken: (id: string) => Promise<string> = async () => { throw new Error('ChatGPT sign-in is unavailable.'); }) {}
+  private textOnlyModels = new Map<string, number>();
+  private modelMetadata = new Map<string, { parallel?: number; vision?: boolean; canonical: string }>();
+  private requests: ModelRequests;
+  get requestCounts() { return this.requests.snapshot(); }
+  constructor(private settings: () => Settings, private tokenFor: (id: string) => string | undefined = () => undefined, private connectionFailed: () => void = () => {}, private chatGPTToken: (id: string) => Promise<string> = async () => { throw new Error('ChatGPT sign-in is unavailable.'); }, requestsChanged: () => void = () => {}) { this.requests = new ModelRequests(requestsChanged); }
 
   private async cloudToken(connection: ModelConnection): Promise<string> {
     const token = connection.auth === 'chatgpt' ? await this.chatGPTToken(connection.id) : connection.apiToken || this.tokenFor(connection.id);
@@ -74,6 +80,16 @@ export class LocalProviders implements ModelProvider {
     return endpoint(profile.endpoint ?? selected?.url ?? legacy?.url ?? '');
   }
 
+  rememberModels(models: ModelInfo[], connections: ModelConnection[]): void {
+    for (const model of models) {
+      const connection = connections.find(item => item.id === model.connectionId && item.provider === model.provider);
+      if (!connection || !['lmstudio', 'ollama'].includes(model.provider)) continue;
+      const key = JSON.stringify([model.provider, endpoint(connection.url), model.id]);
+      const previous = this.modelMetadata.get(key);
+      this.modelMetadata.set(key, { canonical: model.id, vision: model.visionCapable ?? previous?.vision, parallel: model.parallelRequests ?? previous?.parallel });
+    }
+  }
+
   async discover(connection: ModelConnection): Promise<ModelInfo[]> {
     if (connection.provider === 'openai' || connection.provider === 'claude') {
       cloudEndpoint(connection);
@@ -89,16 +105,61 @@ export class LocalProviders implements ModelProvider {
         return (data.models ?? []).map((model: any) => ({ provider: kind, connectionId: connection.id, connectionLabel: connection.label, id: String(model.name), label: String(model.name), available: true }));
       }
       const data = await requestJson(`${base}/api/v1/models`, { signal: controller.signal, headers: this.headers(connection.id, connection.apiToken) });
-      return (data.models ?? data.data ?? []).filter((model: any) => !model.type || model.type === 'llm').map((model: any) => ({
+      return (data.models ?? data.data ?? []).filter((model: any) => !model.type || model.type === 'llm').map((model: any) => {
+        const id = String(model.key ?? model.id);
+        const parallel = model.loaded_instances?.[0]?.config?.parallel;
+        const info = { canonical: id, vision: model.capabilities?.vision, parallel: Number.isInteger(parallel) && parallel > 0 ? Math.min(parallel, 32) : undefined };
+        for (const alias of [id, ...(model.loaded_instances ?? []).map((instance: any) => instance.id)]) this.modelMetadata.set(JSON.stringify([kind, base, alias]), info);
+        return {
         provider: kind, connectionId: connection.id, connectionLabel: connection.label, id: String(model.key ?? model.id), label: String(model.display_name ?? model.key ?? model.id),
         available: Boolean(model.loaded_instances?.length ?? model.loaded),
         contextLimit: model.max_context_length ?? model.context_length,
         toolCapable: model.capabilities?.trained_for_tool_use,
-      }));
+        ...(typeof info.vision === 'boolean' ? { visionCapable: info.vision } : {}),
+        ...(info.parallel ? { parallelRequests: info.parallel } : {}),
+      }; });
     } finally { clearTimeout(timer); }
   }
 
   async chat(input: ChatInput): Promise<ChatResult> {
+    const connection = this.settings().connections.find(item => item.id === input.profile.connectionId && item.provider === input.profile.provider);
+    const base = input.profile.provider === 'openai' || input.profile.provider === 'claude' ? connection?.url ?? input.profile.endpoint ?? '' : this.url(input.profile);
+    const metadata = this.modelMetadata.get(JSON.stringify([input.profile.provider, base, input.profile.model]));
+    const limit = Math.max(1, Math.min(32, connection?.maxConcurrentRequests ?? metadata?.parallel ?? (input.profile.provider === 'ollama' ? 1 : 4)));
+    const key = JSON.stringify([input.profile.provider, base, metadata?.canonical ?? input.profile.model]);
+    const release = await this.requests.acquire(key, { ...input.profile, endpoint: base }, limit, input.signal, () => input.onRequestState?.('queued'));
+    try {
+      input.signal.throwIfAborted(); input.onRequestState?.('running');
+      return await this.chatWithImages(input);
+    } finally { release(); }
+  }
+
+  private async chatWithImages(input: ChatInput): Promise<ChatResult> {
+    if (!hasImages(input.messages)) return this.chatOnce(input);
+    const key = JSON.stringify([input.profile.provider, input.profile.connectionId, input.profile.endpoint, input.profile.model]);
+    const fallback = () => {
+      input.signal.throwIfAborted();
+      input.onImageFallback?.('The server reported that this model cannot accept image input.');
+      return this.chatOnce({ ...input, messages: textOnlyMessages(input.messages) });
+    };
+    if ((this.textOnlyModels.get(key) ?? 0) > Date.now()) return fallback();
+    let emitted = false;
+    try {
+      return await this.chatOnce({ ...input,
+        onText: delta => { if (delta) emitted = true; input.onText?.(delta); },
+        onReasoning: delta => { if (delta) emitted = true; input.onReasoning?.(delta); },
+        onToolProgress: () => { emitted = true; input.onToolProgress?.(); },
+      });
+    } catch (error) {
+      input.signal.throwIfAborted();
+      if (emitted || !imageUnsupported(error)) throw error;
+      if (this.textOnlyModels.size >= 100) this.textOnlyModels.clear();
+      this.textOnlyModels.set(key, Date.now() + 5 * 60_000);
+      return fallback();
+    }
+  }
+
+  private async chatOnce(input: ChatInput): Promise<ChatResult> {
     if (input.profile.provider === 'openai' || input.profile.provider === 'claude') {
       const connection = this.settings().connections.find(item => item.id === input.profile.connectionId && item.provider === input.profile.provider);
       if (!connection) throw new Error('This cloud account is disconnected. Connect it in Model settings.');
@@ -115,8 +176,8 @@ export class LocalProviders implements ModelProvider {
     if (input.signal.aborted) abort();
     const tools = input.tools?.length ? { tools: input.tools } : {};
     const body = isOllama
-      ? { model: input.profile.model, messages: input.messages, ...tools, stream: true, ...(input.disableThinking ? { think: /gpt-oss/i.test(input.profile.model) ? 'low' : false } : {}), options: { num_ctx: input.profile.contextLimit } }
-      : { model: input.profile.model, messages: input.messages, ...tools, stream: true };
+      ? { model: input.profile.model, messages: localImageMessages(input.messages, true), ...tools, stream: true, ...(input.disableThinking ? { think: /gpt-oss/i.test(input.profile.model) ? 'low' : false } : {}), options: { num_ctx: input.profile.contextLimit } }
+      : { model: input.profile.model, messages: localImageMessages(input.messages, false), ...tools, stream: true };
     try {
       const response = await fetch(isOllama ? `${base}/api/chat` : `${base}/v1/chat/completions`, {
         method: 'POST', headers: { 'content-type': 'application/json', ...this.headers(input.profile.connectionId) }, body: JSON.stringify(body), signal: controller.signal, redirect: 'error',
@@ -137,6 +198,7 @@ export class LocalProviders implements ModelProvider {
         const json = isOllama ? line : line.startsWith('data:') ? line.slice(5).trim() : '';
         if (!json || json === '[DONE]') continue;
         const chunk = JSON.parse(json);
+        if (chunk.error) throw new ModelHttpError(400, typeof chunk.error === 'string' ? chunk.error : chunk.error.message ?? JSON.stringify(chunk.error));
         if (isOllama) {
           thinking(chunk.message?.thinking);
           const delta = chunk.message?.content ?? '';

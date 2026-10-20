@@ -44,11 +44,24 @@ it('stops generation and saves partial output without starting another request',
   const service = new ChatService(store, provider, () => {}, () => false);
   const pending = service.send(null, profile, 'Hello');
   const id = service.activeId!;
-  await expect(service.send(null, profile, 'Concurrent')).rejects.toThrow(/current response/);
+  await expect(service.send(id, profile, 'Concurrent')).rejects.toThrow(/current response/);
   service.stop(id);
   await pending;
   expect(store.chat(id).status).toBe('stopped');
   expect(store.chat(id).messages.at(-1)?.content).toBe('Partial answer');
+});
+
+it('runs separate conversations simultaneously and stops only the selected conversation', async () => {
+  const store = fixture(); const finish: ((value: any) => void)[] = [];
+  const provider = { chat: (input: ChatInput) => new Promise((resolve, reject) => { finish.push(resolve); input.onText?.(String(finish.length)); input.signal.addEventListener('abort', () => reject(input.signal.reason), { once: true }); }) } as unknown as ModelProvider;
+  const service = new ChatService(store, provider, () => {}, () => false);
+  const one = service.send(null, profile, 'First chat'); const firstId = service.activeId!;
+  const two = service.send(null, profile, 'Second chat'); const secondId = service.activeIds.find(id => id !== firstId)!;
+  expect(service.activeIds).toHaveLength(2); service.stop(firstId); await one;
+  expect(service.activeIds).toEqual([secondId]); expect(store.chat(firstId).status).toBe('stopped');
+  finish[1]({ text: 'Second answer', tools: [] }); await two;
+  expect(service.activeIds).toEqual([]); expect(store.chat(secondId).status).toBe('idle');
+  expect(store.chat(secondId).messages.at(-1)?.content).toBe('Second answer');
 });
 
 it('rejects context overflow and concurrent agent work before persisting a chat', async () => {

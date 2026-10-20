@@ -16,6 +16,7 @@ export class ChatFiles {
   async get(id: string): Promise<ChatFile> { return JSON.parse(await fs.readFile(this.filename(id, '.json'), 'utf8')); }
   async bytes(id: string): Promise<Buffer> { await this.get(id); return fs.readFile(this.filename(id, '.bin')); }
   async text(id: string): Promise<string> { await this.get(id); return fs.readFile(this.filename(id, '.txt'), 'utf8'); }
+  async image(id: string) { return this.formats.visionImage(await this.bytes(id)); }
   private async store(name: string, bytes: Buffer, text: string, kind: ChatFile['kind'], info: Partial<Pick<ChatFile, 'format' | 'readStatus' | 'note'>> = {}): Promise<ChatFile> {
     if (text.length > MAX_TEXT) throw new Error('Extracted file text exceeds 300,000 characters. Attach a smaller document.');
     if (bytes.length > MAX_BYTES) throw new Error('File exceeds the 25 MB limit.');

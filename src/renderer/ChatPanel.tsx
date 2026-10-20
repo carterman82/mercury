@@ -22,7 +22,7 @@ export function ChatPanel({ state, chatId, onSelect, openSettings }: { state: Sn
   const end = useRef<HTMLDivElement>(null);
   const scroll = useRef<HTMLDivElement>(null);
   const follow = useRef(true);
-  const blocked = Boolean(state.activeChatId || state.activeRole || pending);
+  const blocked = Boolean(chat?.status === 'streaming' || state.activeRole || pending);
   useEffect(() => { viewVersion.current++; dragDepth.current = 0; setDragging(false); setProfile(chat?.profile ?? state.settings.defaultModel); setMessage(''); setError(''); setAttachments([]); }, [chatId]);
   useEffect(() => {
     // Prevent dropping files outside the chat from navigating Electron away.
@@ -32,7 +32,6 @@ export function ChatPanel({ state, chatId, onSelect, openSettings }: { state: Sn
     return () => { viewVersion.current++; window.removeEventListener('dragover', preventNavigation); window.removeEventListener('drop', preventNavigation); };
   }, []);
   useEffect(() => { if (!profile && state.settings.defaultModel) setProfile(state.settings.defaultModel); }, [state.settings.defaultModel]);
-  useEffect(() => { if (pending && state.activeChatId) onSelect(state.activeChatId); }, [pending, state.activeChatId]);
   useEffect(() => { follow.current = true; }, [chatId]);
   useEffect(() => { if (follow.current && scroll.current) scroll.current.scrollTop = scroll.current.scrollHeight; }, [chat?.messages.at(-1)?.content, chat?.messages.at(-1)?.reasoning, chat?.messages.length]);
   const refresh = async (force = false) => {
@@ -51,6 +50,7 @@ export function ChatPanel({ state, chatId, onSelect, openSettings }: { state: Sn
     if (!profile || (!message.trim() && !attachments.length) || blocked || attaching) return;
     const text = message.trim();
     const files = attachments;
+    const version = viewVersion.current;
     setPending(true); setError('');
     try {
       const latest = await window.desktop.snapshot();
@@ -59,8 +59,8 @@ export function ChatPanel({ state, chatId, onSelect, openSettings }: { state: Sn
       setMessage('');
       setAttachments([]);
       const id = await window.desktop.sendChat(chatId, profile, text, files.map(file => file.id));
-      onSelect(id);
-    } catch (error) { setError(error instanceof Error ? error.message : String(error)); setMessage(current => current || text); setAttachments(files); }
+      if (version === viewVersion.current) onSelect(id);
+    } catch (error) { if (version === viewVersion.current) { setError(error instanceof Error ? error.message : String(error)); setMessage(current => current || text); setAttachments(files); } }
     finally { setPending(false); }
   };
   const attach = async (files: File[]) => {
@@ -102,6 +102,7 @@ export function ChatPanel({ state, chatId, onSelect, openSettings }: { state: Sn
         return <article key={item.id} className={`chat-message chat-${item.role}`}><div className="chat-message-label">{item.role === 'user' ? 'You' : item.model ?? 'Mercury'}</div>
           {item.role === 'assistant' && <ThinkingPanel message={item} active={active} />}
           {item.notice && <p className="chat-notice" role="status">{item.notice}</p>}
+          {active && item.queued && <p className="chat-notice" role="status">Waiting for a free request slot on this model. Other chats can continue.</p>}
           <div className="chat-message-content">{item.role === 'user' ? item.content : item.content.trim() ? <Markdown content={item.content} /> : !active && !item.files?.length ? <span className="empty">No answer received.</span> : null}</div>
           {Boolean(item.files?.length) && <div className="chat-files">{item.files!.map(file => <div className="chat-file" key={file.id}><span>📄 {file.name}<small>{file.format ? file.format + ' · ' : ''}{Math.ceil(file.size / 1024)} KB{file.kind === 'upload' && file.readStatus ? ` · ${file.readStatus === 'metadata' ? 'Metadata only' : file.readStatus === 'partial' ? 'Partial extraction' : 'Text available'}` : ''}</small>{file.note && <span className="file-extraction-note">{file.note}</span>}</span><button type="button" onClick={() => void window.desktop.saveChatFile(file.id).catch(error => setError(String(error)))}>Save {file.name}</button></div>)}</div>}
           {item.role === 'assistant' && !active && item.content.trim() && <div className="response-actions"><CopyButton label="Copy response" text={item.content} />{item.startedAt && item.completedAt && <span>{Math.max(1, Math.round((item.completedAt - item.startedAt) / 1000))}s</span>}</div>}
@@ -110,7 +111,7 @@ export function ChatPanel({ state, chatId, onSelect, openSettings }: { state: Sn
     <div className="chat-compose-area">{error && <p className="chat-notice" role="alert">{error}</p>}<form className="chat-composer" onSubmit={event => { event.preventDefault(); void send(); }}>
       {Boolean(attachments.length) && <div className="pending-files">{attachments.map(file => <span key={file.id} title={file.note}>{file.name}{file.readStatus === 'metadata' ? ' · metadata only' : file.readStatus === 'partial' ? ' · partial extraction' : ''}<button type="button" aria-label={`Remove ${file.name}`} disabled={blocked} onClick={() => setAttachments(current => current.filter(item => item.id !== file.id))}>×</button></span>)}</div>}
       <input ref={chooser} type="file" multiple className="sr-only" tabIndex={-1} aria-label="Choose chat files" onChange={event => { void attach(Array.from(event.target.files ?? [])); event.target.value = ''; }} />
-      <textarea aria-label="Message" placeholder="Message Mercury… or drop files here" rows={2} value={message} maxLength={30000} onChange={event => setMessage(event.target.value)} onKeyDown={event => { if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); void send(); } }} /><div className="compose-actions">{modelPicker}{state.activeChatId === chatId && state.activeChatId ? <button type="button" onClick={() => void window.desktop.stopChat(state.activeChatId!).catch(error => setError(String(error)))}>Stop response</button> : <button type="submit" className="primary" disabled={!profile || (!message.trim() && !attachments.length) || blocked || attaching}>Send ↑</button>}</div></form><p className="composer-hint">{attaching ? 'Attaching files…' : 'Drop files anywhere in chat · Ctrl+O to browse'} · Enter to send · Shift + Enter for a new line</p></div>
+      <textarea aria-label="Message" placeholder="Message Mercury… or drop files here" rows={2} value={message} maxLength={30000} onChange={event => setMessage(event.target.value)} onKeyDown={event => { if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); void send(); } }} /><div className="compose-actions">{modelPicker}{chat?.status === 'streaming' ? <button type="button" onClick={() => void window.desktop.stopChat(chat.id).catch(error => setError(String(error)))}>Stop response</button> : <button type="submit" className="primary" disabled={!profile || (!message.trim() && !attachments.length) || blocked || attaching}>Send ↑</button>}</div></form><p className="composer-hint">{attaching ? 'Attaching files…' : 'Drop files anywhere in chat · Ctrl+O to browse'} · Enter to send · Shift + Enter for a new line</p></div>
   </section>;
 }
 

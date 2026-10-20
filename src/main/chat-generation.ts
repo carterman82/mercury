@@ -11,7 +11,7 @@ export async function generateChatTurn(provider: ModelProvider, input: ChatInput
     const signal = AbortSignal.any([input.signal, controller.signal]);
     const guard = new ThinkingGuard(limits.maxCharacters);
     let answering = false;
-    const timer = setTimeout(() => controller.abort(new ThinkingLimitError('timeout')), limits.thinkingMs);
+    let timer = setTimeout(() => controller.abort(new ThinkingLimitError('timeout')), limits.thinkingMs);
     const progress = () => { answering = true; clearTimeout(timer); };
     let detach = () => {};
     const interrupted = new Promise<never>((_resolve, reject) => {
@@ -23,6 +23,11 @@ export async function generateChatTurn(provider: ModelProvider, input: ChatInput
     try {
       const result = await Promise.race([provider.chat({
         ...input, messages, signal, disableThinking: attempt > 0,
+        onRequestState: state => {
+          clearTimeout(timer);
+          if (state === 'running' && !answering) timer = setTimeout(() => controller.abort(new ThinkingLimitError('timeout')), limits.thinkingMs);
+          input.onRequestState?.(state);
+        },
         onText: delta => { if (!signal.aborted) { if (delta.trim()) progress(); input.onText?.(delta); } },
         onToolProgress: () => { if (!signal.aborted) { progress(); input.onToolProgress?.(); } },
         onReasoning: delta => {

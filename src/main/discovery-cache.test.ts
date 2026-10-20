@@ -61,3 +61,12 @@ it('does not persist a scan invalidated while it was in progress', async () => {
   expect(persist).toHaveBeenCalledTimes(1);
   expect(persist).toHaveBeenCalledWith(null);
 });
+
+it('preserves model vision and parallel-slot metadata across cache reads and restarts', async () => {
+  let saved: unknown;
+  const discovered = { ...result, models: result.models.map(model => ({ ...model, visionCapable: true, parallelRequests: 2 })) };
+  const cache = new DiscoveryCache(async () => discovered, null, value => { saved = value; });
+  expect((await cache.get(settings)).models[0]).toMatchObject({ visionCapable: true, parallelRequests: 2 });
+  const restarted = new DiscoveryCache(async () => { throw new Error('Should use the cache'); }, saved, () => {});
+  expect((await restarted.get(settings)).models[0]).toMatchObject({ visionCapable: true, parallelRequests: 2 });
+});

@@ -21,7 +21,7 @@ declare const MAIN_WINDOW_VITE_DEV_SERVER_URL: string | undefined;
 declare const MAIN_WINDOW_VITE_NAME: string;
 
 const providerSchema = z.enum(['ollama', 'lmstudio', 'openai', 'claude']);
-const connectionSchema = z.object({ id: z.string().min(1).max(100), provider: providerSchema, label: z.string().min(1).max(120), url: z.string().url(), apiToken: z.string().max(4096).optional(), hasToken: z.boolean().optional(), auth: z.literal('chatgpt').optional() });
+const connectionSchema = z.object({ id: z.string().min(1).max(100), provider: providerSchema, label: z.string().min(1).max(120), url: z.string().url(), apiToken: z.string().max(4096).optional(), hasToken: z.boolean().optional(), auth: z.literal('chatgpt').optional(), maxConcurrentRequests: z.number().int().min(1).max(32).optional() });
 const profileSchema = z.object({ provider: providerSchema, connectionId: z.string().optional(), endpoint: z.string().url().optional(), model: z.string().min(1), contextLimit: z.number().int().min(2048).max(1_000_000), toolVerified: z.boolean().optional() });
 const settingsSchema = z.object({
   connections: z.array(connectionSchema).max(50),
@@ -37,7 +37,7 @@ let chats: ChatService;
 let discovery: DiscoveryCache;
 
 function snapshot(): Snapshot {
-  return { projects: store.projects(), sessions: store.sessions(), chats: store.chats(), settings: store.settings(), activeRole: runner.activeRole, activeChatId: chats.activeId };
+  return { projects: store.projects(), sessions: store.sessions(), chats: store.chats(), settings: store.settings(), activeRole: runner.activeRole, activeChatId: chats.activeId, activeChatIds: chats.activeIds, modelRequests: providers.requestCounts };
 }
 function noChat(): void { if (chats.activeId) throw new Error('Stop the chat response before starting an agent run.'); }
 function notify(): void { if (window && !window.isDestroyed()) window.webContents.send('state:update', snapshot()); }
@@ -68,7 +68,7 @@ app.whenReady().then(async () => {
     store.saveSecret(id, value ? safeStorage.encryptString(value).toString('base64') : null);
   };
   const chatGPT = new ChatGPTAuth(readSecret, writeSecret, url => shell.openExternal(url));
-  providers = new LocalProviders(() => store.settings(), readSecret, () => discovery.invalidate(), id => chatGPT.token(id));
+  providers = new LocalProviders(() => store.settings(), readSecret, () => discovery.invalidate(), id => chatGPT.token(id), notify);
   runner = new Runner(store, providers, notify);
   const pdfRuntime = app.isPackaged ? path.join(process.resourcesPath, 'pdf-runtime', 'node_modules', 'pdfjs-dist') : path.join(app.getAppPath(), 'node_modules', 'pdfjs-dist');
   const formats = new FileFormats(app.isPackaged ? path.join(process.resourcesPath, 'file-runtime') : app.getAppPath(), app.isPackaged ? path.join(process.resourcesPath, 'pdf-runtime') : app.getAppPath());
@@ -162,7 +162,11 @@ app.whenReady().then(async () => {
     if (connection.auth === 'chatgpt' && !store.settings().connections.some(item => item.id === connection.id && item.auth === 'chatgpt')) throw new Error('Connect ChatGPT first.');
     return providers.discover(connection);
   });
-  handle('autoDiscover', (_event, force?: boolean) => discovery.get(store.settings(), z.boolean().optional().parse(force) ?? false));
+  handle('autoDiscover', async (_event, force?: boolean) => {
+    const result = await discovery.get(store.settings(), z.boolean().optional().parse(force) ?? false);
+    providers.rememberModels(result.models, result.connections);
+    return result;
+  });
   handle('probe', async (_event, profile: ModelProfile) => { noChat(); if (runner.running) throw new Error('Wait for the current agent run.'); return providers.probe(profileSchema.parse(profile)); });
   handle('addChatFiles', async (_event, raw: string[]) => {
     const paths = z.array(z.string().min(1).max(32768)).min(1).max(8).parse(raw);
@@ -180,7 +184,13 @@ app.whenReady().then(async () => {
     const ids = z.array(z.string().uuid()).max(8).optional().parse(rawIds) ?? [];
     const text = z.string().trim().max(30_000).parse(message);
     if (!text && !ids.length) throw new Error('Add a message or attach a file.');
-    return chats.send(z.string().uuid().nullable().parse(id), profileSchema.parse(profile), text || 'Please read the attached files.', ids);
+    const before = new Set(chats.activeIds);
+    const completion = chats.send(z.string().uuid().nullable().parse(id), profileSchema.parse(profile), text || 'Please read the attached files.', ids);
+    const started = chats.activeIds.find(chatId => !before.has(chatId));
+    if (!started) return completion; // Validation failures still reach the caller.
+    // Acknowledge creation immediately; streaming state and errors arrive through snapshots.
+    void completion.catch(() => notify());
+    return started;
   });
   handle('stopChat', (_event, id: string) => chats.stop(z.string().uuid().parse(id)));
   handle('openLink', (_event, raw: string) => {

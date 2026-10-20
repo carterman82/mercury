@@ -6,7 +6,7 @@ const recordSchema = z.object({
   version: z.literal(1), key: z.string(), scannedAt: z.number().nonnegative(),
   result: z.object({
     connections: z.array(z.object({ id: z.string(), provider, label: z.string(), url: z.string().url(), hasToken: z.boolean().optional(), auth: z.literal('chatgpt').optional() })),
-    models: z.array(z.object({ provider, connectionId: z.string(), connectionLabel: z.string(), id: z.string(), label: z.string(), available: z.boolean(), contextLimit: z.number().optional(), toolCapable: z.boolean().optional() })),
+    models: z.array(z.object({ provider, connectionId: z.string(), connectionLabel: z.string(), id: z.string(), label: z.string(), available: z.boolean(), contextLimit: z.number().optional(), toolCapable: z.boolean().optional(), visionCapable: z.boolean().optional(), parallelRequests: z.number().int().min(1).max(32).optional() })),
     applications: z.array(z.string()), diagnostics: z.array(z.string()),
   }),
 });

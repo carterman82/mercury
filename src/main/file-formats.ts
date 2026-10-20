@@ -8,6 +8,7 @@ import remarkParse from 'remark-parse';
 import remarkGfm from 'remark-gfm';
 import { imageSize } from 'image-size';
 import { binaryInspection, boundedInspection, decodeText, inspectCompressedText, inspectZip, rtfText, xmlDocumentText, type FileInspection } from './file-inspection';
+import type { ChatImage } from './vision';
 
 const name = z.string().min(1).max(120);
 const content = z.string().min(1).max(300_000);
@@ -44,6 +45,23 @@ export class FileFormats {
   constructor(private runtime: string, nativeRuntime = runtime) {
     this.require = createRequire(path.join(runtime, 'package.json'));
     this.nativeRequire = createRequire(path.join(nativeRuntime, 'package.json'));
+  }
+  async visionImage(bytes: Buffer): Promise<ChatImage | null> {
+    // Detect raster content, not a filename supplied by the user. Never render SVG/HTML here.
+    let dimensions;
+    try { dimensions = imageSize(bytes); } catch { return null; }
+    if (!dimensions.width || !dimensions.height || !['png', 'jpg', 'gif', 'webp', 'bmp', 'tiff', 'ico', 'avif'].includes(dimensions.type ?? '') || dimensions.width * dimensions.height > 20_000_000) return null;
+    if (['png', 'jpg', 'webp'].includes(dimensions.type!) && bytes.length <= 4 * 1024 * 1024 && Math.max(dimensions.width, dimensions.height) <= 2048) {
+      return { mimeType: dimensions.type === 'jpg' ? 'image/jpeg' : dimensions.type === 'webp' ? 'image/webp' : 'image/png', data: bytes.toString('base64') };
+    }
+    const { loadImage, createCanvas } = this.nativeRequire('@napi-rs/canvas') as typeof import('@napi-rs/canvas');
+    const image = await loadImage(bytes);
+    const scale = Math.min(1, 2048 / Math.max(dimensions.width, dimensions.height));
+    const canvas = createCanvas(Math.max(1, Math.round(dimensions.width * scale)), Math.max(1, Math.round(dimensions.height * scale)));
+    const context = canvas.getContext('2d');
+    context.fillStyle = '#ffffff'; context.fillRect(0, 0, canvas.width, canvas.height);
+    context.drawImage(image, 0, 0, canvas.width, canvas.height);
+    return { mimeType: 'image/jpeg', data: canvas.toBuffer('image/jpeg', 85).toString('base64') };
   }
   async ocr(bytes: Buffer): Promise<string> {
     const run = this.ocrQueue.then(async () => {

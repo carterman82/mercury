@@ -8,6 +8,7 @@ import { chatFileInstructions, pdfToolDescription, textFileToolDescription } fro
 import { generateChatTurn } from './chat-generation';
 import { chatConversationInstructions } from './chat-instructions';
 import { documentSchema, spreadsheetSchema, presentationSchema, graphicSchema, archiveSchema } from './file-formats';
+import { messageTextLength, type ChatImage } from './vision';
 
 const tool = (name: string, description: string, properties: object, required: string[]) => ({ type: 'function', function: { name, description, parameters: { type: 'object', properties, required, additionalProperties: false } } });
 const schemaTool = (name: string, description: string, schema: z.ZodType) => {
@@ -28,28 +29,31 @@ const createSchema = z.object({ name: z.string().min(1).max(120), content: z.str
 const readSchema = z.object({ id: z.string().uuid(), offset: z.number().int().min(0).optional() });
 
 export class ChatService {
-  private active: { id: string; controller: AbortController } | null = null;
-  get activeId(): string | null { return this.active?.id ?? null; }
+  private active = new Map<string, AbortController>();
+  get activeId(): string | null { return this.active.keys().next().value ?? null; }
+  get activeIds(): string[] { return [...this.active.keys()]; }
   constructor(private store: Store, private providers: ModelProvider, private notify: () => void, private agentRunning: () => boolean, private files?: ChatFiles) {}
   private save(chat: ChatThread): void { this.store.saveChat(chat); this.notify(); }
   stop(id: string): void {
-    if (this.active?.id !== id) throw new Error('This chat is not generating a response.');
-    this.active.controller.abort(new Error('Response stopped.'));
+    const controller = this.active.get(id);
+    if (!controller) throw new Error('This chat is not generating a response.');
+    controller.abort(new Error('Response stopped.'));
   }
   async send(id: string | null, selected: ModelProfile, message: string, attachmentIds: string[] = []): Promise<string> {
-    if (this.active || this.agentRunning()) throw new Error('Wait for the current response or stop it first.');
+    if ((id && this.active.has(id)) || this.agentRunning()) throw new Error('Wait for the current response in this chat or stop it first.');
     if (attachmentIds.length > 8) throw new Error('Attach up to eight files per message.');
     const connection = this.store.settings().connections.find(item => item.id === selected.connectionId && item.provider === selected.provider);
     if (!connection) throw new Error('Save this model connection in Model settings first.');
     const profile = { ...selected, endpoint: connection.url };
     const chat: ChatThread = id ? this.store.chat(id) : { id: randomUUID(), title: message.slice(0, 70), profile, messages: [], status: 'idle', updatedAt: Date.now() };
-    const history = chat.messages.filter(item => item.content.trim() || item.files?.length).map(({ role, content, files }) => ({ role, content: content + (files?.length ? `\nConversation files available through read_file: ${JSON.stringify(files)}` : '') }));
-    const messages = [{ role: 'system', content: 'You are Mercury, a helpful assistant. Answer the user directly. Use Markdown formatting when helpful: headings, bold, italics, lists, quotes, tables, and fenced code blocks with a language label. For underline use <u>text</u>.' }, ...history, { role: 'user', content: message }];
+    const prior = chat.messages.filter(item => item.content.trim() || item.files?.length);
+    const history = prior.map(({ role, content, files }) => ({ role, content: content + (files?.length ? `\nConversation files available through read_file: ${JSON.stringify(files)}` : '') }));
+    const messages: { role: string; content: string; images?: ChatImage[] }[] = [{ role: 'system', content: 'You are Mercury, a helpful assistant. Answer the user directly. Use Markdown formatting when helpful: headings, bold, italics, lists, quotes, tables, and fenced code blocks with a language label. For underline use <u>text</u>.' }, ...history, { role: 'user', content: message }];
     messages[0].content += chatConversationInstructions;
     if (this.files) messages[0].content += chatFileInstructions;
-    if (JSON.stringify(messages).length > Math.min(profile.contextLimit * 3, 300_000)) throw new Error('This chat exceeds the selected model’s context limit. Start a new chat or choose a larger context in settings.');
+    if (messageTextLength(messages) > Math.min(profile.contextLimit * 3, 300_000)) throw new Error('This chat exceeds the selected model’s context limit. Start a new chat or choose a larger context in settings.');
     const controller = new AbortController();
-    this.active = { id: chat.id, controller };
+    this.active.set(chat.id, controller);
     chat.profile = profile;
     chat.status = 'streaming';
     delete chat.error;
@@ -68,16 +72,41 @@ export class ChatService {
       chat.messages[chat.messages.length - 2].files = attached;
       for (const file of attached) {
         const text = await this.files!.text(file.id);
-        const space = Math.max(0, Math.min(profile.contextLimit * 3, 300_000) - JSON.stringify(messages).length - 2500);
+        const space = Math.max(0, Math.min(profile.contextLimit * 3, 300_000) - messageTextLength(messages) - 2500);
         messages.at(-1)!.content += `\n\nAttached source file ${JSON.stringify(file)} (${text.length} characters):\n<attachment>\n${text.slice(0, Math.min(12000, Math.floor(space / 2)))}\n</attachment>\nUse read_file with its ID for more text.`;
+      }
+      // Rehydrate from authorized conversation files, never save base64 in chat history.
+      // Newest eight images get priority; older attachments remain accessible as text.
+      let imageCount = 0, imageBytes = 0;
+      const sources = [...prior.map((item, index) => ({ files: item.role === 'user' ? item.files ?? [] : [], target: messages[index + 1], historical: true })), { files: attached, target: messages.at(-1)!, historical: false }];
+      for (const source of sources.reverse()) for (const file of source.files) {
+        if (!/\.(png|jpe?g|webp|gif|bmp|tiff?|ico|avif)$/i.test(file.name)) continue;
+        let image: ChatImage | null = null;
+        try { if (imageCount < 8) image = await this.files!.image(file.id); } catch { /* Keep the existing extracted-text fallback. */ }
+        if (image && imageBytes + image.data.length <= 24 * 1024 * 1024) {
+          (source.target.images ??= []).push(image); imageCount++; imageBytes += image.data.length;
+          // OCR limitations describe the extractor, not the visual input. Do not tell
+          // a vision model "visual contents have not been interpreted" beside real pixels.
+          source.target.content = source.target.content.replace(JSON.stringify(file), JSON.stringify({ id: file.id, name: file.name, size: file.size, kind: file.kind, format: file.format, textExtractionStatus: file.readStatus }));
+          if (source.historical) {
+            const space = Math.max(0, Math.min(profile.contextLimit * 3, 300_000) - messageTextLength(messages) - 2500);
+            source.target.content += `\nExtracted text fallback for ${JSON.stringify(file.name)}:\n<attachment>\n${(await this.files!.text(file.id)).slice(0, Math.min(12000, Math.floor(space / 2)))}\n</attachment>`;
+          }
+        } else source.target.content += `\n[${JSON.stringify(file.name)} is available as extracted text/metadata only; image decoding or the image payload limit prevented visual input.]`;
       }
       const allowed = new Set(chat.messages.flatMap(item => (item.files ?? []).map(file => file.id)));
       let complete = false;
       for (let turn = 0; turn < 8; turn++) {
       if (controller.signal.aborted) throw controller.signal.reason;
-      if (JSON.stringify(messages).length > Math.min(profile.contextLimit * 3, 300_000)) throw new Error('Files exceed this model’s context limit. Choose a larger context or attach smaller files.');
+      if (messageTextLength(messages) > Math.min(profile.contextLimit * 3, 300_000)) throw new Error('Files exceed this model’s context limit. Choose a larger context or attach smaller files.');
       const prefix = response.content;
-      const result = await generateChatTurn(this.providers, { profile, messages, tools: this.files ? fileTools : undefined, signal: controller.signal, onText: delta => {
+      const result = await generateChatTurn(this.providers, { profile, messages, tools: this.files ? fileTools : undefined, signal: controller.signal, onRequestState: state => {
+        response.queued = state === 'queued';
+        this.save(chat);
+      }, onImageFallback: () => {
+        response.notice = 'This model does not support image input. Using extracted text instead; visual contents are unavailable.';
+        this.save(chat);
+      }, onText: delta => {
         if (controller.signal.aborted) return;
         if (delta.trim() && !response.thinkingEndedAt) response.thinkingEndedAt = Date.now();
         response.content = (response.content + delta).slice(0, 200_001);
@@ -133,7 +162,8 @@ export class ChatService {
       chat.error = error instanceof Error ? error.message : String(error);
     } finally {
       if (publishTimer) clearTimeout(publishTimer);
-      response.completedAt = Date.now(); this.active = null; this.save(chat);
+      delete response.queued;
+      response.completedAt = Date.now(); this.active.delete(chat.id); this.save(chat);
     }
     return chat.id;
   }

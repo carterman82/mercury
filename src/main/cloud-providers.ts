@@ -1,6 +1,7 @@
 import type { ModelConnection, ModelInfo } from '../shared/types';
 import type { ChatInput, ChatResult } from './providers';
 import { requestJson, streamLines } from './providers';
+import { ModelHttpError, visualInputText, type ChatImage } from './vision';
 
 export function cloudEndpoint(connection: ModelConnection): string {
   const expected = connection.provider === 'openai' ? 'https://api.openai.com' : 'https://api.anthropic.com';
@@ -36,7 +37,8 @@ export async function cloudDiscover(connection: ModelConnection, token: string):
 export function responsesInput(messages: any[]): any[] {
   return messages.flatMap(message => {
     if (message.role === 'tool') return [{ type: 'function_call_output', call_id: message.tool_call_id, output: message.content }];
-    const items: any[] = message.content ? [{ role: message.role, content: message.content }] : [];
+    const content = message.role === 'user' && message.images?.length ? [{ type: 'input_text', text: visualInputText(message.content ?? '') }, ...message.images.map((image: ChatImage) => ({ type: 'input_image', image_url: `data:${image.mimeType};base64,${image.data}` }))] : message.content;
+    const items: any[] = content ? [{ role: message.role, content }] : [];
     for (const call of message.tool_calls ?? []) items.push({ type: 'function_call', call_id: call.id, name: call.function.name, arguments: call.function.arguments });
     return items;
   });
@@ -47,6 +49,8 @@ export function claudeInput(messages: any[]): { system?: string; messages: any[]
   for (const message of messages.filter(item => item.role !== 'system')) {
     const role = message.role === 'assistant' ? 'assistant' : 'user';
     const content: any[] = message.role === 'tool' ? [{ type: 'tool_result', tool_use_id: message.tool_call_id, content: message.content }] : message.content ? [{ type: 'text', text: message.content }] : [];
+    if (message.role === 'user' && message.images?.length && content[0]?.type === 'text') content[0].text = visualInputText(message.content);
+    if (message.role === 'user') for (const image of (message.images ?? []) as ChatImage[]) content.push({ type: 'image', source: { type: 'base64', media_type: image.mimeType, data: image.data } });
     for (const call of message.tool_calls ?? []) content.push({ type: 'tool_use', id: call.id, name: call.function.name, input: JSON.parse(call.function.arguments) });
     if (!content.length) continue;
     if (result.at(-1)?.role === role) result.at(-1).content.push(...content);
@@ -73,7 +77,7 @@ export async function cloudChat(connection: ModelConnection, token: string, inpu
     const value = line.slice(5).trim();
     if (!value || value === '[DONE]') continue;
     const event = JSON.parse(value);
-    if (event.type === 'error' || event.type === 'response.failed' || event.type === 'response.incomplete') throw new Error(event.error?.message ?? event.response?.error?.message ?? `Model request failed: ${event.type}.`);
+    if (event.type === 'error' || event.type === 'response.failed' || event.type === 'response.incomplete') throw new ModelHttpError(400, event.error?.message ?? event.response?.error?.message ?? `Model request failed: ${event.type}.`);
     if (claude) {
       if (event.type === 'message_start') usage = { input: event.message?.usage?.input_tokens };
       if (event.type === 'content_block_start' && event.content_block?.type === 'tool_use') { input.onToolProgress?.(); calls.set(event.index, { id: event.content_block.id, name: event.content_block.name, arguments: '' }); }

@@ -4,7 +4,7 @@ export const modelCategory = (provider: ProviderKind): ModelCategory => provider
 export type AgentRole = 'planner' | 'critic' | 'synthesizer' | 'coder';
 export type SessionStatus = 'draft' | 'planning' | 'awaiting_input' | 'awaiting_review' | 'implementing' | 'awaiting_command' | 'completed' | 'failed' | 'cancelled' | 'interrupted';
 
-export interface ModelConnection { id: string; provider: ProviderKind; label: string; url: string; apiToken?: string; hasToken?: boolean; auth?: 'chatgpt'; }
+export interface ModelConnection { id: string; provider: ProviderKind; label: string; url: string; apiToken?: string; hasToken?: boolean; auth?: 'chatgpt'; maxConcurrentRequests?: number; }
 
 export interface ModelProfile {
   provider: ProviderKind;
@@ -19,7 +19,8 @@ export interface Settings {
   defaultModel: ModelProfile | null;
   overrides: Partial<Record<AgentRole, ModelProfile>>;
 }
-export interface ModelInfo { provider: ProviderKind; connectionId: string; connectionLabel: string; id: string; label: string; available: boolean; contextLimit?: number; toolCapable?: boolean; }
+export interface ModelInfo { provider: ProviderKind; connectionId: string; connectionLabel: string; id: string; label: string; available: boolean; contextLimit?: number; toolCapable?: boolean; visionCapable?: boolean; parallelRequests?: number; }
+export interface ModelRequestCount { key: string; provider: ProviderKind; endpoint: string; model: string; limit: number; active: number; queued: number; }
 export interface DiscoveryResult { connections: ModelConnection[]; models: ModelInfo[]; applications: string[]; diagnostics: string[]; }
 export interface PlanStep { title: string; details: string; checks: string[]; }
 export interface PlanContent { objective: string; assumptions: string[]; steps: PlanStep[]; blockers: string[]; }
@@ -42,9 +43,9 @@ export interface Session {
 }
 export interface Project { id: string; path: string; name: string; }
 export interface ChatFile { id: string; name: string; size: number; kind: 'upload' | 'generated'; format?: string; readStatus?: 'readable' | 'partial' | 'metadata'; note?: string; }
-export interface ChatMessage { id: string; role: 'user' | 'assistant'; content: string; files?: ChatFile[]; model?: string; reasoning?: string; notice?: string; startedAt?: number; thinkingEndedAt?: number; completedAt?: number; }
+export interface ChatMessage { id: string; role: 'user' | 'assistant'; content: string; files?: ChatFile[]; model?: string; reasoning?: string; notice?: string; queued?: boolean; startedAt?: number; thinkingEndedAt?: number; completedAt?: number; }
 export interface ChatThread { id: string; title: string; profile: ModelProfile; messages: ChatMessage[]; status: 'idle' | 'streaming' | 'stopped' | 'failed' | 'interrupted'; error?: string; updatedAt: number; }
-export interface Snapshot { projects: Project[]; sessions: Session[]; chats: ChatThread[]; settings: Settings; activeRole: AgentRole | null; activeChatId: string | null; }
+export interface Snapshot { projects: Project[]; sessions: Session[]; chats: ChatThread[]; settings: Settings; activeRole: AgentRole | null; activeChatId: string | null; activeChatIds?: string[]; modelRequests?: ModelRequestCount[]; }
 export interface ToolRequest { id: string; name: string; arguments: unknown; }
 
 export interface DesktopApi {

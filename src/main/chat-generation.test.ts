@@ -83,3 +83,12 @@ it('bounds silent thinking time, but allows a progressing tool call to complete'
   await expect(toolResponse).resolves.toHaveProperty('tools');
   expect(recovery).toHaveBeenCalledTimes(1);
 });
+
+it('does not count time waiting for a model slot as stalled thinking', async () => {
+  vi.useFakeTimers(); let request!: ChatInput; let finish!: (value: any) => void;
+  const provider = { chat: (current: ChatInput) => { request = current; current.onRequestState?.('queued'); return new Promise(resolve => { finish = resolve; }); } } as unknown as ModelProvider;
+  const recovery = vi.fn(); const response = generateChatTurn(provider, input(), recovery);
+  await vi.advanceTimersByTimeAsync(500_000); expect(request.signal.aborted).toBe(false); expect(recovery).not.toHaveBeenCalled();
+  request.onRequestState?.('running'); await vi.advanceTimersByTimeAsync(1000);
+  request.onText?.('Done'); finish({ text: 'Done', tools: [] }); await expect(response).resolves.toMatchObject({ text: 'Done' });
+});
