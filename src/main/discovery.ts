@@ -26,7 +26,7 @@ async function tailscalePeers(): Promise<ModelConnection[]> {
       if (!ip) return [];
       const name = String(peer.HostName || peer.DNSName || ip);
       return ([['lmstudio', 1234], ['ollama', 11434]] as [ProviderKind, number][]).map(([provider, port]) => ({
-        id: `tailscale-${ip}-${provider}`, provider, label: `${provider === 'lmstudio' ? 'LM Studio' : 'Ollama'} on ${name} (Tailscale)`, url: `http://${ip}:${port}`,
+        id: `tailscale-${ip}-${provider}`, provider, deviceId: ip, deviceLabel: `${name} (Tailscale)`, label: `${provider === 'lmstudio' ? 'LM Studio' : 'Ollama'} on ${name} (Tailscale)`, url: `http://${ip}:${port}`,
       }));
     });
   } catch { return []; }
@@ -61,8 +61,10 @@ export async function autoDiscover(settings: Settings, providers: LocalProviders
   const diagnostics: string[] = [];
   const candidates = new Map<string, ModelConnection>();
   for (const item of [...settings.connections, ...local, ...await tailscalePeers(), ...await otherVpnPeers()]) {
-    const key = item.provider === 'openai' || item.provider === 'claude' ? item.id : `${item.provider}:${item.url.replace(/\/$/, '').toLowerCase()}`;
-    if (!candidates.has(key)) candidates.set(key, item);
+    const key = item.provider === 'openai' || item.provider === 'claude' || item.provider === 'codex' ? item.id : `${item.provider}:${item.url.replace(/\/$/, '').toLowerCase()}`;
+    const existing = candidates.get(key);
+    if (!existing) candidates.set(key, item);
+    else if (item.deviceId) candidates.set(key, { ...existing, deviceId: item.deviceId, deviceLabel: item.deviceLabel });
   }
   const results = await Promise.all([...candidates.values()].map(async connection => {
     try { return { connection, models: await providers.discover(connection) }; }

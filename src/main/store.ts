@@ -7,7 +7,7 @@ const defaults: Settings = {
     { id: 'local-lmstudio', provider: 'lmstudio', label: 'LM Studio on this computer', url: 'http://127.0.0.1:1234' },
     { id: 'shared-lmstudio', provider: 'lmstudio', label: 'Shared LM Studio (Tailscale)', url: 'http://100.80.53.57:1234' },
   ],
-  defaultModel: null, overrides: {},
+  mainModel: null, plannerModel: null, subagentModel: null,
 };
 
 export class Store {
@@ -54,11 +54,16 @@ export class Store {
     this.db.prepare('INSERT OR REPLACE INTO chats (id,updated_at,data) VALUES (?,?,?)').run(chat.id, chat.updatedAt, JSON.stringify(chat));
   }
   saveProject(project: Project): void { this.db.prepare('INSERT OR REPLACE INTO projects (id,data) VALUES (?,?)').run(project.id, JSON.stringify(project)); }
-  sessions(): Session[] { return (this.db.prepare('SELECT data FROM sessions ORDER BY updated_at DESC').all() as any[]).map(row => JSON.parse(row.data)); }
+  sessions(): Session[] { return (this.db.prepare('SELECT data FROM sessions ORDER BY updated_at DESC').all() as any[]).map(row => this.migrateSession(JSON.parse(row.data))); }
   session(id: string): Session {
     const row = this.db.prepare('SELECT data FROM sessions WHERE id = ?').get(id) as any;
     if (!row) throw new Error('Session not found.');
-    return JSON.parse(row.data);
+    return this.migrateSession(JSON.parse(row.data));
+  }
+  private migrateSession(session: Session): Session {
+    const old = session.assignments as any;
+    if (old && !old.main) session.assignments = { planner: old.planner, main: old.coder, subagent: old.coder };
+    return session;
   }
   saveSession(session: Session): void {
     session.updatedAt = Date.now();
@@ -71,8 +76,10 @@ export class Store {
     const connections = (Array.isArray(saved.connections) ? saved.connections : defaults.connections.map(item => ({ ...item, url: saved.endpoints?.[item.provider] ?? item.url })))
       .map((item: any) => ({ ...item, hasToken: Boolean(this.secret(item.id)), apiToken: undefined }));
     const migrateProfile = (profile: any) => profile ? { ...profile, connectionId: profile.connectionId ?? `local-${profile.provider}` } : profile;
-    return { connections, defaultModel: migrateProfile(saved.defaultModel) ?? null,
-      overrides: Object.fromEntries(Object.entries(saved.overrides ?? {}).map(([role, profile]) => [role, migrateProfile(profile)])) } as Settings;
+    return { connections,
+      mainModel: migrateProfile('mainModel' in saved ? saved.mainModel : saved.defaultModel ?? saved.overrides?.coder) ?? null,
+      plannerModel: migrateProfile('plannerModel' in saved ? saved.plannerModel : saved.overrides?.planner) ?? null,
+      subagentModel: migrateProfile(saved.subagentModel) ?? null };
   }
   saveSettings(settings: Settings): void { this.db.prepare("INSERT OR REPLACE INTO settings (key,data) VALUES ('app',?)").run(JSON.stringify(settings)); }
   discoveryCache(): unknown {

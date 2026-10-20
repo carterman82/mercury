@@ -73,7 +73,7 @@ describe('cloud model providers', () => {
 
   it('rejects cloud endpoint changes before retrieving credentials', async () => {
     const token = vi.fn();
-    const providers = new LocalProviders(() => ({ connections: [], defaultModel: null, overrides: {} }), token);
+    const providers = new LocalProviders(() => ({ connections: [], mainModel: null, plannerModel: null, subagentModel: null }), token);
     await expect(providers.discover({ ...openai, url: 'http://example.com' })).rejects.toThrow('https://api.openai.com');
     expect(token).not.toHaveBeenCalled();
     expect(() => cloudEndpoint({ ...claude, auth: 'chatgpt' })).toThrow('only available for OpenAI');

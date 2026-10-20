@@ -6,7 +6,7 @@ import { imageUnsupported, messageTextLength, ModelHttpError } from './vision';
 const image = { mimeType: 'image/png', data: 'iVBORw0KGgo=' };
 const message = { role: 'user', content: 'What is this?\nLocal OCR: MEGAMAN', images: [image] };
 const input = (provider: 'ollama' | 'lmstudio' = 'ollama'): ChatInput => ({ profile: { provider, model: 'vision-test', connectionId: 'test', contextLimit: 8192 }, messages: [message], signal: new AbortController().signal });
-const providers = (provider: 'ollama' | 'lmstudio' = 'ollama') => new LocalProviders(() => ({ connections: [{ id: 'test', provider, label: 'Test', url: 'http://127.0.0.1:11434' }], defaultModel: null, overrides: {} }));
+const providers = (provider: 'ollama' | 'lmstudio' = 'ollama') => new LocalProviders(() => ({ connections: [{ id: 'test', provider, label: 'Test', url: 'http://127.0.0.1:11434' }], mainModel: null, plannerModel: null, subagentModel: null }));
 const success = (ollama = true) => new Response(ollama ? JSON.stringify({ message: { content: 'Blue character' }, done: true }) + '\n' : 'data: ' + JSON.stringify({ choices: [{ delta: { content: 'Blue character' } }] }) + '\n\ndata: [DONE]\n');
 afterEach(() => vi.unstubAllGlobals());
 

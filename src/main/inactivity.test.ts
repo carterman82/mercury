@@ -12,7 +12,7 @@ it('keeps a real provider stream alive beyond ten minutes while meaningful chunk
   const stream = new ReadableStream<Uint8Array>({ start(controller) { body = controller; } });
   const fetch = vi.fn(async (_url, init: RequestInit) => { init.signal!.addEventListener('abort', () => body.error(init.signal!.reason), { once: true }); return new Response(stream); });
   vi.stubGlobal('fetch', fetch);
-  const provider = new LocalProviders(() => ({ connections: [{ id: 'local', provider: 'ollama', label: 'Local', url: 'http://127.0.0.1:11434' }], defaultModel: null, overrides: {} }));
+  const provider = new LocalProviders(() => ({ connections: [{ id: 'local', provider: 'ollama', label: 'Local', url: 'http://127.0.0.1:11434' }], mainModel: null, plannerModel: null, subagentModel: null }));
   const result = provider.chat({ profile: { provider: 'ollama', connectionId: 'local', model: 'test', contextLimit: 8192 }, messages: [], signal: new AbortController().signal });
   await vi.advanceTimersByTimeAsync(0);
   for (let tick = 0; tick < 15; tick++) {

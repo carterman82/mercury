@@ -22,7 +22,7 @@ test('runs four chats at once, queues overflow, and isolates Stop and background
   try {
     const page = await app.firstWindow();
     await page.evaluate(async port => {
-      await window.desktop.updateSettings({ connections: [{ id: 'parallel', provider: 'lmstudio', label: 'Parallel server', url: `http://127.0.0.1:${port}` }], defaultModel: { provider: 'lmstudio', connectionId: 'parallel', model: 'parallel-model', contextLimit: 8192 }, overrides: {} });
+      await window.desktop.updateSettings({ connections: [{ id: 'parallel', provider: 'lmstudio', label: 'Parallel server', url: `http://127.0.0.1:${port}` }], mainModel: { provider: 'lmstudio', connectionId: 'parallel', model: 'parallel-model', contextLimit: 8192 }, plannerModel: null, subagentModel: null });
       await window.desktop.discover({ id: 'parallel', provider: 'lmstudio', label: 'Parallel server', url: `http://127.0.0.1:${port}` });
     }, port);
     const newChat = page.getByRole('button', { name: 'New chat', exact: false });

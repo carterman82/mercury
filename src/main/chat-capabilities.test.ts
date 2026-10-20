@@ -23,3 +23,11 @@ it('refuses prototype method names, invented tools, and oversized arguments', as
   await expect(tools.execute('chat', 'invented', {}, signal)).rejects.toThrow('Unknown');
   await expect(tools.execute('chat', 'browser_search', { query: 'x'.repeat(100_001) }, signal)).rejects.toThrow('exceed');
 });
+it('preserves structured discovery candidates instead of turning a large search into clipped JSON', async () => {
+  const plugins = { discover: async () => ({ status: 'found', matches: Array.from({ length: 64 }, (_, index) => ({ candidateId: `candidate-${index}`, name: `plugin-${index}`, description: 'x'.repeat(2000), installable: true })), installed: Array.from({ length: 100 }, () => ({ id, name: 'Saved plugin', description: 'y'.repeat(2000) })), searches: [{ query: 'website', returned: 64 }] }) } as unknown as ChatPlugins;
+  const tools = new ChatCapabilities({} as ChatBrowser, plugins);
+  const result: any = await tools.execute('chat', 'discover_plugins', { query: 'website' }, signal);
+  expect(result.matches.length).toBeGreaterThan(0); expect(result.matches[0].candidateId).toBe('candidate-0');
+  expect(result.status).toBe('found'); expect(result.resultsTruncated).toBe(true);
+  expect(JSON.stringify(result).length).toBeLessThan(50_000);
+});

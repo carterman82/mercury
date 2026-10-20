@@ -1,3 +1,4 @@
+import { delegateTask, delegationTool, resolveModel } from './delegation';
 import { randomUUID } from 'node:crypto';
 import type { ChatMessage, ChatThread, ModelProfile } from '../shared/types';
 import type { ModelProvider } from './providers';
@@ -46,11 +47,12 @@ export class ChatService {
     const connection = this.store.settings().connections.find(item => item.id === selected.connectionId && item.provider === selected.provider);
     if (!connection) throw new Error('Save this model connection in Model settings first.');
     const profile = { ...selected, endpoint: connection.url };
+    const delegationSettings = this.store.settings();
     const chat: ChatThread = id ? this.store.chat(id) : { id: randomUUID(), title: message.slice(0, 70), profile, messages: [], status: 'idle', updatedAt: Date.now() };
     const prior = chat.messages.filter(item => item.content.trim() || item.files?.length);
     const history = prior.map(({ role, content, files }) => ({ role, content: content + (files?.length ? `\nConversation files available through read_file: ${JSON.stringify(files)}` : '') }));
     const messages: { role: string; content: string; images?: ChatImage[] }[] = [{ role: 'system', content: 'You are Mercury, a helpful assistant. Answer the user directly. Use Markdown formatting when helpful: headings, bold, italics, lists, quotes, tables, and fenced code blocks with a language label. For underline use <u>text</u>.' }, ...history, { role: 'user', content: message }];
-    messages[0].content += chatConversationInstructions;
+    messages[0].content += chatConversationInstructions + '\nUse delegate_task for bounded data analysis or small read-only tasks when useful. Supply explicit relevant context and authorized file IDs. You remain responsible for acting on findings and answering the user.';
     if (this.files) messages[0].content += chatFileInstructions;
     if (this.capabilities) messages[0].content += chatCapabilityInstructions;
     if (messageTextLength(messages) > Math.min(profile.contextLimit * 3, 300_000)) throw new Error('This chat exceeds the selected model’s context limit. Start a new chat or choose a larger context in settings.');
@@ -104,7 +106,7 @@ export class ChatService {
       if (controller.signal.aborted) throw controller.signal.reason;
       if (messageTextLength(messages) > Math.min(profile.contextLimit * 3, 300_000)) throw new Error('Files exceed this model’s context limit. Choose a larger context or attach smaller files.');
       const prefix = response.content;
-      const tools = [...(this.files ? fileTools : []), ...(this.capabilities ? chatCapabilityTools : [])];
+      const tools = [delegationTool, ...(this.files ? fileTools : []), ...(this.capabilities ? chatCapabilityTools : [])];
       const result = await generateChatTurn(this.providers, { profile, messages, tools: tools.length ? tools : undefined, signal: controller.signal, onRequestState: state => {
         response.queued = state === 'queued';
         this.save(chat);
@@ -135,11 +137,20 @@ export class ChatService {
       for (const call of result.tools) {
         if (controller.signal.aborted) throw controller.signal.reason;
         if (++actions > 256) throw new Error('Tool action safety limit reached (256 actions). Send a follow-up to continue; this is not a timeout.');
-        const activity = { name: call.name, status: 'running' as 'running' | 'succeeded' | 'failed', at: Date.now() };
+        const activity: NonNullable<ChatMessage['toolActivity']>[number] = { name: call.name, status: 'running' as 'running' | 'succeeded' | 'failed', at: Date.now() };
         (response.toolActivity ??= []).push(activity); this.save(chat);
         let output: unknown;
         try {
-          if (this.capabilities?.handles(call.name)) {
+          if (call.name === 'delegate_task') {
+            const subagent = resolveModel(delegationSettings, 'subagent', delegationSettings.mainModel ?? profile);
+            output = { findings: await delegateTask(this.providers, subagent, call.arguments, controller.signal, this.files ? fileTools.filter((tool: any) => tool.function.name === 'read_file') : [], async read => {
+              const args = readSchema.parse(read.arguments);
+              if (!allowed.has(args.id)) throw new Error('File is not attached to this conversation.');
+              const text = await this.files!.text(args.id);
+              return JSON.stringify({ content: text.slice(args.offset ?? 0, (args.offset ?? 0) + 12000), totalCharacters: text.length });
+            }) };
+            activity.result = (output as { findings: string }).findings;
+          } else if (this.capabilities?.handles(call.name)) {
             output = await this.capabilities.execute(chat.id, call.name, call.arguments, controller.signal);
             if (call.name === 'browser_screenshot' && (output as any)?._browserImage) {
               const { _browserImage, ...metadata } = output as any;

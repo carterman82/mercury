@@ -16,12 +16,56 @@ function fixture() {
   directories.push(directory);
   const store = new Store(path.join(directory, 'state.sqlite'));
   stores.push(store);
-  store.saveSettings({ connections: [{ id: 'fixture', provider: 'ollama', label: 'Fixture', url: 'http://127.0.0.1:11434' }], defaultModel: profile, overrides: {} });
+  store.saveSettings({ connections: [{ id: 'fixture', provider: 'ollama', label: 'Fixture', url: 'http://127.0.0.1:11434' }], mainModel: profile, plannerModel: null, subagentModel: null });
   return store;
 }
 afterEach(() => { stores.splice(0).forEach(store => store.close()); directories.splice(0).forEach(directory => rmSync(directory, { recursive: true, force: true })); });
 
-it('keeps conversation history when testing a different model, without offering tools', async () => {
+it.each([true, false])('delegates conversation-file analysis with explicit Subagent selection: %s', async explicit => {
+  const store = fixture();
+  store.saveSettings({ ...store.settings(), subagentModel: explicit ? { ...profile, model: 'small' } : null });
+  const root = directories.at(-1)!;
+  const files = new ChatFiles(path.join(root, 'files'), async content => makePdf(content), async () => 'PDF');
+  writeFileSync(path.join(root, 'note.txt'), 'Authorized evidence');
+  const upload = await files.import(path.join(root, 'note.txt'));
+  const requests: ChatInput[] = []; let mainTurns = 0;
+  const provider = { chat: async (input: ChatInput) => {
+    requests.push(input);
+    if (String((input.messages[0] as any).content).includes('read-only Subagent')) {
+      expect(input.profile.model).toBe(explicit ? 'small' : 'one');
+      expect((input.tools as any[]).map(tool => tool.function.name)).toEqual(['read_file']);
+      if (input.messages.length === 2) return { text: '', tools: [{ id: 'read', name: 'read_file', arguments: { id: upload.id } }] };
+      expect(JSON.stringify(input.messages)).toContain('Authorized evidence');
+      return { text: 'Subagent findings', tools: [] };
+    }
+    if (++mainTurns === 1) return { text: '', tools: [{ id: 'delegate', name: 'delegate_task', arguments: { task: 'Analyze note', context: `Read file ${upload.id}` } }] };
+    expect(JSON.stringify(input.messages)).toContain('Subagent findings');
+    return { text: 'Main final answer', tools: [] };
+  } } as unknown as ModelProvider;
+  const id = await new ChatService(store, provider, () => {}, () => false, files).send(null, profile, 'Analyze', [upload.id]);
+  expect(store.chat(id).status).toBe('idle');
+  expect(store.chat(id).messages.at(-1)?.content).toBe('Main final answer');
+  expect(store.chat(id).messages.at(-1)?.toolActivity?.[0]).toMatchObject({ name: 'delegate_task', status: 'succeeded', result: 'Subagent findings' });
+  expect(requests).toHaveLength(4);
+});
+
+it('returns unauthorized Subagent file reads as errors for Main to handle', async () => {
+  const store = fixture();
+  const root = directories.at(-1)!;
+  const files = new ChatFiles(path.join(root, 'files'), async content => makePdf(content), async () => 'PDF');
+  let mainTurns = 0;
+  const provider = { chat: async (input: ChatInput) => {
+    if (String((input.messages[0] as any).content).includes('read-only Subagent')) return { text: '', tools: [{ id: 'read', name: 'read_file', arguments: { id: '00000000-0000-4000-8000-000000000000' } }] };
+    if (++mainTurns === 1) return { text: '', tools: [{ id: 'delegate', name: 'delegate_task', arguments: { task: 'Read file', context: '' } }] };
+    expect(JSON.stringify(input.messages)).toContain('File is not attached');
+    return { text: 'Could not access that file', tools: [] };
+  } } as unknown as ModelProvider;
+  const id = await new ChatService(store, provider, () => {}, () => false, files).send(null, profile, 'Analyze');
+  expect(store.chat(id).status).toBe('idle');
+  expect(store.chat(id).messages.at(-1)?.toolActivity?.[0].status).toBe('failed');
+});
+
+it('keeps conversation history when switching models and offers read-only delegation', async () => {
   const store = fixture();
   const requests: ChatInput[] = [];
   const provider = { chat: async (input: ChatInput) => { requests.push(input); input.onText?.('Hello'); return { text: 'Hello', tools: [] }; } } as unknown as ModelProvider;
@@ -30,7 +74,7 @@ it('keeps conversation history when testing a different model, without offering 
   await service.send(id, { ...profile, model: 'two' }, 'Second');
   expect(requests[1].messages).toEqual(expect.arrayContaining([{ role: 'user', content: 'First' }, { role: 'assistant', content: 'Hello' }]));
   expect(requests[1].profile.model).toBe('two');
-  expect(requests[1].tools).toBeUndefined();
+  expect(requests[1].tools).toEqual([expect.objectContaining({ function: expect.objectContaining({ name: 'delegate_task' }) })]);
   expect(store.chat(id).messages).toHaveLength(4);
   expect(service.activeId).toBeNull();
 });

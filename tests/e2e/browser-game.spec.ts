@@ -27,7 +27,7 @@ test('passes real game screenshots to the model and controls an iframe only afte
   server.listen(0, '127.0.0.1'); await once(server, 'listening'); base = `http://127.0.0.1:${(server.address() as any).port}`;
   const app = await electron.launch({ executablePath: path.resolve('out', process.env.LOCAL_PLAN_AGENT_BUILD_ID ?? '', 'Mercury-win32-x64', 'Mercury.exe'), env: { ...process.env, LOCAL_PLAN_AGENT_USER_DATA: data, MERCURY_TEST_NETWORK_ORIGIN: base } });
   try {
-    const page = await app.firstWindow(); await page.evaluate(base => window.desktop.updateSettings({ connections: [{ id: 'game', provider: 'ollama', label: 'Game fixture', url: base }], defaultModel: { provider: 'ollama', connectionId: 'game', model: 'game-model', contextLimit: 65536 }, overrides: {} }), base);
+    const page = await app.firstWindow(); await page.evaluate(base => window.desktop.updateSettings({ connections: [{ id: 'game', provider: 'ollama', label: 'Game fixture', url: base }], mainModel: { provider: 'ollama', connectionId: 'game', model: 'game-model', contextLimit: 65536 }, plannerModel: null, subagentModel: null }), base);
     await page.getByLabel('Message', { exact: true }).fill('Play the embedded game.'); await page.getByRole('button', { name: 'Send ↑' }).click();
     await expect(page.getByRole('region', { name: 'Plugin approval' })).toContainText('Allow game controls', { timeout: 30_000 });
     const panel = page.getByRole('complementary', { name: 'Context panel' });
@@ -60,7 +60,7 @@ test('live Bloxorz page is accessible and its iframe/canvas can be inspected', a
   }); server.listen(0, '127.0.0.1'); await once(server, 'listening'); const base = `http://127.0.0.1:${(server.address() as any).port}`;
   const app = await electron.launch({ executablePath: path.resolve('out', process.env.LOCAL_PLAN_AGENT_BUILD_ID ?? '', 'Mercury-win32-x64', 'Mercury.exe'), env: { ...process.env, LOCAL_PLAN_AGENT_USER_DATA: data } });
   try {
-    const page = await app.firstWindow(); await page.evaluate(base => window.desktop.updateSettings({ connections: [{ id: 'live', provider: 'ollama', label: 'Live game fixture', url: base }], defaultModel: { provider: 'ollama', connectionId: 'live', model: 'game-model', contextLimit: 65536 }, overrides: {} }), base);
+    const page = await app.firstWindow(); await page.evaluate(base => window.desktop.updateSettings({ connections: [{ id: 'live', provider: 'ollama', label: 'Live game fixture', url: base }], mainModel: { provider: 'ollama', connectionId: 'live', model: 'game-model', contextLimit: 65536 }, plannerModel: null, subagentModel: null }), base);
     await page.getByLabel('Message', { exact: true }).fill('Inspect Bloxorz.'); await page.getByRole('button', { name: 'Send ↑' }).click(); await expect(page.locator('.chat-assistant')).toContainText('Live game page', { timeout: 60_000 });
     console.log('Live Bloxorz page:', JSON.stringify({ title: pageRead?.title, content: pageRead?.content?.slice(0, 1000), frames: pageRead?.frames, error: pageRead?.error }));
     const file = (await page.evaluate(() => window.desktop.snapshot())).chats[0].messages.at(-1)?.files?.[0]; if (file) copyFileSync(path.join(data, 'chat-files', file.id + '.bin'), 'test-results/mercury-live-game-viewport.jpg');

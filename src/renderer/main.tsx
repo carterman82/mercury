@@ -1,32 +1,44 @@
+import { useDiscovery } from './useDiscovery';
+import { connectionGroups } from '../shared/connections';
 import React, { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import type { AgentRole, ModelConnection, ModelInfo, ModelProfile, PlanContent, ProviderKind, Session, Settings, Snapshot } from '../shared/types';
+import type { ModelConnection, ModelInfo, ModelProfile, PlanContent, ProviderKind, Session, Settings, Snapshot } from '../shared/types';
 import './style.css';
 import { ChatPanel } from './ChatPanel';
 import { Markdown } from './Markdown';
 import { ModelSelect as ProfileSelect } from './ModelSelect';
 
-const roles: AgentRole[] = ['planner', 'critic', 'synthesizer', 'coder'];
+const modelRoles = [
+  { key: 'plannerModel', label: 'Planner model', description: 'Plans project infrastructure and the approach to project changes.' },
+  { key: 'mainModel', label: 'Main model', description: 'Handles chats, everyday tasks, and approved project implementation.' },
+  { key: 'subagentModel', label: 'Subagent model', description: 'Breaks down data and handles small analysis tasks for the Main model.' },
+] as const;
 const emptyPlan: PlanContent = { objective: '', assumptions: [], steps: [{ title: '', details: '', checks: [] }], blockers: [] };
 const lines = (value: string) => value.split('\n').map(x => x.trim()).filter(Boolean);
-const initial: Snapshot = { projects: [], sessions: [], chats: [], settings: { connections: [], defaultModel: null, overrides: {} }, activeRole: null, activeChatId: null };
+const initial: Snapshot = { projects: [], sessions: [], chats: [], settings: { connections: [], mainModel: null, plannerModel: null, subagentModel: null }, activeRole: null, activeChatId: null };
 
 function SettingsPanel({ settings, onClose, onSave, run }: { settings: Settings; onClose: () => void; onSave: (settings: Settings) => Promise<void>; run: (job: () => Promise<unknown>) => void }) {
   const [draft, setDraft] = useState<Settings>(structuredClone(settings));
-  const [models, setModels] = useState<ModelInfo[]>([]);
-  const [scanning, setScanning] = useState(false);
+  const { result: discovery, scanning, checked, error: discoveryError, refresh, update: updateDiscovery } = useDiscovery(JSON.stringify(settings.connections));
+  const models = discovery?.models ?? [];
+  const reachable = new Set(discovery?.connections.map(item => item.id) ?? []);
   const [other, setOther] = useState(false);
   const [manual, setManual] = useState<{ provider: ProviderKind; label: string; url: string; apiToken: string }>({ provider: 'lmstudio', label: '', url: '', apiToken: '' });
   const [manualError, setManualError] = useState('');
   const [connecting, setConnecting] = useState(false);
   const [signingIn, setSigningIn] = useState(false);
+  const [codexSignIn, setCodexSignIn] = useState(false);
   const [cloudKey, setCloudKey] = useState('');
   const [cloudProvider, setCloudProvider] = useState<'openai' | 'claude'>('claude');
   const syncAccounts = async () => {
     const latest = await window.desktop.snapshot();
-    setDraft(current => ({ ...current, connections: latest.settings.connections,
-      defaultModel: current.defaultModel && latest.settings.connections.some(item => item.id === current.defaultModel?.connectionId) ? current.defaultModel : null,
-      overrides: Object.fromEntries(Object.entries(current.overrides).filter(([, profile]) => latest.settings.connections.some(item => item.id === profile.connectionId))) }));
+    setDraft(current => {
+      const connections = [...current.connections.filter(item => item.provider === 'ollama' || item.provider === 'lmstudio' || latest.settings.connections.some(saved => saved.id === item.id))
+        .map(item => ({ ...latest.settings.connections.find(saved => saved.id === item.id), ...item, hasToken: latest.settings.connections.find(saved => saved.id === item.id)?.hasToken ?? item.hasToken })),
+        ...latest.settings.connections.filter(item => !current.connections.some(saved => saved.id === item.id))];
+      return { ...current, connections,
+        ...Object.fromEntries(modelRoles.map(({ key }) => [key, current[key] && connections.some(item => item.id === current[key]?.connectionId) ? current[key] : null])) };
+    });
     await refresh(true);
   };
   const connect = async (job: () => Promise<void>) => {
@@ -40,16 +52,18 @@ function SettingsPanel({ settings, onClose, onSave, run }: { settings: Settings;
     try { await connect(() => window.desktop.connectChatGPT(id)); }
     finally { setSigningIn(false); }
   };
-  const refresh = async (force = false) => {
-    setScanning(true);
-    try {
-      const result = await window.desktop.autoDiscover(force);
-      setModels(result.models);
-      setDraft(current => ({ ...current, connections: [...current.connections, ...result.connections.filter(item => !current.connections.some(saved => saved.provider === item.provider && saved.url === item.url))] }));
-    } catch (error) { setManualError(String(error)); }
-    finally { setScanning(false); }
+  useEffect(() => {
+    if (!discovery) return;
+    setDraft(current => ({ ...current, connections: [...current.connections.map(saved => {
+      const found = discovery.connections.find(item => item.id === saved.id);
+      return found ? { ...saved, deviceId: found.deviceId, deviceLabel: found.deviceLabel } : saved;
+    }), ...discovery.connections.filter(item => !current.connections.some(saved => saved.id === item.id))] }));
+  }, [discovery]);
+  const connectCodex = async () => {
+    setCodexSignIn(true);
+    try { await connect(() => window.desktop.connectCodex()); }
+    finally { setCodexSignIn(false); }
   };
-  useEffect(() => { void refresh(); }, []);
   const addOther = () => run(async () => {
     setManualError('');
     const id = `other-${manual.provider}-${crypto.randomUUID()}`;
@@ -57,29 +71,24 @@ function SettingsPanel({ settings, onClose, onSave, run }: { settings: Settings;
     try {
       const discovered = await window.desktop.discover(connection);
       setDraft(current => ({ ...current, connections: [...current.connections, connection] }));
-      setModels(current => [...current, ...discovered]);
+      updateDiscovery({ connections: [...(discovery?.connections ?? []), connection], models: [...models, ...discovered], applications: discovery?.applications ?? [], diagnostics: discovery?.diagnostics ?? [] });
       setOther(false);
       setManual({ provider: 'lmstudio', label: '', url: '', apiToken: '' });
     } catch (error) { setManualError(String(error)); }
   });
-  const setProfile = (role: AgentRole, profile?: ModelProfile) => setDraft(current => {
-    const overrides = { ...current.overrides };
-    if (profile) overrides[role] = profile; else delete overrides[role];
-    return { ...current, overrides };
-  });
   const hasModels = models.length > 0;
   return <div className="modal-backdrop"><section className="modal settings-modal"><header><div><small>CONNECTIONS</small><h2>Models and accounts</h2></div><button className="ghost" onClick={() => {
     if (signingIn) run(() => window.desktop.cancelChatGPTSignIn());
+    if (codexSignIn) run(() => window.desktop.cancelCodexSignIn());
     onClose();
   }}>Close</button></header>
-    <section className="cloud-accounts"><h3>Cloud accounts</h3>
+    <section className="cloud-accounts"><h3>Cloud accounts</h3><h4>ChatGPT sign-in</h4>
       <button disabled={connecting} onClick={() => void signIn()}>{signingIn ? 'Waiting for browser sign-in…' : 'Continue with ChatGPT'}</button>
       {signingIn && <button onClick={() => void window.desktop.cancelChatGPTSignIn().catch(error => setManualError(String(error)))}>Cancel sign-in</button>}
-      <button disabled={connecting && !signingIn} className="text-button" onClick={() => {
-        setCloudProvider('openai'); setCloudKey('');
-        if (signingIn) void window.desktop.cancelChatGPTSignIn().catch(error => setManualError(String(error)));
-      }}>Use an OpenAI API key (separate billing)</button>
-      <button className="text-button" onClick={() => void window.desktop.openLink('https://chatgpt.com/#settings')}>Manage ChatGPT usage</button>
+      <button disabled={connecting} aria-describedby="codex-description" onClick={() => void connectCodex()}>{codexSignIn ? 'Waiting for Codex sign-in…' : 'Connect with Codex'}</button>
+      {codexSignIn && <button onClick={() => void window.desktop.cancelCodexSignIn().catch(error => setManualError(String(error)))}>Cancel Codex sign-in</button>}
+      <small id="codex-description" className="coming-soon">Experimental · Uses the installed Codex app or CLI and its own sign-in.</small>
+      <h4>API keys</h4>
       <div className="cloud-key-form"><label className="field"><span>API provider</span><select disabled={connecting} value={cloudProvider} onChange={event => { setCloudProvider(event.target.value as 'openai' | 'claude'); setCloudKey(''); }}><option value="claude">Claude</option><option value="openai">OpenAI</option></select></label><label className="field"><span>API key</span><input disabled={connecting} type="password" autoComplete="off" value={cloudKey} onChange={event => setCloudKey(event.target.value)} placeholder={cloudProvider === 'claude' ? 'Claude Console API key' : 'OpenAI API key'} /></label><button disabled={connecting || !cloudKey.trim()} onClick={() => void connect(async () => {
         const connection: ModelConnection = { id: `api-${cloudProvider}`, provider: cloudProvider, label: `${cloudProvider === 'claude' ? 'Claude' : 'OpenAI'} API`, url: cloudProvider === 'claude' ? 'https://api.anthropic.com' : 'https://api.openai.com', apiToken: cloudKey.trim() };
         await window.desktop.discover(connection);
@@ -87,20 +96,26 @@ function SettingsPanel({ settings, onClose, onSave, run }: { settings: Settings;
         await window.desktop.updateSettings({ ...latest.settings, connections: [...latest.settings.connections.filter(item => item.id !== connection.id), connection] });
         setCloudKey('');
       })}>Connect API key</button></div>
-      {draft.connections.filter(item => item.provider === 'openai' || item.provider === 'claude').map(connection => <div className="detected-server" key={connection.id}><span><strong>{connection.label}</strong><small>{connection.auth === 'chatgpt' ? 'ChatGPT plan' : 'API billing'} · {connection.hasToken ? 'Connected' : 'Credentials needed'}</small></span><span>{connection.auth === 'chatgpt' && <button disabled={connecting} onClick={() => void signIn(connection.id)}>Reconnect</button>}<button disabled={connecting} onClick={() => void connect(() => window.desktop.disconnectConnection(connection.id))}>Disconnect</button></span></div>)}
       {manualError && <p className="hint danger" role="alert">{manualError}</p>}
     </section>
     <div className="discovery-head"><button onClick={() => void refresh(true)} disabled={scanning}>{scanning ? 'Scanning…' : 'Refresh models'}</button></div>
-    {!hasModels && !scanning && <p className="hint">No models found.</p>}
+    {discoveryError && <p className="hint danger" role="alert">{discoveryError}</p>}
+    {!hasModels && checked && !scanning && <p className="hint">No models available. Connect an account or start a model server.</p>}
     <button className="text-button" onClick={() => setOther(value => !value)}>Other: add a server address</button>
     {other && <div className="other-server"><label className="field"><span>Server type</span><select value={manual.provider} onChange={event => setManual(current => ({ ...current, provider: event.target.value as ProviderKind }))}><option value="lmstudio">LM Studio</option><option value="ollama">Ollama</option></select></label><label className="field"><span>Name</span><input value={manual.label} onChange={event => setManual(current => ({ ...current, label: event.target.value }))} placeholder="My model server" /></label><label className="field"><span>Server address</span><input value={manual.url} onChange={event => setManual(current => ({ ...current, url: event.target.value }))} placeholder="http://host:1234" /></label><label className="field"><span>API token (if required)</span><input type="password" value={manual.apiToken} onChange={event => setManual(current => ({ ...current, apiToken: event.target.value }))} autoComplete="off" /></label><button onClick={addOther}>Check and add</button>{manualError && <p className="hint danger">{manualError}</p>}</div>}
-    <div className="model-grid"><ProfileSelect label="Default model" value={draft.defaultModel} models={models} onOther={() => setOther(true)} onChange={profile => setDraft(current => ({ ...current, defaultModel: profile ?? null }))} />
-    </div><details className="advanced-settings"><summary>Agent models and context</summary><div className="model-grid">{roles.map(role => <ProfileSelect key={role} label={`${role[0].toUpperCase()}${role.slice(1)} override`} value={draft.overrides[role]} models={models} onOther={() => setOther(true)} optional onChange={profile => setProfile(role, profile)} />)}</div>
-    <label className="field compact"><span>Context limit for default model</span><input type="number" min={2048} value={draft.defaultModel?.contextLimit ?? 8192} onChange={event => setDraft(current => ({ ...current, defaultModel: current.defaultModel ? { ...current.defaultModel, contextLimit: Number(event.target.value) } : null }))} disabled={!draft.defaultModel} /></label>
-    {draft.connections.filter(connection => connection.provider === 'lmstudio' || connection.provider === 'ollama').map(connection => <label className="field compact" key={connection.id}><span>Concurrent requests per model · {connection.label}</span><input type="number" min={1} max={32} placeholder="Automatic" value={connection.maxConcurrentRequests ?? ''} onChange={event => { const limit = event.target.value ? Number(event.target.value) : undefined; setDraft(current => ({ ...current, connections: current.connections.map(item => item.id === connection.id ? { ...item, maxConcurrentRequests: limit } : item) })); }} /></label>)}
-    <p className="hint">Separate chats can run together. Automatic limits use LM Studio’s reported slots (four if unavailable); Ollama defaults to one unless you set an override to match your server. Extra requests wait in a queue.</p>
-    </details>
-    <p className="hint">Agents run one at a time. Coding checks tool use before editing. An unloaded model may fail until it is loaded in its server.</p>
+    <section className="connection-groups" aria-label="Model connections">{connectionGroups(draft.connections.filter(connection => reachable.has(connection.id) && models.some(model => model.connectionId === connection.id)), models).map(group => <article className="connection-box" key={group.id}>
+      <h3>{group.label}</h3>{group.connections.map(connection => <div className="connection-server" key={connection.id}>
+        <div className="connection-heading"><span><strong>{connection.label}</strong><small>Connected{connection.provider === 'codex' ? ' · Codex · Experimental' : connection.auth === 'chatgpt' ? ' · ChatGPT plan' : connection.provider === 'openai' || connection.provider === 'claude' ? ' · API billing' : ''}</small></span>
+        {(connection.provider === 'openai' || connection.provider === 'claude' || connection.provider === 'codex') && <span>{connection.provider === 'codex' && <button disabled={connecting} onClick={() => void connectCodex()}>Reconnect</button>}{connection.auth === 'chatgpt' && <button disabled={connecting} onClick={() => void signIn(connection.id)}>Reconnect</button>}<button disabled={connecting} onClick={() => void connect(() => window.desktop.disconnectConnection(connection.id))}>Disconnect</button></span>}</div>
+        <ul>{group.models.filter(model => model.connectionId === connection.id).map(model => <li key={JSON.stringify([model.connectionId, model.id])}>{model.label}{model.available ? '' : ' (not loaded)'}</li>)}</ul>
+        {reachable.has(connection.id) && (connection.provider === 'lmstudio' || connection.provider === 'ollama') && <label className="field compact"><span>Concurrent requests per model · {connection.label}</span><input type="number" min={1} max={32} placeholder="Automatic" value={connection.maxConcurrentRequests ?? ''} onChange={event => { const limit = event.target.value ? Number(event.target.value) : undefined; setDraft(current => ({ ...current, connections: current.connections.map(item => item.id === connection.id ? { ...item, maxConcurrentRequests: limit } : item) })); }} /></label>}
+      </div>)}
+    </article>)}</section>
+    {hasModels && <section aria-label="Model roles"><h3>Model roles</h3><div className="model-grid">{modelRoles.map(({ key, label, description }) => <div className="model-role" key={key}>
+      <ProfileSelect hideUnavailable label={label} description={description} value={draft[key]} models={models} onOther={() => setOther(true)} optional={key !== 'mainModel'} onChange={profile => setDraft(current => ({ ...current, [key]: profile ?? null }))} />
+      {draft[key] && models.some(model => model.connectionId === draft[key]?.connectionId && model.id === draft[key]?.model) && <label className="field compact"><span>Context limit · {label}</span><input type="number" min={2048} max={1000000} value={draft[key]!.contextLimit} onChange={event => { const contextLimit = Number(event.target.value); setDraft(current => ({ ...current, [key]: current[key] ? { ...current[key]!, contextLimit } : null })); }} /></label>}
+    </div>)}</div></section>}
+    <p className="hint">Unset Planner and Subagent models use Main. Subagents return read-only findings; Main handles changes. Project implementation starts after plan approval.</p>
     <footer><button className="primary" disabled={connecting} onClick={() => run(async () => { await onSave(draft); onClose(); })}>Save settings</button></footer>
   </section></div>;
 }
@@ -157,10 +172,10 @@ function App() {
   return <div className="app"><aside className="sidebar"><div className="brand"><div className="brand-mark">M</div><strong>Mercury<span className="brand-dot">.</span></strong></div>
     <nav className="mode-nav" aria-label="Main navigation"><button aria-label="Chat" className={mode === 'chat' ? 'active' : ''} onClick={() => setMode('chat')}>◌ <span>Chat</span></button><button aria-label="Projects" className={mode === 'projects' ? 'active' : ''} onClick={() => setMode('projects')}>▱ <span>Projects</span>{state.activeRole && <span className="activity-dot" />}</button></nav>
     {mode === 'chat' ? <><button className="project-button" onClick={() => setChatId(null)}>＋ New chat</button><div className="sidebar-label">RECENT CHATS</div><div className="session-list">{state.chats.map(item => <button key={item.id} className={`session-item ${chatId === item.id ? 'active' : ''}`} onClick={() => setChatId(item.id)}><span>{item.title}</span>{item.status === 'streaming' && <small>{item.messages.at(-1)?.queued ? 'Queued…' : 'Responding…'}</small>}</button>)}</div></> : <><button className="project-button" onClick={() => run(async () => { const result = await window.desktop.openProject(); if (result) { setProjectId(result.id); setSessionId(null); } })}>＋ Open project</button><div className="sidebar-label">PROJECTS</div><div className="project-list">{state.projects.map(item => <button key={item.id} className={`project-item ${projectId === item.id ? 'active' : ''}`} onClick={() => { setProjectId(item.id); setSessionId(null); }}><span className="folder">▱</span><span>{item.name}</span></button>)}</div><div className="sidebar-label">SESSIONS</div><div className="session-list">{state.sessions.filter(item => !projectId || item.projectId === projectId).map(item => <button key={item.id} className={`session-item ${sessionId === item.id ? 'active' : ''}`} onClick={() => { setSessionId(item.id); setTab('conversation'); }}><span>{item.objective}</span><small>{item.status.replaceAll('_', ' ')}</small></button>)}</div></>}
-    <div className="sidebar-bottom"><button onClick={() => setSettingsOpen(true)}>⚙ &nbsp; Model settings</button><small>Your models. Your space.</small></div></aside>
+    <div className="sidebar-bottom"><button onClick={() => setSettingsOpen(true)}>⚙ &nbsp; Model settings</button></div></aside>
     <main className="main">{mode === 'chat' ? <>{error && <div className="error-banner"><span>{error}</span><button onClick={() => setError('')}>Dismiss</button></div>}<ChatPanel state={state} chatId={chatId} onSelect={setChatId} openSettings={() => setSettingsOpen(true)} /></> : <><header className="topbar"><div><small>{project?.path ?? 'PROJECTS'}</small><h1>{session ? session.objective : 'Plan your next change'}</h1></div><div className="topbar-actions">{session && <span className={`status status-${session.status}`}>{session.status.replaceAll('_', ' ')}</span>}{state.activeRole && <span className="role-badge">{state.activeRole} · {session?.assignments?.[state.activeRole]?.model}</span>}{busy && <button className="danger" onClick={() => run(() => window.desktop.stop(session!.id))}>Stop</button>}{session?.status === 'interrupted' && session.plan?.approved && <button className="primary" onClick={() => run(() => window.desktop.resume(session.id))}>Resume</button>}</div></header>
       {error && <div className="error-banner"><span>{error}</span><button onClick={() => setError('')}>Dismiss</button></div>}
-      {!session ? <div className="welcome"><div className="eyebrow">FROM IDEA TO VERIFIED CHANGE</div><h2>What would you like to build?</h2><p>Three planning agents will inspect your project and prepare a plan for your review. Coding starts only after you approve it.</p><textarea rows={5} value={objective} onChange={event => setObjective(event.target.value)} placeholder="Describe the change, constraints, and what success looks like..." /><div className="welcome-footer"><span>{project ? `Working in ${project.name}` : 'Open a project to begin'}</span><button className="primary" disabled={!projectId || !objective.trim() || !state.settings.defaultModel} onClick={newSession}>Start planning →</button></div>{!state.settings.defaultModel && <button className="text-button" onClick={() => setSettingsOpen(true)}>Choose a local model first</button>}</div>
+      {!session ? <div className="welcome"><div className="eyebrow">FROM IDEA TO VERIFIED CHANGE</div><h2>What would you like to build?</h2><p>Planner will inspect your project and prepare a plan for your review. Main starts implementation after you approve it.</p><textarea rows={5} value={objective} onChange={event => setObjective(event.target.value)} placeholder="Describe the change, constraints, and what success looks like..." /><div className="welcome-footer"><span>{project ? `Working in ${project.name}` : 'Open a project to begin'}</span><button className="primary" disabled={!projectId || !objective.trim() || !state.settings.mainModel} onClick={newSession}>Start planning →</button></div>{!state.settings.mainModel && <button className="text-button" onClick={() => setSettingsOpen(true)}>Choose a Main model first</button>}</div>
       : <div className="content"><nav className="tabs">{(['conversation', 'plan', 'changes', 'commands'] as const).map(item => <button key={item} className={tab === item ? 'selected' : ''} onClick={() => setTab(item)}>{item[0].toUpperCase() + item.slice(1)}{item === 'changes' && session.changes.length ? ` · ${session.changes.length}` : ''}</button>)}</nav>
         <div className="panel-scroll" key={`${session.id}:${tab}`}>
           {tab === 'conversation' && <div className="timeline"><div className="objective-card"><small>YOUR REQUEST</small><p>{session.objective}</p></div>{events.map(event => <article className={`event event-${event.kind}`} key={event.id}><div className="event-meta"><span>{event.role ?? 'System'} · {event.kind}</span><time>{new Date(event.at).toLocaleTimeString()}</time></div>{event.kind === 'message' && event.text ? <Markdown content={event.text} /> : <pre>{event.text || 'Working…'}</pre>}</article>)}{session.status === 'draft' && <button className="primary" onClick={() => run(() => window.desktop.plan(session.id))}>Start planning</button>}{session.status === 'awaiting_review' && <button className="primary" onClick={() => setTab('plan')}>Review plan →</button>}{session.status === 'awaiting_input' && <button className="primary" onClick={() => setTab('plan')}>Answer open questions →</button>}</div>}

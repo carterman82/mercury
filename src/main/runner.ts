@@ -1,3 +1,4 @@
+import { delegateTask, delegationTool, resolveModel } from './delegation';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { parsePlan, planMarkdown, planSchema } from '../shared/plan';
@@ -15,7 +16,7 @@ const readTools = [
   { type: 'function', function: { name: 'discover_plugins', description: 'Find built-in and project-local plugins relevant to a task. This only reports plugins; it never installs or executes one.', parameters: { type: 'object', properties: { query: { type: 'string' } }, required: ['query'] } } },
 ];
 const codeTools = [
-  ...readTools,
+  ...readTools, delegationTool,
   { type: 'function', function: { name: 'edit_file', description: 'Replace a whole file. Read its hash first; use null only to create a file.', parameters: { type: 'object', properties: { path: { type: 'string' }, expectedHash: { anyOf: [{ type: 'string' }, { type: 'null' }] }, content: { type: 'string' } }, required: ['path', 'expectedHash', 'content'] } } },
   { type: 'function', function: { name: 'create_pdf', description: 'Create a new simple text PDF in the project. It refuses to overwrite an existing PDF.', parameters: { type: 'object', properties: { path: { type: 'string' }, content: { type: 'string' } }, required: ['path', 'content'] } } },
   { type: 'function', function: { name: 'run_command', description: 'Request user approval to run one project command', parameters: { type: 'object', properties: { command: { type: 'string' } }, required: ['command'] } } },
@@ -51,18 +52,9 @@ export class Runner {
     return new Workspace(project.path);
   }
   private assignments(settings: Settings): Record<AgentRole, ModelProfile> {
-    const roles: AgentRole[] = ['planner', 'critic', 'synthesizer', 'coder'];
-    const output = {} as Record<AgentRole, ModelProfile>;
-    for (const role of roles) {
-      const profile = settings.overrides[role] ?? settings.defaultModel;
-      if (!profile?.model) throw new Error(`Select a model for ${role} in Settings.`);
-      const connection = settings.connections.find(item => item.id === profile.connectionId)
-        ?? settings.connections.find(item => item.provider === profile.provider);
-      if (!connection) throw new Error(`The connection for ${role} is unavailable.`);
-      output[role] = { ...structuredClone(profile), connectionId: connection.id, endpoint: connection.url };
-    }
-    return output;
+    return { planner: resolveModel(settings, 'planner'), main: resolveModel(settings, 'main'), subagent: resolveModel(settings, 'subagent') };
   }
+
   private begin(session: Session): { controller: AbortController; gate: CommandGate } {
     if (this.active) throw new Error('Another run is active.');
     const controller = new AbortController();
@@ -90,7 +82,20 @@ export class Runner {
     return `Files (first 150):\n${files.join('\n')}\n\n${excerpts.join('\n\n')}`.slice(0, 22_000);
   }
   private async useTool(workspace: Workspace, call: ToolRequest, role: AgentRole, session: Session, signal: AbortSignal, gate: CommandGate): Promise<string> {
-    const parsed = role === 'coder' ? codeSchema.parse(call) : readSchema.parse(call);
+    if (role === 'main' && call.name === 'delegate_task') {
+      this.event(session, 'tool', 'Subagent is analyzing the delegated task.', 'subagent');
+      try {
+        const findings = await delegateTask(this.providers, session.assignments!.subagent, call.arguments, signal, readTools.filter((tool: any) => tool.function.name !== 'discover_plugins'), async read => this.useTool(workspace, read, 'subagent', session, signal, gate));
+        this.event(session, 'message', findings, 'subagent');
+        return findings;
+      } catch (error) {
+        if (signal.aborted) throw error;
+        const message = 'Subagent failed: ' + String(error);
+        this.event(session, 'error', message, 'subagent');
+        return message;
+      }
+    }
+    const parsed = role === 'main' ? codeSchema.parse(call) : readSchema.parse(call);
     const args: any = parsed.arguments;
     if (parsed.name === 'list_files') return JSON.stringify(await workspace.list());
     if (parsed.name === 'read_file') return JSON.stringify(await workspace.read(args.path, args.start, args.end));
@@ -131,14 +136,14 @@ export class Runner {
     this.activeRole = role;
     this.onChange();
     const profile = session.assignments![role];
-    const messages: any[] = [{ role: 'system', content: `You are the ${role} agent in a local coding assistant. Follow the user's objective and project evidence. Only use offered tools. When a task may need a specialized capability, call discover_plugins before proceeding; it is safe and informational. Never claim unrun checks passed. Keep responses concise.` }, { role: 'user', content: prompt }];
+    const messages: any[] = [{ role: 'system', content: `You are the ${role} agent in a local coding assistant. Follow the user's objective and project evidence. Only use offered tools. Main may use delegate_task for bounded read-only analysis and must act on the returned findings itself. When a task may need a specialized capability, call discover_plugins before proceeding; it is safe and informational. Never claim unrun checks passed. Keep responses concise.` }, { role: 'user', content: prompt }];
     let finalText = '';
     let repairedToolError = false;
     for (let turn = 0; turn < maxTurns; turn++) {
       if (signal.aborted) throw signal.reason;
       const current = session.events.length;
       this.event(session, 'message', '', role);
-      const result = await this.providers.chat({ profile, messages, tools: role === 'coder' ? codeTools : readTools, signal, onText: delta => {
+      const result = await this.providers.chat({ profile, messages, tools: role === 'main' ? codeTools : readTools, signal, onText: delta => {
         const item = session.events[current];
         if (item) { item.text = (item.text + delta).slice(0, 50_000); this.save(session); }
       } });
@@ -177,14 +182,12 @@ export class Runner {
       const workspace = this.getWorkspace(session);
       const context = await this.projectContext(workspace);
       const prior = session.plan ? `Previous plan:\n${planMarkdown(session.plan.content)}\nFeedback: ${feedback}` : '';
-      const planner = await this.agent(session, workspace, 'planner', `Objective: ${session.objective}\n${prior}\nProject:\n${context}\nInspect relevant files with read-only tools. Propose a feasible plan and identify questions.`, controller.signal, gate, 8);
-      const critic = await this.agent(session, workspace, 'critic', `Objective: ${session.objective}\nProject:\n${context}\nPlanner proposal:\n${planner}\nCritique gaps, risky assumptions, and verification. Inspect files if needed.`, controller.signal, gate, 8);
-      let synth = await this.agent(session, workspace, 'synthesizer', `Objective: ${session.objective}\nPlanner:\n${planner}\nCritic:\n${critic}\n${prior}\nReturn ONLY a JSON object with objective:string, assumptions:string[], steps:[{title:string,details:string,checks:string[]}], blockers:string[]. Blockers are questions that require user answers before implementation.`, controller.signal, gate, 8);
+      let proposal = await this.agent(session, workspace, 'planner', `Objective: ${session.objective}\n${prior}\nProject:\n${context}\nInspect relevant files with read-only tools. Plan project infrastructure and the requested changes, identify assumptions and verification. Return ONLY a JSON object with objective:string, assumptions:string[], steps:[{title:string,details:string,checks:string[]}], blockers:string[]. Blockers are questions requiring user answers before implementation.`, controller.signal, gate, 8);
       let content: PlanContent;
-      try { content = parsePlan(synth); }
+      try { content = parsePlan(proposal); }
       catch {
-        synth = await this.agent(session, workspace, 'synthesizer', `Repair this invalid plan as a JSON object with objective, assumptions, steps, blockers. Return ONLY valid JSON:\n${synth}`, controller.signal, gate, 1);
-        content = parsePlan(synth);
+        proposal = await this.agent(session, workspace, 'planner', `Repair this invalid plan. Return ONLY JSON with objective, assumptions, steps, blockers:\n${proposal}`, controller.signal, gate, 1);
+        content = parsePlan(proposal);
       }
       session.plan = { revision: (session.plan?.revision ?? 0) + 1, content, approved: false, createdAt: Date.now() };
       session.status = content.blockers.length ? 'awaiting_input' : 'awaiting_review';
@@ -206,16 +209,16 @@ export class Runner {
     const session = this.store.session(sessionId);
     if (session.status !== 'awaiting_review' || !session.plan || session.plan.revision !== revision) throw new Error('The plan changed or still has blocking questions. Review the current revision.');
     if (session.plan.content.blockers.length) throw new Error('Resolve blocking questions first.');
-    const coder = session.assignments?.coder;
-    if (!coder) throw new Error('The coder model is not configured.');
+    const coder = session.assignments?.main;
+    if (!coder) throw new Error('The Main model is not configured.');
     const { controller, gate } = this.begin(session);
     session.status = 'implementing';
-    this.activeRole = 'coder';
+    this.activeRole = 'main';
     this.save(session);
     try {
       if (!coder.toolVerified) {
         const capable = await this.providers.probe(coder, controller.signal);
-        if (!capable) throw new Error('The selected coder model did not pass the tool-use check. Select a model with working tool calls.');
+        if (!capable) throw new Error('The selected Main model did not pass the tool-use check. Select a model with working tool calls.');
         coder.toolVerified = true;
       }
     } catch (error) {
@@ -231,8 +234,8 @@ export class Runner {
   private async implement(session: Session, controller: AbortController, gate: CommandGate): Promise<void> {
     try {
       const workspace = this.getWorkspace(session);
-      await this.agent(session, workspace, 'coder', `Implement this user-approved plan in ${workspace.root}:\n${planMarkdown(session.plan!.content)}\nRead files before editing. Use edit_file with exact hashes. Ask to run checks through run_command. Finish with a truthful summary and verification outcome.`, controller.signal, gate, 20);
-      if (session.status !== 'completed') { session.status = 'interrupted'; this.event(session, 'status', 'The coder stopped without marking the work complete. Review changes and resume.'); }
+      await this.agent(session, workspace, 'main', `Implement this user-approved plan in ${workspace.root}:\n${planMarkdown(session.plan!.content)}\nRead files before editing. Use edit_file with exact hashes. Ask to run checks through run_command. Finish with a truthful summary and verification outcome.`, controller.signal, gate, 20);
+      if (session.status !== 'completed') { session.status = 'interrupted'; this.event(session, 'status', 'The Main model stopped without marking the work complete. Review changes and resume.'); }
     } catch (error) {
       session.status = controller.signal.aborted ? 'cancelled' : 'interrupted';
       this.event(session, 'error', String(error));

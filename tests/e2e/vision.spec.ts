@@ -27,7 +27,7 @@ test('sends the actual image, restores it on follow-ups, and falls back to OCR f
   const app = await electron.launch({ executablePath: path.resolve('out', process.env.LOCAL_PLAN_AGENT_BUILD_ID ?? '', 'Mercury-win32-x64', 'Mercury.exe'), env: { ...process.env, LOCAL_PLAN_AGENT_USER_DATA: data } });
   try {
     const page = await app.firstWindow();
-    const configure = async (model: string) => page.evaluate(({ port, model }) => window.desktop.updateSettings({ connections: [{ id: 'fixture', provider: 'ollama', label: 'Vision fixture', url: `http://127.0.0.1:${port}` }], defaultModel: { provider: 'ollama', connectionId: 'fixture', model, contextLimit: 32768 }, overrides: {} }), { port, model });
+    const configure = async (model: string) => page.evaluate(({ port, model }) => window.desktop.updateSettings({ connections: [{ id: 'fixture', provider: 'ollama', label: 'Vision fixture', url: `http://127.0.0.1:${port}` }], mainModel: { provider: 'ollama', connectionId: 'fixture', model, contextLimit: 32768 }, plannerModel: null, subagentModel: null }), { port, model });
     const upload = async () => {
       await page.evaluate(() => { const input = document.createElement('input'); input.type = 'file'; input.id = 'vision-drop'; input.style.display = 'none'; document.body.appendChild(input); });
       await page.locator('#vision-drop').setInputFiles(filename);

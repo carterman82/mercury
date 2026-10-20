@@ -2,7 +2,7 @@ import { expect, it, vi } from 'vitest';
 import type { DiscoveryResult, Settings } from '../shared/types';
 import { DiscoveryCache } from './discovery-cache';
 
-const settings: Settings = { connections: [{ id: 'local', provider: 'ollama', label: 'Local', url: 'http://127.0.0.1:11434' }], defaultModel: null, overrides: {} };
+const settings: Settings = { connections: [{ id: 'local', provider: 'ollama', label: 'Local', url: 'http://127.0.0.1:11434' }], mainModel: null, plannerModel: null, subagentModel: null };
 const result: DiscoveryResult = { connections: settings.connections, applications: ['Ollama'], diagnostics: [], models: [{ connectionId: 'local', connectionLabel: 'Local', provider: 'ollama', id: 'model', label: 'Model', available: true }] };
 
 it('shares concurrent scans and reuses results across settings opens and app restarts', async () => {
@@ -10,7 +10,7 @@ it('shares concurrent scans and reuses results across settings opens and app res
   const scan = vi.fn(async () => structuredClone(result));
   const cache = new DiscoveryCache(scan, null, value => { saved = value; });
   await Promise.all([cache.get(settings), cache.get(settings)]);
-  const selected: Settings = { ...settings, defaultModel: { provider: 'ollama', connectionId: 'local', model: 'model', contextLimit: 8192 } };
+  const selected: Settings = { ...settings, mainModel: { provider: 'ollama', connectionId: 'local', model: 'model', contextLimit: 8192 } };
   await cache.get(selected);
   const restarted = new DiscoveryCache(scan, saved, () => {});
   const restored = await restarted.get(selected);
@@ -69,4 +69,32 @@ it('preserves model vision and parallel-slot metadata across cache reads and res
   expect((await cache.get(settings)).models[0]).toMatchObject({ visionCapable: true, parallelRequests: 2 });
   const restarted = new DiscoveryCache(async () => { throw new Error('Should use the cache'); }, saved, () => {});
   expect((await restarted.get(settings)).models[0]).toMatchObject({ visionCapable: true, parallelRequests: 2 });
+});
+
+it('returns a persisted catalog immediately, even after expiry, while a fresh check runs', async () => {
+  let saved: unknown;
+  const first = new DiscoveryCache(async () => result, null, value => { saved = value; }, () => 1);
+  await first.get(settings);
+  let finish!: (value: DiscoveryResult) => void;
+  const scan = vi.fn(() => new Promise<DiscoveryResult>(resolve => { finish = resolve; }));
+  const restarted = new DiscoveryCache(scan, saved, () => {}, () => 24 * 60 * 60_000);
+  expect(restarted.peek(settings)?.models).toHaveLength(1);
+  expect(scan).not.toHaveBeenCalled();
+  const pending = restarted.get(settings, true);
+  const concurrent = restarted.get(settings, true);
+  expect(restarted.peek(settings)?.models[0].id).toBe('model');
+  expect(scan).toHaveBeenCalledTimes(1);
+  finish({ connections: [], models: [], applications: [], diagnostics: ['Local unavailable'] });
+  await Promise.all([pending, concurrent]);
+  expect(restarted.peek(settings)?.models).toEqual([]);
+});
+
+it('never restores cached accounts or models whose endpoint, auth, or saved connection was removed', async () => {
+  const account = { id: 'codex-account', provider: 'codex' as const, label: 'Codex', url: 'https://chatgpt.com' };
+  const accountSettings = { ...settings, connections: [...settings.connections, account] };
+  const cache = new DiscoveryCache(async () => ({ ...result, connections: accountSettings.connections, models: [...result.models, { ...result.models[0], provider: 'codex' as const, connectionId: account.id }] }), null, () => {});
+  await cache.get(accountSettings);
+  expect(cache.peek(accountSettings)?.models).toHaveLength(2);
+  expect(cache.peek(settings)?.models).toHaveLength(1);
+  expect(cache.peek({ ...settings, connections: [{ ...settings.connections[0], url: 'http://changed:11434' }] })?.models).toHaveLength(0);
 });

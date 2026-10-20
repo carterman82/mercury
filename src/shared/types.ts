@@ -1,10 +1,11 @@
-export type ProviderKind = 'ollama' | 'lmstudio' | 'openai' | 'claude';
-export type ModelCategory = 'local' | 'openai' | 'claude';
+export type ProviderKind = 'ollama' | 'lmstudio' | 'openai' | 'claude' | 'codex';
+export type ModelCategory = 'local' | 'openai' | 'claude' | 'codex';
 export const modelCategory = (provider: ProviderKind): ModelCategory => provider === 'ollama' || provider === 'lmstudio' ? 'local' : provider;
-export type AgentRole = 'planner' | 'critic' | 'synthesizer' | 'coder';
+export type AgentRole = 'planner' | 'main' | 'subagent';
+export type HistoricalAgentRole = AgentRole | 'critic' | 'synthesizer' | 'coder';
 export type SessionStatus = 'draft' | 'planning' | 'awaiting_input' | 'awaiting_review' | 'implementing' | 'awaiting_command' | 'completed' | 'failed' | 'cancelled' | 'interrupted';
 
-export interface ModelConnection { id: string; provider: ProviderKind; label: string; url: string; apiToken?: string; hasToken?: boolean; auth?: 'chatgpt'; maxConcurrentRequests?: number; }
+export interface ModelConnection { id: string; provider: ProviderKind; label: string; url: string; apiToken?: string; hasToken?: boolean; auth?: 'chatgpt'; maxConcurrentRequests?: number; deviceId?: string; deviceLabel?: string; }
 
 export interface ModelProfile {
   provider: ProviderKind;
@@ -16,8 +17,9 @@ export interface ModelProfile {
 }
 export interface Settings {
   connections: ModelConnection[];
-  defaultModel: ModelProfile | null;
-  overrides: Partial<Record<AgentRole, ModelProfile>>;
+  mainModel: ModelProfile | null;
+  plannerModel: ModelProfile | null;
+  subagentModel: ModelProfile | null;
 }
 export interface ModelInfo { provider: ProviderKind; connectionId: string; connectionLabel: string; id: string; label: string; available: boolean; contextLimit?: number; toolCapable?: boolean; visionCapable?: boolean; parallelRequests?: number; }
 export interface ModelRequestCount { key: string; provider: ProviderKind; endpoint: string; model: string; limit: number; active: number; queued: number; }
@@ -25,7 +27,7 @@ export interface DiscoveryResult { connections: ModelConnection[]; models: Model
 export interface PlanStep { title: string; details: string; checks: string[]; }
 export interface PlanContent { objective: string; assumptions: string[]; steps: PlanStep[]; blockers: string[]; }
 export interface PlanRevision { revision: number; content: PlanContent; approved: boolean; createdAt: number; }
-export interface RunEvent { id: string; at: number; role?: AgentRole; kind: 'message' | 'status' | 'tool' | 'error' | 'command' | 'change'; text: string; }
+export interface RunEvent { id: string; at: number; role?: HistoricalAgentRole; kind: 'message' | 'status' | 'tool' | 'error' | 'command' | 'change'; text: string; }
 export interface ChangeRecord { path: string; before: string | null; after: string | null; at: number; }
 export interface CommandRequest { id: string; command: string; cwd: string; }
 export interface Session {
@@ -45,7 +47,7 @@ export interface Project { id: string; path: string; name: string; }
 export interface ChatFile { id: string; name: string; size: number; kind: 'upload' | 'generated'; format?: string; readStatus?: 'readable' | 'partial' | 'metadata'; note?: string; }
 export interface FilePreview { kind: 'image' | 'pdf' | 'text'; text?: string; image?: string; page?: number; pages?: number; note?: string; }
 export interface BrowserPreview { url: string; image?: string; }
-export interface ChatMessage { id: string; role: 'user' | 'assistant'; content: string; files?: ChatFile[]; model?: string; reasoning?: string; notice?: string; queued?: boolean; toolActivity?: { name: string; status: 'running' | 'succeeded' | 'failed'; at: number }[]; startedAt?: number; thinkingEndedAt?: number; completedAt?: number; }
+export interface ChatMessage { id: string; role: 'user' | 'assistant'; content: string; files?: ChatFile[]; model?: string; reasoning?: string; notice?: string; queued?: boolean; toolActivity?: { name: string; status: 'running' | 'succeeded' | 'failed'; at: number; result?: string }[]; startedAt?: number; thinkingEndedAt?: number; completedAt?: number; }
 export interface ChatThread { id: string; title: string; profile: ModelProfile; messages: ChatMessage[]; status: 'idle' | 'streaming' | 'stopped' | 'failed' | 'interrupted'; error?: string; updatedAt: number; }
 export interface ChatApproval { id: string; chatId: string; title: string; details: string; at: number; }
 export interface Snapshot { projects: Project[]; sessions: Session[]; chats: ChatThread[]; settings: Settings; activeRole: AgentRole | null; activeChatId: string | null; activeChatIds?: string[]; modelRequests?: ModelRequestCount[]; chatApprovals?: ChatApproval[]; }
@@ -59,6 +61,10 @@ export interface DesktopApi {
   updateSettings(settings: Settings): Promise<void>;
   connectChatGPT(id?: string): Promise<void>;
   cancelChatGPTSignIn(): Promise<void>;
+  connectCodex(): Promise<void>;
+  cancelCodexSignIn(): Promise<void>;
+  cachedDiscovery(): Promise<DiscoveryResult | null>;
+  onDiscovery(callback: (result: DiscoveryResult) => void): () => void;
   disconnectConnection(id: string): Promise<void>;
   discover(connection: ModelConnection): Promise<ModelInfo[]>;
   autoDiscover(force?: boolean): Promise<DiscoveryResult>;

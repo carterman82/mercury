@@ -59,7 +59,7 @@ test('generates common native files and re-reads Office files, images, scans, ar
   const app = await electron.launch({ executablePath, env: { ...process.env, LOCAL_PLAN_AGENT_USER_DATA: data } });
   try {
     const page = await app.firstWindow();
-    await page.evaluate(port => window.desktop.updateSettings({ connections: [{ id: 'fixture', provider: 'ollama', label: 'Formats fixture', url: `http://127.0.0.1:${port}` }], defaultModel: { provider: 'ollama', connectionId: 'fixture', model: 'format-model', contextLimit: 65536 }, overrides: {} }), port);
+    await page.evaluate(port => window.desktop.updateSettings({ connections: [{ id: 'fixture', provider: 'ollama', label: 'Formats fixture', url: `http://127.0.0.1:${port}` }], mainModel: { provider: 'ollama', connectionId: 'fixture', model: 'format-model', contextLimit: 65536 }, plannerModel: null, subagentModel: null }), port);
     await app.evaluate(({ dialog }, destinations) => { dialog.showSaveDialog = async (_window: any, options: any) => ({ canceled: false, filePath: destinations[String(options.defaultPath).split(/[\\/]/).at(-1)!] }); }, Object.fromEntries(names.map(name => [name, path.join(data, name)])));
     await page.getByLabel('Message', { exact: true }).fill('Create a Word report, Excel budget, PowerPoint briefing, diagram, and ZIP bundle.');
     await page.getByRole('button', { name: 'Send ↑' }).click();

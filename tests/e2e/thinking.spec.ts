@@ -31,7 +31,7 @@ test('recovers once from a thinking loop, then supports another message and Stop
   const app = await electron.launch({ executablePath, env: { ...process.env, LOCAL_PLAN_AGENT_USER_DATA: data } });
   try {
     const page = await app.firstWindow();
-    await page.evaluate(port => window.desktop.updateSettings({ connections: [{ id: 'fixture', provider: 'ollama', label: 'Thinking fixture', url: `http://127.0.0.1:${port}` }], defaultModel: { provider: 'ollama', connectionId: 'fixture', model: 'qwen-fixture', contextLimit: 32768 }, overrides: {} }), port);
+    await page.evaluate(port => window.desktop.updateSettings({ connections: [{ id: 'fixture', provider: 'ollama', label: 'Thinking fixture', url: `http://127.0.0.1:${port}` }], mainModel: { provider: 'ollama', connectionId: 'fixture', model: 'qwen-fixture', contextLimit: 32768 }, plannerModel: null, subagentModel: null }), port);
     await page.getByLabel('Message', { exact: true }).fill('lit');
     await page.getByRole('button', { name: 'Send ↑' }).click();
     await expect(page.locator('.chat-assistant')).toContainText('Glad it helped!');

@@ -64,7 +64,7 @@ describe('approval and recovery', () => {
     const project = { id: randomUUID(), path: projectPath, name: 'project' };
     store.saveProject(project);
     const profile = { provider: 'ollama' as const, model: 'fake', contextLimit: 8192, toolVerified: true };
-    store.saveSettings({ connections: [{ id: 'local-ollama', provider: 'ollama', label: 'Ollama', url: 'http://127.0.0.1:11434' }], defaultModel: { ...profile, connectionId: 'local-ollama' }, overrides: {} });
+    store.saveSettings({ connections: [{ id: 'local-ollama', provider: 'ollama', label: 'Ollama', url: 'http://127.0.0.1:11434' }], mainModel: { ...profile, connectionId: 'local-ollama' }, plannerModel: null, subagentModel: null });
     const now = Date.now();
     const session: Session = { id: randomUUID(), projectId: project.id, objective: 'Update note', status: 'draft', createdAt: now, updatedAt: now, events: [], plan: null, changes: [], command: null, assignments: null };
     store.saveSession(session);
@@ -72,8 +72,8 @@ describe('approval and recovery', () => {
     const fake = {
       chat: async ({ messages }: ChatInput): Promise<ChatResult> => {
         const role = String((messages[0] as any).content);
-        if (role.includes('synthesizer')) return { text: JSON.stringify({ objective: 'Update note', assumptions: [], steps: [{ title: 'Update file', details: 'Replace old with new.', checks: ['Inspect file'] }], blockers: [] }), tools: [] };
-        if (role.includes('coder')) {
+        if (role.includes('planner')) return { text: JSON.stringify({ objective: 'Update note', assumptions: [], steps: [{ title: 'Update file', details: 'Replace old with new.', checks: ['Inspect file'] }], blockers: [] }), tools: [] };
+        if (role.includes('main')) {
           coderTurn++;
           return coderTurn === 1
             ? { text: '', tools: [{ id: 'edit-1', name: 'edit_file', arguments: { path: 'note.txt', expectedHash: hash('old'), content: 'new' } }] }
@@ -127,7 +127,7 @@ describe('provider streams', () => {
   it('requests disabled Ollama thinking only during a recovery attempt', async () => {
     const fetcher = vi.fn(async (_url: unknown, _init?: RequestInit) => new Response(JSON.stringify({ message: { content: 'Done' }, done: true }) + '\n'));
     vi.stubGlobal('fetch', fetcher);
-    const providers = new LocalProviders(() => ({ connections: [{ id: 'fixture', provider: 'ollama', label: 'Test', url: 'http://127.0.0.1:11434' }], defaultModel: null, overrides: {} }));
+    const providers = new LocalProviders(() => ({ connections: [{ id: 'fixture', provider: 'ollama', label: 'Test', url: 'http://127.0.0.1:11434' }], mainModel: null, plannerModel: null, subagentModel: null }));
     const request: ChatInput = { profile: { provider: 'ollama', connectionId: 'fixture', model: 'qwen-test', contextLimit: 8192 }, messages: [], signal: new AbortController().signal };
     await providers.chat(request);
     await providers.chat({ ...request, disableThinking: true });
@@ -140,7 +140,7 @@ describe('provider streams', () => {
       : [{ choices: [{ delta: { reasoning_content: 'Check ' } }] }, { choices: [{ delta: { reasoning_content: 'the arithmetic.' } }] }, { choices: [{ delta: { content: '**42**' } }] }].map(item => 'data: ' + JSON.stringify(item) + '\n\n').join('') + 'data: [DONE]\n';
     const bytes = new TextEncoder().encode(chunks);
     vi.stubGlobal('fetch', vi.fn(async () => new Response(new ReadableStream({ start(controller) { for (let i = 0; i < bytes.length; i += 11) controller.enqueue(bytes.slice(i, i + 11)); controller.close(); } }))));
-    const providers = new LocalProviders(() => ({ connections: [{ id: 'test', provider, label: 'Test', url: 'http://127.0.0.1:1234' }], defaultModel: null, overrides: {} }));
+    const providers = new LocalProviders(() => ({ connections: [{ id: 'test', provider, label: 'Test', url: 'http://127.0.0.1:1234' }], mainModel: null, plannerModel: null, subagentModel: null }));
     const thoughts: string[] = [];
     const answer: string[] = [];
     const result = await providers.chat({ profile: { provider, connectionId: 'test', model: 'test', contextLimit: 8192 }, messages: [], signal: new AbortController().signal, onReasoning: part => thoughts.push(part), onText: part => answer.push(part) });
@@ -155,7 +155,7 @@ describe('provider streams', () => {
       { type: 'embedding', key: 'embed', loaded_instances: [] },
     ] }), { status: 200 }));
     vi.stubGlobal('fetch', fetcher);
-    const providers = new LocalProviders(() => ({ connections: [], defaultModel: null, overrides: {} }));
+    const providers = new LocalProviders(() => ({ connections: [], mainModel: null, plannerModel: null, subagentModel: null }));
     const connection = { id: 'shared', provider: 'lmstudio' as const, label: 'Shared Mac', url: 'http://100.80.53.57:1234' };
     const models = await providers.discover(connection);
     expect(models).toEqual([{ provider: 'lmstudio', connectionId: 'shared', connectionLabel: 'Shared Mac', id: 'qwen-one', label: 'Qwen One', available: true, contextLimit: 32768, toolCapable: true }]);
@@ -167,11 +167,11 @@ describe('provider streams', () => {
     const store = new Store(filename);
     store.close();
     const db = new DatabaseSync(filename);
-    db.prepare("INSERT OR REPLACE INTO settings (key,data) VALUES ('app',?)").run(JSON.stringify({ endpoints: { ollama: 'http://127.0.0.1:4444', lmstudio: 'http://127.0.0.1:1234' }, defaultModel: { provider: 'ollama', model: 'old', contextLimit: 8192 }, overrides: {} }));
+    db.prepare("INSERT OR REPLACE INTO settings (key,data) VALUES ('app',?)").run(JSON.stringify({ endpoints: { ollama: 'http://127.0.0.1:4444', lmstudio: 'http://127.0.0.1:1234' }, mainModel: { provider: 'ollama', model: 'old', contextLimit: 8192 }, plannerModel: null, subagentModel: null }));
     db.close();
     const reopened = new Store(filename);
     expect(reopened.settings().connections.find(item => item.id === 'local-ollama')?.url).toBe('http://127.0.0.1:4444');
-    expect(reopened.settings().defaultModel?.connectionId).toBe('local-ollama');
+    expect(reopened.settings().mainModel?.connectionId).toBe('local-ollama');
     expect(reopened.settings().connections.some(item => item.id === 'shared-lmstudio')).toBe(true);
     reopened.close();
   });
@@ -183,7 +183,7 @@ describe('provider streams', () => {
       'data: [DONE]\n',
     ];
     vi.stubGlobal('fetch', vi.fn(async () => new Response(new ReadableStream({ start(controller) { chunks.forEach(chunk => controller.enqueue(encoder.encode(chunk))); controller.close(); } }), { status: 200 })));
-    const providers = new LocalProviders(() => ({ connections: [{ id: 'local-lmstudio', provider: 'lmstudio', label: 'LM Studio', url: 'http://127.0.0.1:1234' }], defaultModel: null, overrides: {} }));
+    const providers = new LocalProviders(() => ({ connections: [{ id: 'local-lmstudio', provider: 'lmstudio', label: 'LM Studio', url: 'http://127.0.0.1:1234' }], mainModel: null, plannerModel: null, subagentModel: null }));
     const result = await providers.chat({ profile: { provider: 'lmstudio', model: 'fake', contextLimit: 8192 }, messages: [], signal: new AbortController().signal });
     expect(result.tools).toEqual([{ id: 'id1', name: 'probe', arguments: { value: 'ready' } }]);
   });

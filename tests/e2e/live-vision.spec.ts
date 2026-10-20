@@ -10,7 +10,7 @@ test('live LM Studio describes an actual image through Mercury, not just OCR', a
   const app = await electron.launch({ executablePath: path.resolve('out', process.env.LOCAL_PLAN_AGENT_BUILD_ID ?? '', 'Mercury-win32-x64', 'Mercury.exe'), env: { ...process.env, LOCAL_PLAN_AGENT_USER_DATA: data } });
   try {
     const page = await app.firstWindow();
-    await page.evaluate(async ({ url, model }) => window.desktop.updateSettings({ connections: [{ id: 'live', provider: 'lmstudio', label: 'Live model', url }], defaultModel: { provider: 'lmstudio', connectionId: 'live', model, contextLimit: 32768 }, overrides: {} }), { url: process.env.MERCURY_LIVE_URL!, model: process.env.MERCURY_LIVE_MODEL! });
+    await page.evaluate(async ({ url, model }) => window.desktop.updateSettings({ connections: [{ id: 'live', provider: 'lmstudio', label: 'Live model', url }], mainModel: { provider: 'lmstudio', connectionId: 'live', model, contextLimit: 32768 }, plannerModel: null, subagentModel: null }), { url: process.env.MERCURY_LIVE_URL!, model: process.env.MERCURY_LIVE_MODEL! });
     await page.evaluate(() => { const input = document.createElement('input'); input.type = 'file'; input.id = 'live-image'; document.body.appendChild(input); });
     await page.locator('#live-image').setInputFiles(process.env.MERCURY_LIVE_IMAGE!);
     await page.evaluate(() => { const input = document.getElementById('live-image') as HTMLInputElement; const data = new DataTransfer(); data.items.add(input.files![0]); document.querySelector('.chat-layout')!.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: data })); input.remove(); });

@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, webUtils } from 'electron';
-import type { DesktopApi, Snapshot } from '../shared/types';
+import type { DesktopApi, DiscoveryResult, Snapshot } from '../shared/types';
 
 const call = <T>(name: string, ...args: unknown[]): Promise<T> => ipcRenderer.invoke(`api:${name}`, ...args);
 const api: DesktopApi = {
@@ -14,6 +14,14 @@ const api: DesktopApi = {
   updateSettings: settings => call('updateSettings', settings),
   connectChatGPT: id => call('connectChatGPT', id),
   cancelChatGPTSignIn: () => call('cancelChatGPTSignIn'),
+  connectCodex: () => call('connectCodex'),
+  cancelCodexSignIn: () => call('cancelCodexSignIn'),
+  cachedDiscovery: () => call('cachedDiscovery'),
+  onDiscovery: (callback: (result: DiscoveryResult) => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, result: DiscoveryResult) => callback(result);
+    ipcRenderer.on('discovery:update', listener);
+    return () => ipcRenderer.removeListener('discovery:update', listener);
+  },
   disconnectConnection: id => call('disconnectConnection', id),
   discover: connection => call('discover', connection),
   autoDiscover: force => call('autoDiscover', force),

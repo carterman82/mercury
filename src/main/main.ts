@@ -12,6 +12,7 @@ import { Runner } from './runner';
 import { Store } from './store';
 import { ChatService } from './chat';
 import { ChatGPTAuth } from './chatgpt-auth';
+import { CodexService } from './codex';
 import { cloudEndpoint } from './cloud-providers';
 import { ChatFiles } from './chat-files';
 import { readChatPdf, renderChatPdf, previewChatPdf } from './chat-pdf';
@@ -25,13 +26,14 @@ import { WebPolicy } from './web-policy';
 declare const MAIN_WINDOW_VITE_DEV_SERVER_URL: string | undefined;
 declare const MAIN_WINDOW_VITE_NAME: string;
 
-const providerSchema = z.enum(['ollama', 'lmstudio', 'openai', 'claude']);
-const connectionSchema = z.object({ id: z.string().min(1).max(100), provider: providerSchema, label: z.string().min(1).max(120), url: z.string().url(), apiToken: z.string().max(4096).optional(), hasToken: z.boolean().optional(), auth: z.literal('chatgpt').optional(), maxConcurrentRequests: z.number().int().min(1).max(32).optional() });
+const providerSchema = z.enum(['ollama', 'lmstudio', 'openai', 'claude', 'codex']);
+const connectionSchema = z.object({ id: z.string().min(1).max(100), provider: providerSchema, label: z.string().min(1).max(120), url: z.string().url(), apiToken: z.string().max(4096).optional(), hasToken: z.boolean().optional(), auth: z.literal('chatgpt').optional(), deviceId: z.string().max(200).optional(), deviceLabel: z.string().max(200).optional(), maxConcurrentRequests: z.number().int().min(1).max(32).optional() });
 const profileSchema = z.object({ provider: providerSchema, connectionId: z.string().optional(), endpoint: z.string().url().optional(), model: z.string().min(1), contextLimit: z.number().int().min(2048).max(1_000_000), toolVerified: z.boolean().optional() });
 const settingsSchema = z.object({
   connections: z.array(connectionSchema).max(50),
-  defaultModel: profileSchema.nullable(),
-  overrides: z.object({ planner: profileSchema.optional(), critic: profileSchema.optional(), synthesizer: profileSchema.optional(), coder: profileSchema.optional() }),
+  mainModel: profileSchema.nullable(),
+  plannerModel: profileSchema.nullable(),
+  subagentModel: profileSchema.nullable(),
 });
 
 let window: BrowserWindow | null = null;
@@ -74,7 +76,8 @@ app.whenReady().then(async () => {
     store.saveSecret(id, value ? safeStorage.encryptString(value).toString('base64') : null);
   };
   const chatGPT = new ChatGPTAuth(readSecret, writeSecret, url => shell.openExternal(url));
-  providers = new LocalProviders(() => store.settings(), readSecret, () => discovery.invalidate(), id => chatGPT.token(id), notify);
+  const codex = new CodexService(path.join(app.getPath('userData'), 'codex'), url => shell.openExternal(url));
+  providers = new LocalProviders(() => store.settings(), readSecret, () => discovery.invalidate(), id => chatGPT.token(id), notify, codex);
   runner = new Runner(store, providers, notify);
   const pdfRuntime = app.isPackaged ? path.join(process.resourcesPath, 'pdf-runtime', 'node_modules', 'pdfjs-dist') : path.join(app.getAppPath(), 'node_modules', 'pdfjs-dist');
   const formats = new FileFormats(app.isPackaged ? path.join(process.resourcesPath, 'file-runtime') : app.getAppPath(), app.isPackaged ? path.join(process.resourcesPath, 'pdf-runtime') : app.getAppPath());
@@ -88,7 +91,7 @@ app.whenReady().then(async () => {
   const capabilities = new ChatCapabilities(browser, plugins);
   chats = new ChatService(store, providers, notify, () => runner.running, chatFiles, capabilities);
   let quitting = false;
-  app.on('before-quit', event => { if (quitting) return; event.preventDefault(); quitting = true; void capabilities.dispose().finally(() => app.quit()); });
+  app.on('before-quit', event => { if (quitting) return; event.preventDefault(); quitting = true; codex.dispose(); void capabilities.dispose().finally(() => app.quit()); });
   discovery = new DiscoveryCache(settings => autoDiscover(settings, providers), store.discoveryCache(), value => store.saveDiscoveryCache(value));
 
   window = new BrowserWindow({
@@ -99,6 +102,32 @@ app.whenReady().then(async () => {
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   window.webContents.on('will-navigate', event => event.preventDefault());
   handle('snapshot', () => snapshot());
+  const checkModels = async () => {
+    const settings = store.settings();
+    const key = discoveryKey(settings);
+    const result = await discovery.get(settings, true);
+    if (key === discoveryKey(store.settings()) && window && !window.isDestroyed()) {
+      providers.rememberModels(result.models, result.connections);
+      window.webContents.send('discovery:update', result);
+    }
+    return result;
+  };
+  handle('cachedDiscovery', () => {
+    const cached = discovery.peek(store.settings());
+    if (cached) providers.rememberModels(cached.models, cached.connections);
+    void checkModels().catch(() => {
+      if (window && !window.isDestroyed()) window.webContents.send('discovery:update', { ...(cached ?? { connections: [], models: [], applications: [] }), diagnostics: ['Model check failed. Refresh models to try again.'] });
+    });
+    return cached;
+  });
+  handle('cancelCodexSignIn', () => codex.cancelSignIn());
+  handle('connectCodex', async () => {
+    if (runner.running || chats.activeId) throw new Error('Stop the active response before connecting Codex.');
+    const connection = await codex.signIn();
+    const settings = store.settings();
+    settings.connections = [...settings.connections.filter(item => item.id !== connection.id), connection];
+    store.saveSettings(settings); discovery.invalidate(); notify();
+  });
   handle('cancelChatGPTSignIn', () => chatGPT.cancelSignIn());
   handle('connectChatGPT', async (_event, input?: string) => {
     if (!safeStorage.isEncryptionAvailable()) throw new Error('Secure credential storage is unavailable on this computer.');
@@ -111,13 +140,13 @@ app.whenReady().then(async () => {
     store.saveSettings(settings);
     discovery.invalidate(); notify();
   });
-  handle('disconnectConnection', (_event, raw: string) => {
+  handle('disconnectConnection', async (_event, raw: string) => {
     const id = z.string().min(1).max(100).parse(raw);
     if (runner.running || chats.activeId) throw new Error('Stop the active response before disconnecting an account.');
     const settings = store.settings();
+    if (settings.connections.find(item => item.id === id)?.provider === 'codex') await codex.disconnect();
     settings.connections = settings.connections.filter(item => item.id !== id);
-    if (settings.defaultModel?.connectionId === id) settings.defaultModel = null;
-    settings.overrides = Object.fromEntries(Object.entries(settings.overrides).filter(([, profile]) => profile.connectionId !== id));
+    for (const key of ['mainModel', 'plannerModel', 'subagentModel'] as const) if (settings[key]?.connectionId === id) settings[key] = null;
     writeSecret(id, null); writeSecret(`${id}-registration`, null);
     store.saveSettings(settings); discovery.invalidate(); notify();
   });
@@ -148,13 +177,14 @@ app.whenReady().then(async () => {
     if (new Set(settings.connections.map(item => item.id)).size !== settings.connections.length) throw new Error('Connections must have unique IDs.');
     for (const connection of settings.connections) {
       endpoint(connection.url);
+      if (connection.provider === 'codex' && (connection.id !== 'codex-account' || connection.url !== 'https://chatgpt.com' || connection.apiToken !== undefined || connection.auth || !store.settings().connections.some(item => item.id === connection.id && item.provider === 'codex'))) throw new Error('Use Connect with Codex to connect this account.');
       if (connection.provider === 'openai' || connection.provider === 'claude') cloudEndpoint(connection);
       const previous = store.settings().connections.find(item => item.id === connection.id);
       if (previous && store.secret(connection.id) && (previous.provider !== connection.provider || previous.url !== connection.url) && connection.apiToken === undefined) throw new Error('Enter new credentials when changing a connection address or provider.');
       if (connection.auth === 'chatgpt' && (previous?.auth !== 'chatgpt' || connection.apiToken !== undefined)) throw new Error('Use Continue with ChatGPT to connect this account.');
       if (previous?.auth === 'chatgpt' && connection.auth !== 'chatgpt') throw new Error('Disconnect the ChatGPT account before changing authentication.');
     }
-    for (const profile of [settings.defaultModel, ...Object.values(settings.overrides)]) {
+    for (const profile of [settings.mainModel, settings.plannerModel, settings.subagentModel]) {
       if (!profile) continue;
       const connection = settings.connections.find(item => item.id === profile.connectionId);
       if (!connection || connection.provider !== profile.provider) throw new Error(`The model ${profile.model} needs a matching saved connection.`);
@@ -172,6 +202,7 @@ app.whenReady().then(async () => {
   handle('discover', (_event, input: ModelConnection) => {
     const connection = connectionSchema.parse(input);
     endpoint(connection.url);
+    if (connection.provider === 'codex' && !store.settings().connections.some(item => item.id === connection.id && item.provider === 'codex')) throw new Error('Connect with Codex first.');
     const previous = store.settings().connections.find(item => item.id === connection.id);
     if (previous && connection.apiToken === undefined && (previous.provider !== connection.provider || previous.url !== connection.url || previous.auth !== connection.auth)) throw new Error('Saved credentials can only be used with their original connection.');
     if (connection.auth === 'chatgpt' && !store.settings().connections.some(item => item.id === connection.id && item.auth === 'chatgpt')) throw new Error('Connect ChatGPT first.');
@@ -180,6 +211,7 @@ app.whenReady().then(async () => {
   handle('autoDiscover', async (_event, force?: boolean) => {
     const result = await discovery.get(store.settings(), z.boolean().optional().parse(force) ?? false);
     providers.rememberModels(result.models, result.connections);
+    if (window && !window.isDestroyed()) window.webContents.send('discovery:update', result);
     return result;
   });
   handle('probe', async (_event, profile: ModelProfile) => { noChat(); if (runner.running) throw new Error('Wait for the current agent run.'); return providers.probe(profileSchema.parse(profile)); });

@@ -37,7 +37,7 @@ test('live internet search, rendered source page, official registry, and real re
   const app = await electron.launch({ executablePath: path.resolve('out', process.env.LOCAL_PLAN_AGENT_BUILD_ID ?? '', 'Mercury-win32-x64', 'Mercury.exe'), env: { ...process.env, LOCAL_PLAN_AGENT_USER_DATA: data } });
   try {
     const page = await app.firstWindow();
-    await page.evaluate(async base => window.desktop.updateSettings({ connections: [{ id: 'live-web', provider: 'ollama', label: 'Web tools fixture', url: base }], defaultModel: { provider: 'ollama', connectionId: 'live-web', model: 'web-model', contextLimit: 65536 }, overrides: {} }), base);
+    await page.evaluate(async base => window.desktop.updateSettings({ connections: [{ id: 'live-web', provider: 'ollama', label: 'Web tools fixture', url: base }], mainModel: { provider: 'ollama', connectionId: 'live-web', model: 'web-model', contextLimit: 65536 }, plannerModel: null, subagentModel: null }), base);
     const send = async (text: string) => { await page.getByRole('button', { name: 'New chat', exact: false }).click(); await page.getByLabel('Message', { exact: true }).fill(text); await page.getByRole('button', { name: 'Send ↑' }).click(); };
     await send('Browse the live Playwright documentation.'); await expect(page.locator('.chat-assistant')).toContainText('source-page reading succeeded', { timeout: 120_000 });
     expect(errors).toEqual([]); expect(searched).toBe(true); expect(read).toBe(true);
@@ -58,7 +58,7 @@ test('live local model actually chooses the browser tool and answers from the pa
   const app = await electron.launch({ executablePath: path.resolve('out', process.env.LOCAL_PLAN_AGENT_BUILD_ID ?? '', 'Mercury-win32-x64', 'Mercury.exe'), env: { ...process.env, LOCAL_PLAN_AGENT_USER_DATA: data } });
   try {
     const page = await app.firstWindow();
-    await page.evaluate(async ({ url, model }) => window.desktop.updateSettings({ connections: [{ id: 'live', provider: 'lmstudio', label: 'Live local model', url }], defaultModel: { provider: 'lmstudio', connectionId: 'live', model, contextLimit: 32768 }, overrides: {} }), { url: process.env.MERCURY_LIVE_URL!, model: process.env.MERCURY_LIVE_MODEL! });
+    await page.evaluate(async ({ url, model }) => window.desktop.updateSettings({ connections: [{ id: 'live', provider: 'lmstudio', label: 'Live local model', url }], mainModel: { provider: 'lmstudio', connectionId: 'live', model, contextLimit: 32768 }, plannerModel: null, subagentModel: null }), { url: process.env.MERCURY_LIVE_URL!, model: process.env.MERCURY_LIVE_MODEL! });
     await page.getByLabel('Message', { exact: true }).fill('Use browser_open to visit https://example.com/ now. Tell me the page title and one sentence about what it says, and cite that URL. Keep it brief.');
     await page.getByRole('button', { name: 'Send ↑' }).click();
     await expect.poll(async () => (await page.evaluate(() => window.desktop.snapshot())).chats[0]?.status, { timeout: 150_000 }).toBe('idle');

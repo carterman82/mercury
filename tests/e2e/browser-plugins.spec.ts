@@ -59,7 +59,7 @@ for (const npm of [false, true]) test(npm ? 'installs and invokes the real pinne
   let app = await launch();
   try {
     let page = await app.firstWindow();
-    await page.evaluate(async base => window.desktop.updateSettings({ connections: [{ id: 'tools', provider: 'ollama', label: 'Tools model', url: base }], defaultModel: { provider: 'ollama', connectionId: 'tools', model: 'tools-model', contextLimit: 65536 }, overrides: {} }), base);
+    await page.evaluate(async base => window.desktop.updateSettings({ connections: [{ id: 'tools', provider: 'ollama', label: 'Tools model', url: base }], mainModel: { provider: 'ollama', connectionId: 'tools', model: 'tools-model', contextLimit: 65536 }, plannerModel: null, subagentModel: null }), base);
     const send = async (text: string) => { await page.getByRole('button', { name: 'New chat', exact: false }).click(); await page.getByLabel('Message', { exact: true }).fill(text); await page.getByRole('button', { name: 'Send ↑' }).click(); };
     const approve = async () => { await expect(page.getByRole('region', { name: 'Plugin approval' })).toBeVisible({ timeout: 150_000 }); await page.getByRole('button', { name: 'Allow once', exact: true }).click(); };
     if (!npm) {

@@ -29,7 +29,7 @@ it('cancels queued work without dispatching it or blocking the next waiter, with
 
 it('releases provider slots after success, error, and Stop, using reported model limits and endpoint aliases', async () => {
   const connection = { id: 'local', provider: 'lmstudio' as const, url: profile.endpoint, label: 'Server' };
-  const providers = new LocalProviders(() => ({ connections: [connection, { ...connection, id: 'alias' }], defaultModel: null, overrides: {} }));
+  const providers = new LocalProviders(() => ({ connections: [connection, { ...connection, id: 'alias' }], mainModel: null, plannerModel: null, subagentModel: null }));
   providers.rememberModels([{ id: 'one', label: 'One', provider: 'lmstudio', connectionId: 'local', connectionLabel: 'Server', available: true, parallelRequests: 2 }], [connection]);
   const finish: (() => void)[] = [];
   const fetch = vi.fn((_url, init: RequestInit) => new Promise<Response>((resolve, reject) => {

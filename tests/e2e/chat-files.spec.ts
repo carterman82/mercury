@@ -83,7 +83,7 @@ test('uploads files, creates and saves a PDF, reads that PDF, and restores file 
   let app = await electron.launch({ executablePath, env });
   try {
     let page = await app.firstWindow();
-    await page.evaluate(async port => window.desktop.updateSettings({ connections: [{ id: 'fixture', provider: 'ollama', label: 'Files fixture', url: `http://127.0.0.1:${port}` }], defaultModel: { provider: 'ollama', connectionId: 'fixture', model: 'file-model', contextLimit: 32768 }, overrides: {} }), port);
+    await page.evaluate(async port => window.desktop.updateSettings({ connections: [{ id: 'fixture', provider: 'ollama', label: 'Files fixture', url: `http://127.0.0.1:${port}` }], mainModel: { provider: 'ollama', connectionId: 'fixture', model: 'file-model', contextLimit: 32768 }, plannerModel: null, subagentModel: null }), port);
     await app.evaluate(({ dialog }, saved) => { dialog.showSaveDialog = async () => ({ canceled: false, filePath: saved }); }, saved);
     await expect(page.getByRole('button', { name: 'Attach files', exact: true })).toHaveCount(0);
     await dropFiles(page, [source]);

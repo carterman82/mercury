@@ -1,18 +1,18 @@
+import { useDiscovery } from './useDiscovery';
 import React, { useEffect, useRef, useState } from 'react';
 import type { ChatFile, DiscoveryResult, ModelProfile, Snapshot } from '../shared/types';
 import { CopyButton, Markdown } from './Markdown';
 import { ThinkingPanel } from './ThinkingPanel';
 import { ModelSelect } from './ModelSelect';
 import { ContextPanel } from './ContextPanel';
-const activityNames: Record<string, string> = { browser_search: 'Search the web', browser_open: 'Read a webpage', browser_read: 'Read more of the page', browser_click: 'Follow a source link', browser_close: 'Close browser', discover_plugins: 'Find plugins', install_plugin: 'Install plugin', plugin_list_tools: 'Inspect plugin tools', plugin_call_tool: 'Use plugin', create_pdf: 'Create PDF', create_file: 'Create file', read_file: 'Read file', create_document: 'Create Word document', create_spreadsheet: 'Create spreadsheet', create_presentation: 'Create presentation', create_graphic: 'Create graphic', create_archive: 'Create archive' };
+const activityNames: Record<string, string> = { delegate_task: 'Analyze with Subagent', browser_search: 'Search the web', browser_open: 'Read a webpage', browser_read: 'Read more of the page', browser_click: 'Follow a source link', browser_close: 'Close browser', discover_plugins: 'Find plugins', install_plugin: 'Install plugin', plugin_list_tools: 'Inspect plugin tools', plugin_call_tool: 'Use plugin', create_pdf: 'Create PDF', create_file: 'Create file', read_file: 'Read file', create_document: 'Create Word document', create_spreadsheet: 'Create spreadsheet', create_presentation: 'Create presentation', create_graphic: 'Create graphic', create_archive: 'Create archive' };
 
 Object.assign(activityNames, { browser_screenshot: 'Inspect browser screenshot', browser_enable_controls: 'Request game controls', browser_press: 'Press game keys', browser_pointer: 'Click game viewport' });
 
 export function ChatPanel({ state, chatId, onSelect, openSettings }: { state: Snapshot; chatId: string | null; onSelect: (id: string) => void; openSettings: () => void }) {
   const chat = state.chats.find(item => item.id === chatId);
-  const [profile, setProfile] = useState<ModelProfile | null>(chat?.profile ?? state.settings.defaultModel);
-  const [discovery, setDiscovery] = useState<DiscoveryResult | null>(null);
-  const [scanning, setScanning] = useState(false);
+  const [profile, setProfile] = useState<ModelProfile | null>(chat?.profile ?? state.settings.mainModel);
+  const { result: discovery, scanning, error: discoveryError, refresh } = useDiscovery(JSON.stringify(state.settings.connections));
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
@@ -30,7 +30,7 @@ export function ChatPanel({ state, chatId, onSelect, openSettings }: { state: Sn
   const scroll = useRef<HTMLDivElement>(null);
   const follow = useRef(true);
   const blocked = Boolean(chat?.status === 'streaming' || state.activeRole || pending);
-  useEffect(() => { viewVersion.current++; dragDepth.current = 0; setDragging(false); setProfile(chat?.profile ?? state.settings.defaultModel); setMessage(''); setError(''); setAttachments([]); }, [chatId]);
+  useEffect(() => { viewVersion.current++; dragDepth.current = 0; setDragging(false); setProfile(chat?.profile ?? state.settings.mainModel); setMessage(''); setError(''); setAttachments([]); }, [chatId]);
   useEffect(() => {
     // Prevent dropping files outside the chat from navigating Electron away.
     const preventNavigation = (event: DragEvent) => { if (event.dataTransfer?.types.includes('Files')) event.preventDefault(); };
@@ -38,20 +38,13 @@ export function ChatPanel({ state, chatId, onSelect, openSettings }: { state: Sn
     window.addEventListener('drop', preventNavigation);
     return () => { viewVersion.current++; window.removeEventListener('dragover', preventNavigation); window.removeEventListener('drop', preventNavigation); };
   }, []);
-  useEffect(() => { if (!profile && state.settings.defaultModel) setProfile(state.settings.defaultModel); }, [state.settings.defaultModel]);
+  useEffect(() => { if (!chat && state.settings.mainModel) setProfile(state.settings.mainModel); }, [state.settings.mainModel]);
   useEffect(() => { follow.current = true; }, [chatId]);
   useEffect(() => { if (follow.current && scroll.current) scroll.current.scrollTop = scroll.current.scrollHeight; }, [chat?.messages.at(-1)?.content, chat?.messages.at(-1)?.reasoning, chat?.messages.length]);
-  const refresh = async (force = false) => {
-    setScanning(true); setError('');
-    try {
-      const found = await window.desktop.autoDiscover(force);
-      setDiscovery(found);
-      const first = found.models.find(item => item.available) ?? found.models[0];
-      if (first) setProfile(current => current ?? { provider: first.provider, connectionId: first.connectionId, model: first.id, contextLimit: Math.min(first.contextLimit ?? 8192, 32768) });
-    } catch (error) { setError(String(error)); }
-    finally { setScanning(false); }
-  };
-  useEffect(() => { void refresh(); }, [JSON.stringify(state.settings.connections)]);
+  useEffect(() => {
+    const first = discovery?.models.find(item => item.available) ?? discovery?.models[0];
+    if (first) setProfile(current => current ?? { provider: first.provider, connectionId: first.connectionId, model: first.id, contextLimit: Math.min(first.contextLimit ?? 8192, 32768) });
+  }, [discovery]);
   const models = [...(discovery?.models ?? [])].sort((a, b) => Number(b.available) - Number(a.available) || a.label.localeCompare(b.label));
   const send = async () => {
     if (!profile || (!message.trim() && !attachments.length) || blocked || attaching) return;
@@ -102,7 +95,7 @@ export function ChatPanel({ state, chatId, onSelect, openSettings }: { state: Sn
     void attach(Array.from(event.dataTransfer.files));
   }}>
     {dragging && <div className="chat-drop-overlay" aria-live="polite"><div><span aria-hidden="true">↓</span><strong>{blocked || attaching ? 'Wait for the current response or upload to finish' : 'Drop files to attach'}</strong><p>Documents, spreadsheets, slides, images, code, and more · Up to 8 files, 25 MB each</p></div></div>}
-    <div className="chat-main"><header className="chat-toolbar"><div><h1>Chat</h1><p>Try a model. Ask anything.</p></div></header>
+    <div className="chat-main"><header className="chat-toolbar"><div><h1>Chat</h1></div></header>
     <div className="chat-scroll" ref={scroll} onScroll={() => { if (scroll.current) follow.current = scroll.current.scrollHeight - scroll.current.scrollTop - scroll.current.clientHeight < 140; }}><div className="sr-only" role="status">{chat?.status === 'streaming' ? 'Model response in progress' : ''}</div>
       {chat?.messages.length ? <div className="chat-messages">{chat.messages.map((item, index) => {
         const active = chat.status === 'streaming' && index === chat.messages.length - 1;
@@ -110,13 +103,13 @@ export function ChatPanel({ state, chatId, onSelect, openSettings }: { state: Sn
           {item.role === 'assistant' && <ThinkingPanel message={item} active={active} />}
           {item.notice && <p className="chat-notice" role="status">{item.notice}</p>}
           {active && item.queued && <p className="chat-notice" role="status">Waiting for a free request slot on this model. Other chats can continue.</p>}
-          {Boolean(item.toolActivity?.length) && <details className="chat-tool-activity"><summary>{active ? 'Working with tools…' : 'Tools used'}</summary>{item.toolActivity!.map((action, index) => <div key={index} title={action.name}>{action.status === 'running' ? 'Working' : action.status === 'succeeded' ? 'Done' : 'Failed'} · {activityNames[action.name] ?? action.name}</div>)}</details>}
+          {Boolean(item.toolActivity?.length) && <details className="chat-tool-activity"><summary>{active ? 'Working with tools…' : 'Tools used'}</summary>{item.toolActivity!.map((action, index) => <div key={index} title={action.name}>{action.status === 'running' ? 'Working' : action.status === 'succeeded' ? 'Done' : 'Failed'} · {activityNames[action.name] ?? action.name}{action.result && <details><summary>Subagent findings</summary><Markdown content={action.result} /></details>}</div>)}</details>}
           <div className="chat-message-content">{item.role === 'user' ? item.content : item.content.trim() ? <Markdown content={item.content} /> : !active && !item.files?.length ? <span className="empty">No answer received.</span> : null}</div>
           {Boolean(item.files?.length) && <div className="chat-files">{item.files!.map(file => <div className="chat-file" key={file.id}><span>📄 {file.name}<small>{file.format ? file.format + ' · ' : ''}{Math.ceil(file.size / 1024)} KB{file.kind === 'upload' && file.readStatus ? ` · ${file.readStatus === 'metadata' ? 'Metadata only' : file.readStatus === 'partial' ? 'Partial extraction' : 'Text available'}` : ''}</small>{file.note && <span className="file-extraction-note">{file.note}</span>}</span><button type="button" onClick={() => setPreviewFile({ id: file.id, at: Date.now() })}>Preview {file.name}</button><button type="button" onClick={() => void window.desktop.saveChatFile(file.id).catch(error => setError(String(error)))}>Save {file.name}</button></div>)}</div>}
           {item.role === 'assistant' && !active && item.content.trim() && <div className="response-actions"><CopyButton label="Copy response" text={item.content} />{item.startedAt && item.completedAt && <span>{Math.max(1, Math.round((item.completedAt - item.startedAt) / 1000))}s</span>}</div>}
         </article>;
       })}{chat.status === 'interrupted' && <p className="chat-notice">This response was interrupted when Mercury closed. Send a message to continue.</p>}{chat.error && <p className="chat-notice" role="alert">{chat.error}</p>}<div ref={end} /></div> : <div className="chat-empty"><div className="mercury-orbit">M</div><h2>Hello from Mercury.</h2><p>Pick a model below and start a conversation.</p><div className="prompt-suggestions">{['What can you help me with?', 'Explain how local AI models work.', 'Write a small Python guessing game.'].map(prompt => <button key={prompt} onClick={() => setMessage(prompt)}>{prompt}<span>↗</span></button>)}</div></div>}</div>
-    <div className="chat-compose-area">{(state.chatApprovals ?? []).filter(request => request.chatId === chatId).map(request => <section className="chat-approval" key={request.id} aria-label="Plugin approval"><strong>{request.title}</strong><pre>{request.details}</pre><div><button type="button" onClick={() => void window.desktop.answerChatApproval(request.id, false).catch(error => setError(String(error)))}>Deny</button><button type="button" onClick={() => void window.desktop.answerChatApproval(request.id, true).catch(error => setError(String(error)))}>Allow once</button></div></section>)}{error && <p className="chat-notice" role="alert">{error}</p>}<form className="chat-composer" onSubmit={event => { event.preventDefault(); void send(); }}>
+    <div className="chat-compose-area">{(state.chatApprovals ?? []).filter(request => request.chatId === chatId).map(request => <section className="chat-approval" key={request.id} aria-label="Plugin approval"><strong>{request.title}</strong><pre>{request.details}</pre><div><button type="button" onClick={() => void window.desktop.answerChatApproval(request.id, false).catch(error => setError(String(error)))}>Deny</button><button type="button" onClick={() => void window.desktop.answerChatApproval(request.id, true).catch(error => setError(String(error)))}>Allow once</button></div></section>)}{(error || discoveryError) && <p className="chat-notice" role="alert">{error || discoveryError}</p>}<form className="chat-composer" onSubmit={event => { event.preventDefault(); void send(); }}>
       {Boolean(attachments.length) && <div className="pending-files">{attachments.map(file => <span key={file.id} title={file.note}>{file.name}{file.readStatus === 'metadata' ? ' · metadata only' : file.readStatus === 'partial' ? ' · partial extraction' : ''}<button type="button" aria-label={`Remove ${file.name}`} disabled={blocked} onClick={() => setAttachments(current => current.filter(item => item.id !== file.id))}>×</button></span>)}</div>}
       <input ref={chooser} type="file" multiple className="sr-only" tabIndex={-1} aria-label="Choose chat files" onChange={event => { void attach(Array.from(event.target.files ?? [])); event.target.value = ''; }} />
       <textarea aria-label="Message" placeholder="Message Mercury… or drop files here" rows={2} value={message} maxLength={30000} onChange={event => setMessage(event.target.value)} onKeyDown={event => { if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); void send(); } }} /><div className="compose-actions">{modelPicker}{chat?.status === 'streaming' ? <button type="button" onClick={() => void window.desktop.stopChat(chat.id).catch(error => setError(String(error)))}>Stop response</button> : <button type="submit" className="primary" disabled={!profile || (!message.trim() && !attachments.length) || blocked || attaching}>Send ↑</button>}</div></form><p className="composer-hint">{attaching ? 'Attaching files…' : 'Drop files anywhere in chat · Ctrl+O to browse'} · Enter to send · Shift + Enter for a new line</p></div>

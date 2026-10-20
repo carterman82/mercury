@@ -1,3 +1,4 @@
+import type { CodexService } from './codex';
 import type { ModelConnection, ModelInfo, ModelProfile, Settings, ToolRequest } from '../shared/types';
 import { ReasoningStream } from './reasoning';
 import { cloudChat, cloudDiscover, cloudEndpoint } from './cloud-providers';
@@ -57,7 +58,7 @@ export class LocalProviders implements ModelProvider {
   private modelMetadata = new Map<string, { parallel?: number; vision?: boolean; canonical: string }>();
   private requests: ModelRequests;
   get requestCounts() { return this.requests.snapshot(); }
-  constructor(private settings: () => Settings, private tokenFor: (id: string) => string | undefined = () => undefined, private connectionFailed: () => void = () => {}, private chatGPTToken: (id: string) => Promise<string> = async () => { throw new Error('ChatGPT sign-in is unavailable.'); }, requestsChanged: () => void = () => {}) { this.requests = new ModelRequests(requestsChanged); }
+  constructor(private settings: () => Settings, private tokenFor: (id: string) => string | undefined = () => undefined, private connectionFailed: () => void = () => {}, private chatGPTToken: (id: string) => Promise<string> = async () => { throw new Error('ChatGPT sign-in is unavailable.'); }, requestsChanged: () => void = () => {}, private codex?: CodexService) { this.requests = new ModelRequests(requestsChanged); }
 
   private async cloudToken(connection: ModelConnection): Promise<string> {
     const token = connection.auth === 'chatgpt' ? await this.chatGPTToken(connection.id) : connection.apiToken || this.tokenFor(connection.id);
@@ -93,6 +94,10 @@ export class LocalProviders implements ModelProvider {
   }
 
   async discover(connection: ModelConnection): Promise<ModelInfo[]> {
+    if (connection.provider === 'codex') {
+      if (!this.codex) throw new Error('Codex is unavailable. Connect it in Model settings.');
+      return this.codex.discover(connection);
+    }
     if (connection.provider === 'openai' || connection.provider === 'claude') {
       cloudEndpoint(connection);
       return cloudDiscover(connection, await this.cloudToken(connection));
@@ -162,6 +167,11 @@ export class LocalProviders implements ModelProvider {
   }
 
   private async chatOnce(input: ChatInput): Promise<ChatResult> {
+    if (input.profile.provider === 'codex') {
+      if (!this.codex || !this.settings().connections.some(item => item.id === input.profile.connectionId && item.provider === 'codex')) throw new Error('Codex is disconnected. Connect it in Model settings.');
+      try { return await this.codex.chat(input); }
+      catch (error) { if (!input.signal.aborted) this.connectionFailed(); throw error; }
+    }
     if (input.profile.provider === 'openai' || input.profile.provider === 'claude') {
       const connection = this.settings().connections.find(item => item.id === input.profile.connectionId && item.provider === input.profile.provider);
       if (!connection) throw new Error('This cloud account is disconnected. Connect it in Model settings.');
