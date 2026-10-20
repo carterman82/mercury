@@ -14,8 +14,13 @@ import { ChatService } from './chat';
 import { ChatGPTAuth } from './chatgpt-auth';
 import { cloudEndpoint } from './cloud-providers';
 import { ChatFiles } from './chat-files';
-import { readChatPdf, renderChatPdf } from './chat-pdf';
+import { readChatPdf, renderChatPdf, previewChatPdf } from './chat-pdf';
 import { FileFormats } from './file-formats';
+import { ChatApprovals } from './chat-approvals';
+import { ChatBrowser } from './chat-browser';
+import { ChatPlugins } from './chat-plugins';
+import { ChatCapabilities } from './chat-capabilities';
+import { WebPolicy } from './web-policy';
 
 declare const MAIN_WINDOW_VITE_DEV_SERVER_URL: string | undefined;
 declare const MAIN_WINDOW_VITE_NAME: string;
@@ -35,9 +40,10 @@ let providers: LocalProviders;
 let runner: Runner;
 let chats: ChatService;
 let discovery: DiscoveryCache;
+let approvals: ChatApprovals;
 
 function snapshot(): Snapshot {
-  return { projects: store.projects(), sessions: store.sessions(), chats: store.chats(), settings: store.settings(), activeRole: runner.activeRole, activeChatId: chats.activeId, activeChatIds: chats.activeIds, modelRequests: providers.requestCounts };
+  return { projects: store.projects(), sessions: store.sessions(), chats: store.chats(), settings: store.settings(), activeRole: runner.activeRole, activeChatId: chats.activeId, activeChatIds: chats.activeIds, modelRequests: providers.requestCounts, chatApprovals: approvals?.snapshot() ?? [] };
 }
 function noChat(): void { if (chats.activeId) throw new Error('Stop the chat response before starting an agent run.'); }
 function notify(): void { if (window && !window.isDestroyed()) window.webContents.send('state:update', snapshot()); }
@@ -73,7 +79,16 @@ app.whenReady().then(async () => {
   const pdfRuntime = app.isPackaged ? path.join(process.resourcesPath, 'pdf-runtime', 'node_modules', 'pdfjs-dist') : path.join(app.getAppPath(), 'node_modules', 'pdfjs-dist');
   const formats = new FileFormats(app.isPackaged ? path.join(process.resourcesPath, 'file-runtime') : app.getAppPath(), app.isPackaged ? path.join(process.resourcesPath, 'pdf-runtime') : app.getAppPath());
   const chatFiles = new ChatFiles(path.join(app.getPath('userData'), 'chat-files'), renderChatPdf, bytes => readChatPdf(bytes, pdfRuntime, image => formats.ocr(image)), formats);
-  chats = new ChatService(store, providers, notify, () => runner.running, chatFiles);
+  approvals = new ChatApprovals(notify);
+  // Network fixtures are only possible with an explicitly isolated test data profile.
+  const fixtureOrigin = process.env.LOCAL_PLAN_AGENT_USER_DATA ? process.env.MERCURY_TEST_NETWORK_ORIGIN : undefined;
+  const policy = new WebPolicy(fixtureOrigin);
+  const browser = new ChatBrowser(app.isPackaged ? path.join(process.resourcesPath, 'browser-tools', 'node_modules') : path.join(app.getAppPath(), 'node_modules'), app.isPackaged ? path.join(process.resourcesPath, 'browser-runtime') : path.join(app.getAppPath(), '.build-resources', 'browser-runtime'), policy, approvals);
+  const plugins = new ChatPlugins(path.join(app.getPath('userData'), 'plugins'), app.isPackaged ? path.join(process.resourcesPath, 'file-runtime') : app.getAppPath(), policy, approvals, process.env.LOCAL_PLAN_AGENT_USER_DATA ? process.env.MERCURY_TEST_PLUGIN_REGISTRY : undefined);
+  const capabilities = new ChatCapabilities(browser, plugins);
+  chats = new ChatService(store, providers, notify, () => runner.running, chatFiles, capabilities);
+  let quitting = false;
+  app.on('before-quit', event => { if (quitting) return; event.preventDefault(); quitting = true; void capabilities.dispose().finally(() => app.quit()); });
   discovery = new DiscoveryCache(settings => autoDiscover(settings, providers), store.discoveryCache(), value => store.saveDiscoveryCache(value));
 
   window = new BrowserWindow({
@@ -180,6 +195,20 @@ app.whenReady().then(async () => {
     await fs.writeFile(chosen.filePath, await chatFiles.bytes(id));
     return chosen.filePath;
   });
+  handle('previewChatBrowser', (_event, raw: string) => browser.preview(z.string().uuid().parse(raw)));
+  handle('previewChatFile', async (_event, raw: string, rawPage?: number) => {
+    const id = z.string().uuid().parse(raw);
+    const page = z.number().int().min(1).max(100000).optional().parse(rawPage) ?? 1;
+    const file = await chatFiles.get(id);
+    const bytes = await chatFiles.bytes(id);
+    if (bytes.subarray(0, 5).toString() === '%PDF-') {
+      try { return await previewChatPdf(bytes, pdfRuntime, page); }
+      catch { return { kind: 'text', text: await chatFiles.text(id), note: 'PDF page preview unavailable. Showing extracted text instead.' }; }
+    }
+    const image = await chatFiles.image(id).catch(() => null);
+    if (image) return { kind: 'image', image: `data:${image.mimeType};base64,${image.data}` };
+    return { kind: 'text', text: await chatFiles.text(id), note: file.note };
+  });
   handle('sendChat', (_event, id: string | null, profile: ModelProfile, message: string, rawIds?: string[]) => {
     const ids = z.array(z.string().uuid()).max(8).optional().parse(rawIds) ?? [];
     const text = z.string().trim().max(30_000).parse(message);
@@ -193,6 +222,7 @@ app.whenReady().then(async () => {
     return started;
   });
   handle('stopChat', (_event, id: string) => chats.stop(z.string().uuid().parse(id)));
+  handle('answerChatApproval', (_event, id: string, allow: boolean) => approvals.answer(z.string().uuid().parse(id), z.boolean().parse(allow)));
   handle('openLink', (_event, raw: string) => {
     const url = new URL(z.string().url().max(8000).parse(raw));
     if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password) throw new Error('Only web links can be opened.');

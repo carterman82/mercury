@@ -3,6 +3,8 @@ import { ReasoningStream } from './reasoning';
 import { cloudChat, cloudDiscover, cloudEndpoint } from './cloud-providers';
 import { hasImages, imageUnsupported, localImageMessages, ModelHttpError, textOnlyMessages } from './vision';
 import { ModelRequests } from './model-requests';
+import { InactivityWatchdog } from './inactivity';
+import { ThinkingLimitError } from './thinking-guard';
 
 export interface ChatResult { text: string; reasoning?: string; tools: ToolRequest[]; usage?: { input?: number; output?: number }; }
 export interface ChatInput { profile: ModelProfile; messages: unknown[]; tools?: unknown[]; signal: AbortSignal; disableThinking?: boolean; onRequestState?: (state: 'queued' | 'running') => void; onImageFallback?: (reason?: string) => void; onText?: (delta: string) => void; onReasoning?: (delta: string) => void; onToolProgress?: () => void; }
@@ -170,7 +172,9 @@ export class LocalProviders implements ModelProvider {
     const base = this.url(input.profile);
     const isOllama = input.profile.provider === 'ollama';
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(new Error('Model response timed out.')), 600_000);
+    const idle = new InactivityWatchdog(120_000, new ThinkingLimitError('timeout'));
+    const idleAbort = () => controller.abort(idle.signal.reason);
+    idle.signal.addEventListener('abort', idleAbort, { once: true });
     const abort = () => controller.abort(input.signal.reason);
     input.signal.addEventListener('abort', abort, { once: true });
     if (input.signal.aborted) abort();
@@ -186,10 +190,11 @@ export class LocalProviders implements ModelProvider {
       let reasoning = '';
       const thinking = (delta: unknown) => {
         if (typeof delta !== 'string' || !delta) return;
-        reasoning += delta;
+        if (delta.trim()) idle.progress();
+        reasoning = (reasoning + delta).slice(-100_000);
         input.onReasoning?.(delta);
       };
-      const content = new ReasoningStream(delta => { text += delta; input.onText?.(delta); }, thinking);
+      const content = new ReasoningStream(delta => { if (delta.trim()) idle.progress(); text += delta; input.onText?.(delta); }, thinking);
       let usage: ChatResult['usage'];
       const calls = new Map<number, { id: string; name: string; arguments: string }>();
       let ollamaCallIndex = 0;
@@ -204,6 +209,7 @@ export class LocalProviders implements ModelProvider {
           const delta = chunk.message?.content ?? '';
           if (typeof delta === 'string') content.push(delta);
           for (const call of chunk.message?.tool_calls ?? []) {
+            idle.progress();
             input.onToolProgress?.();
             const index = ollamaCallIndex++;
             calls.set(index, { id: `call_${index}`, name: String(call.function?.name ?? ''), arguments: JSON.stringify(call.function?.arguments ?? {}) });
@@ -214,6 +220,7 @@ export class LocalProviders implements ModelProvider {
           thinking(delta.reasoning_content ?? delta.reasoning);
           if (typeof delta.content === 'string') content.push(delta.content);
           for (const item of delta.tool_calls ?? []) {
+            if (item.id || item.function?.name || item.function?.arguments?.trim()) idle.progress();
             input.onToolProgress?.();
             const prior = calls.get(item.index) ?? { id: `call_${item.index}`, name: '', arguments: '' };
             if (item.id) prior.id = item.id;
@@ -232,7 +239,7 @@ export class LocalProviders implements ModelProvider {
       if (error instanceof TypeError || /Model server returned HTTP (?:401|403|404|5\d\d)/.test(String(error))) this.connectionFailed();
       throw error;
     } finally {
-      clearTimeout(timeout);
+      idle.dispose(); idle.signal.removeEventListener('abort', idleAbort);
       input.signal.removeEventListener('abort', abort);
     }
   }

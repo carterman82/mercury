@@ -25,8 +25,11 @@ const api: DesktopApi = {
     return call('addChatFiles', paths);
   },
   saveChatFile: id => call('saveChatFile', id),
+  previewChatFile: (id, page) => call('previewChatFile', id, page),
+  previewChatBrowser: id => call('previewChatBrowser', id),
   sendChat: (id, profile, message, attachments) => call('sendChat', id, profile, message, attachments),
   stopChat: id => call('stopChat', id),
+  answerChatApproval: (id, allow) => call('answerChatApproval', id, allow),
   openLink: url => call('openLink', url),
   plan: (id, feedback) => call('plan', id, feedback),
   savePlan: (id, content) => call('savePlan', id, content),

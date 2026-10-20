@@ -4,6 +4,25 @@ import { pathToFileURL } from 'node:url';
 import { pdfDocumentHtml } from './pdf-document';
 import { createRequire } from 'node:module';
 
+export async function previewChatPdf(bytes: Buffer, runtime: string, requestedPage: number) {
+  const load = new Function('url', 'return import(url)') as (url: string) => Promise<typeof import('pdfjs-dist')>;
+  const pdfjs = await load(pathToFileURL(path.join(runtime, 'legacy', 'build', 'pdf.mjs')).href);
+  pdfjs.GlobalWorkerOptions.workerSrc = pathToFileURL(path.join(runtime, 'legacy', 'build', 'pdf.worker.mjs')).href;
+  const task = pdfjs.getDocument({ data: new Uint8Array(bytes), useSystemFonts: true });
+  try {
+    const pdf = await task.promise;
+    const pageNumber = Math.min(requestedPage, pdf.numPages);
+    const page = await pdf.getPage(pageNumber);
+    const natural = page.getViewport({ scale: 1 });
+    const scale = Math.min(1.5, 1400 / natural.width, Math.sqrt(3_000_000 / (natural.width * natural.height)));
+    const viewport = page.getViewport({ scale });
+    const { createCanvas } = createRequire(path.join(runtime, 'package.json'))('@napi-rs/canvas') as typeof import('@napi-rs/canvas');
+    const canvas = createCanvas(Math.max(1, Math.ceil(viewport.width)), Math.max(1, Math.ceil(viewport.height)));
+    await page.render({ canvas: canvas as any, canvasContext: canvas.getContext('2d') as any, viewport }).promise;
+    return { kind: 'pdf' as const, image: `data:image/png;base64,${canvas.toBuffer('image/png').toString('base64')}`, page: pageNumber, pages: pdf.numPages };
+  } finally { await task.destroy(); }
+}
+
 export async function renderChatPdf(content: string): Promise<Buffer> {
   // The only script executed is our font-readiness check below. The generated
   // document's strict CSP blocks all document scripts; model HTML is sanitized.

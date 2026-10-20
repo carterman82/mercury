@@ -2,6 +2,8 @@ import type { ModelConnection, ModelInfo } from '../shared/types';
 import type { ChatInput, ChatResult } from './providers';
 import { requestJson, streamLines } from './providers';
 import { ModelHttpError, visualInputText, type ChatImage } from './vision';
+import { InactivityWatchdog } from './inactivity';
+import { ThinkingLimitError } from './thinking-guard';
 
 export function cloudEndpoint(connection: ModelConnection): string {
   const expected = connection.provider === 'openai' ? 'https://api.openai.com' : 'https://api.anthropic.com';
@@ -65,7 +67,9 @@ export async function cloudChat(connection: ModelConnection, token: string, inpu
   const body = claude
     ? { model: input.profile.model, ...claudeInput(input.messages), max_tokens: 8192, stream: true, ...(tools.length ? { tools: tools.map(tool => ({ name: tool.function.name, description: tool.function.description, input_schema: tool.function.parameters })) } : {}) }
     : { model: input.profile.model, input: responsesInput(input.messages), store: false, stream: true, ...(tools.length ? { tools: tools.map(tool => ({ type: 'function', ...tool.function, strict: false })) } : {}) };
-  const signal = AbortSignal.any([input.signal, AbortSignal.timeout(600_000)]);
+  const idle = new InactivityWatchdog(120_000, new ThinkingLimitError('timeout'));
+  const signal = AbortSignal.any([input.signal, idle.signal]);
+  try {
   const response = await fetch(`${cloudEndpoint(connection)}/v1/${claude ? 'messages' : 'responses'}`, { method: 'POST', headers: headers(connection, token), body: JSON.stringify(body), signal, redirect: 'error' });
   let text = '';
   let reasoning = '';
@@ -77,13 +81,15 @@ export async function cloudChat(connection: ModelConnection, token: string, inpu
     const value = line.slice(5).trim();
     if (!value || value === '[DONE]') continue;
     const event = JSON.parse(value);
+    const meaningful = event.delta?.text ?? event.delta?.thinking ?? event.delta?.partial_json ?? (typeof event.delta === 'string' ? event.delta : '');
+    if ((typeof meaningful === 'string' && meaningful.trim()) || (event.type === 'content_block_start' && event.content_block?.type === 'tool_use') || (event.type === 'response.output_item.added' && event.item?.type === 'function_call')) idle.progress();
     if (event.type === 'error' || event.type === 'response.failed' || event.type === 'response.incomplete') throw new ModelHttpError(400, event.error?.message ?? event.response?.error?.message ?? `Model request failed: ${event.type}.`);
     if (claude) {
       if (event.type === 'message_start') usage = { input: event.message?.usage?.input_tokens };
       if (event.type === 'content_block_start' && event.content_block?.type === 'tool_use') { input.onToolProgress?.(); calls.set(event.index, { id: event.content_block.id, name: event.content_block.name, arguments: '' }); }
       if (event.type === 'content_block_delta') {
         if (event.delta.type === 'text_delta') { text += event.delta.text; input.onText?.(event.delta.text); }
-        if (event.delta.type === 'thinking_delta') { reasoning += event.delta.thinking; input.onReasoning?.(event.delta.thinking); }
+        if (event.delta.type === 'thinking_delta') { reasoning = (reasoning + event.delta.thinking).slice(-100_000); input.onReasoning?.(event.delta.thinking); }
         if (event.delta.type === 'input_json_delta') {
           input.onToolProgress?.();
           const call = calls.get(event.index);
@@ -97,7 +103,7 @@ export async function cloudChat(connection: ModelConnection, token: string, inpu
       if (event.type === 'message_stop') completed = true;
     } else {
       if (event.type === 'response.output_text.delta') { text += event.delta; input.onText?.(event.delta); }
-      if (event.type === 'response.reasoning_summary_text.delta') { reasoning += event.delta; input.onReasoning?.(event.delta); }
+      if (event.type === 'response.reasoning_summary_text.delta') { reasoning = (reasoning + event.delta).slice(-100_000); input.onReasoning?.(event.delta); }
       if (event.type === 'response.output_item.added' && event.item?.type === 'function_call') { input.onToolProgress?.(); calls.set(event.output_index, { id: event.item.call_id, name: event.item.name, arguments: event.item.arguments ?? '' }); }
       if (event.type === 'response.function_call_arguments.delta') {
         input.onToolProgress?.();
@@ -113,4 +119,6 @@ export async function cloudChat(connection: ModelConnection, token: string, inpu
   }
   if (!completed) throw new Error('The model stream ended before the response completed. Try again.');
   return { text, ...(reasoning ? { reasoning } : {}), tools: [...calls.values()].map(call => ({ id: call.id, name: call.name, arguments: JSON.parse(call.arguments || '{}') })), usage };
+  } catch (error) { if (signal.aborted) throw signal.reason; throw error; }
+  finally { idle.dispose(); }
 }

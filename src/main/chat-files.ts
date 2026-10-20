@@ -17,6 +17,9 @@ export class ChatFiles {
   async bytes(id: string): Promise<Buffer> { await this.get(id); return fs.readFile(this.filename(id, '.bin')); }
   async text(id: string): Promise<string> { await this.get(id); return fs.readFile(this.filename(id, '.txt'), 'utf8'); }
   async image(id: string) { return this.formats.visionImage(await this.bytes(id)); }
+  async browserImage(bytes: Buffer): Promise<ChatFile> {
+    return this.store('Browser-screenshot.jpg', bytes, 'Browser screenshot: actual pixels are supplied to vision-capable models. No OCR was performed. Use the page text when vision is unavailable.', 'generated', { format: 'Browser screenshot', readStatus: 'partial', note: 'Screenshot of the isolated browser viewport.' });
+  }
   private async store(name: string, bytes: Buffer, text: string, kind: ChatFile['kind'], info: Partial<Pick<ChatFile, 'format' | 'readStatus' | 'note'>> = {}): Promise<ChatFile> {
     if (text.length > MAX_TEXT) throw new Error('Extracted file text exceeds 300,000 characters. Attach a smaller document.');
     if (bytes.length > MAX_BYTES) throw new Error('File exceeds the 25 MB limit.');

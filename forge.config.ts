@@ -27,15 +27,18 @@ async function copyRuntimePackages(target: string): Promise<void> {
     }
     throw new Error(`Could not locate runtime package ${name}.`);
   };
-  for (const dependency of ['docx', 'exceljs', 'pptxgenjs', 'tesseract.js', '@tesseract.js-data/eng']) await copy(dependency);
+  for (const dependency of ['docx', 'exceljs', 'pptxgenjs', 'tesseract.js', '@tesseract.js-data/eng', '@modelcontextprotocol/sdk', 'npm']) await copy(dependency);
 }
 
 const config: ForgeConfig = {
   buildIdentifier: () => process.env.LOCAL_PLAN_AGENT_BUILD_ID ?? '',
   // Playwright is a built-in capability rather than an import in the UI bundle,
   // so copy its runtime explicitly into every packaged app.
-  packagerConfig: { asar: true, name: 'Mercury', extraResource: ['node_modules/playwright', 'node_modules/playwright-core', '.build-resources/pdf-runtime', '.build-resources/file-runtime'] },
+  packagerConfig: { asar: true, name: 'Mercury', extraResource: ['.build-resources/browser-tools', '.build-resources/pdf-runtime', '.build-resources/file-runtime', '.build-resources/browser-runtime'] },
   hooks: { generateAssets: async () => {
+    const browserEntries = await fs.readdir(path.join('.build-resources', 'browser-runtime')).catch(() => []);
+    if (!browserEntries.some(name => name.startsWith('chromium_headless_shell-'))) throw new Error('Install the bundled Chromium runtime: set PLAYWRIGHT_BROWSERS_PATH=.build-resources/browser-runtime and run npx playwright install chromium --only-shell.');
+    for (const dependency of ['playwright', 'playwright-core']) await fs.cp(path.join('node_modules', dependency), path.join('.build-resources', 'browser-tools', 'node_modules', dependency), { recursive: true });
     const target = path.join('.build-resources', 'pdf-runtime', 'node_modules');
     await fs.mkdir(target, { recursive: true });
     for (const dependency of ['pdfjs-dist', '@napi-rs']) await fs.cp(path.join('node_modules', dependency), path.join(target, dependency), { recursive: true });

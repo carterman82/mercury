@@ -43,9 +43,12 @@ export interface Session {
 }
 export interface Project { id: string; path: string; name: string; }
 export interface ChatFile { id: string; name: string; size: number; kind: 'upload' | 'generated'; format?: string; readStatus?: 'readable' | 'partial' | 'metadata'; note?: string; }
-export interface ChatMessage { id: string; role: 'user' | 'assistant'; content: string; files?: ChatFile[]; model?: string; reasoning?: string; notice?: string; queued?: boolean; startedAt?: number; thinkingEndedAt?: number; completedAt?: number; }
+export interface FilePreview { kind: 'image' | 'pdf' | 'text'; text?: string; image?: string; page?: number; pages?: number; note?: string; }
+export interface BrowserPreview { url: string; image?: string; }
+export interface ChatMessage { id: string; role: 'user' | 'assistant'; content: string; files?: ChatFile[]; model?: string; reasoning?: string; notice?: string; queued?: boolean; toolActivity?: { name: string; status: 'running' | 'succeeded' | 'failed'; at: number }[]; startedAt?: number; thinkingEndedAt?: number; completedAt?: number; }
 export interface ChatThread { id: string; title: string; profile: ModelProfile; messages: ChatMessage[]; status: 'idle' | 'streaming' | 'stopped' | 'failed' | 'interrupted'; error?: string; updatedAt: number; }
-export interface Snapshot { projects: Project[]; sessions: Session[]; chats: ChatThread[]; settings: Settings; activeRole: AgentRole | null; activeChatId: string | null; activeChatIds?: string[]; modelRequests?: ModelRequestCount[]; }
+export interface ChatApproval { id: string; chatId: string; title: string; details: string; at: number; }
+export interface Snapshot { projects: Project[]; sessions: Session[]; chats: ChatThread[]; settings: Settings; activeRole: AgentRole | null; activeChatId: string | null; activeChatIds?: string[]; modelRequests?: ModelRequestCount[]; chatApprovals?: ChatApproval[]; }
 export interface ToolRequest { id: string; name: string; arguments: unknown; }
 
 export interface DesktopApi {
@@ -62,8 +65,11 @@ export interface DesktopApi {
   probe(profile: ModelProfile): Promise<boolean>;
   addChatFiles(files: File[]): Promise<ChatFile[]>;
   saveChatFile(fileId: string): Promise<string | null>;
+  previewChatFile(fileId: string, page?: number): Promise<FilePreview>;
+  previewChatBrowser(chatId: string): Promise<BrowserPreview | null>;
   sendChat(chatId: string | null, profile: ModelProfile, message: string, attachmentIds?: string[]): Promise<string>;
   stopChat(chatId: string): Promise<void>;
+  answerChatApproval(id: string, allow: boolean): Promise<void>;
   openLink(url: string): Promise<void>;
   plan(sessionId: string, feedback?: string): Promise<void>;
   savePlan(sessionId: string, content: PlanContent): Promise<void>;

@@ -17,12 +17,16 @@ export class ThinkingGuard {
     this.lastCheck = this.characters;
     const words = this.tail.toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? [];
     const seen = new Map<string, number>();
-    // Six repetitions of a twelve-word phrase strongly suggest a stalled thought.
+    let maximum = 0;
+    // Repeated headings/formulas amid new work are not a stalled thought.
+    // Require a phrase repeated six times AND a heavily duplicated recent window.
     for (let index = 0; index <= words.length - 12; index++) {
       const phrase = words.slice(index, index + 12).join(' ');
       const count = (seen.get(phrase) ?? 0) + 1;
-      if (count >= 6) throw new ThinkingLimitError('repetition');
+      maximum = Math.max(maximum, count);
       seen.set(phrase, count);
     }
+    const windows = Math.max(1, words.length - 11);
+    if (maximum >= 6 && 1 - seen.size / windows >= 0.65) throw new ThinkingLimitError('repetition');
   }
 }

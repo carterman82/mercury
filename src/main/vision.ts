@@ -8,14 +8,14 @@ export function hasImages(messages: unknown[]): boolean {
 
 export function textOnlyMessages(messages: unknown[]): unknown[] {
   return messages.map((message: any) => {
-    const { images, ...rest } = message;
+    const { images, browserCapture, ...rest } = message;
     return images?.length ? { ...rest, content: `${rest.content ?? ''}\n[Image input unavailable for this model. Only the extracted text/metadata above is available. Do not claim to see the image or infer its visual contents from its filename.]` } : rest;
   });
 }
 
 export function localImageMessages(messages: unknown[], ollama: boolean): unknown[] {
   return messages.map((message: any) => {
-    const { images, ...rest } = message;
+    const { images, browserCapture, ...rest } = message;
     if (message.role !== 'user' || !images?.length) return rest;
     if (ollama) return { ...rest, content: visualInputText(rest.content ?? ''), images: images.map((image: ChatImage) => image.data) };
     return { ...rest, content: [{ type: 'text', text: visualInputText(rest.content ?? '') }, ...images.map((image: ChatImage) => ({ type: 'image_url', image_url: { url: `data:${image.mimeType};base64,${image.data}` } }))] };
