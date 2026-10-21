@@ -29,11 +29,14 @@ declare const MAIN_WINDOW_VITE_NAME: string;
 const providerSchema = z.enum(['ollama', 'lmstudio', 'openai', 'claude', 'codex']);
 const connectionSchema = z.object({ id: z.string().min(1).max(100), provider: providerSchema, label: z.string().min(1).max(120), url: z.string().url(), apiToken: z.string().max(4096).optional(), hasToken: z.boolean().optional(), auth: z.literal('chatgpt').optional(), deviceId: z.string().max(200).optional(), deviceLabel: z.string().max(200).optional(), maxConcurrentRequests: z.number().int().min(1).max(32).optional() });
 const profileSchema = z.object({ provider: providerSchema, connectionId: z.string().optional(), endpoint: z.string().url().optional(), model: z.string().min(1), contextLimit: z.number().int().min(2048).max(Number.MAX_SAFE_INTEGER), contextMode: z.enum(['auto', 'manual']).optional(), toolVerified: z.boolean().optional() });
+const localPoolProfileSchema = profileSchema.refine(profile => profile.provider === 'lmstudio' || profile.provider === 'ollama', 'Additional pool models must use a local model server.');
 const settingsSchema = z.object({
   connections: z.array(connectionSchema).max(50),
   mainModel: profileSchema.nullable(),
   plannerModel: profileSchema.nullable(),
   subagentModel: profileSchema.nullable(),
+  additionalMainModels: z.array(localPoolProfileSchema).max(31).optional(),
+  additionalSubagentModels: z.array(localPoolProfileSchema).max(31).optional(),
 });
 
 let window: BrowserWindow | null = null;
@@ -147,6 +150,8 @@ app.whenReady().then(async () => {
     if (settings.connections.find(item => item.id === id)?.provider === 'codex') await codex.disconnect();
     settings.connections = settings.connections.filter(item => item.id !== id);
     for (const key of ['mainModel', 'plannerModel', 'subagentModel'] as const) if (settings[key]?.connectionId === id) settings[key] = null;
+    settings.additionalMainModels = settings.additionalMainModels?.filter(profile => profile.connectionId !== id);
+    settings.additionalSubagentModels = settings.additionalSubagentModels?.filter(profile => profile.connectionId !== id);
     writeSecret(id, null); writeSecret(`${id}-registration`, null);
     store.saveSettings(settings); discovery.invalidate(); notify();
   });
@@ -184,7 +189,7 @@ app.whenReady().then(async () => {
       if (connection.auth === 'chatgpt' && (previous?.auth !== 'chatgpt' || connection.apiToken !== undefined)) throw new Error('Use Continue with ChatGPT to connect this account.');
       if (previous?.auth === 'chatgpt' && connection.auth !== 'chatgpt') throw new Error('Disconnect the ChatGPT account before changing authentication.');
     }
-    for (const profile of [settings.mainModel, settings.plannerModel, settings.subagentModel]) {
+    for (const profile of [settings.mainModel, settings.plannerModel, settings.subagentModel, ...(settings.additionalMainModels ?? []), ...(settings.additionalSubagentModels ?? [])]) {
       if (!profile) continue;
       const connection = settings.connections.find(item => item.id === profile.connectionId);
       if (!connection || connection.provider !== profile.provider) throw new Error(`The model ${profile.model} needs a matching saved connection.`);

@@ -79,6 +79,28 @@ it('repairs one malformed Planner response and preserves blocking questions', as
   expect(store.session(session.id).status).toBe('awaiting_input');
 });
 
+it('pins the ordered Subagent pool at planning and routes project delegation to another device', async () => {
+  const { store, session } = fixture();
+  const remote = { ...profile, connectionId: 'remote', model: 'remote-sub' };
+  store.saveSettings({ ...store.settings(), connections: [...store.settings().connections, { id: 'remote', provider: 'ollama', label: 'Remote', url: 'http://other-device:11434' }], additionalSubagentModels: [remote] });
+  let mainCalls = 0;
+  const requests: ChatInput[] = [];
+  const providers = { reserveAgent: (candidates: typeof profile[], avoid?: typeof profile) => ({ id: Symbol(), profile: avoid ? candidates.find(item => item.connectionId !== avoid.connectionId) ?? candidates[0] : candidates[0], release: () => {} }), chat: async (input: ChatInput) => {
+    requests.push(input);
+    if (input.profile.model === 'planner') return { text: JSON.stringify(plan), tools: [] };
+    if (input.profile.model === 'remote-sub') return { text: 'Remote findings', tools: [] };
+    if (++mainCalls === 1) return { text: '', tools: [{ id: 'delegate', name: 'delegate_task', arguments: { task: 'Inspect', context: '' } }] };
+    return { text: '', tools: [{ id: 'finish', name: 'finish', arguments: { summary: 'Done', verification: 'Read findings' } }] };
+  } } as unknown as LocalProviders;
+  const runner = new Runner(store, providers, () => {});
+  await runner.plan(session.id);
+  expect(store.session(session.id).subagentCandidates?.map(item => item.model)).toEqual(['small', 'remote-sub']);
+  store.saveSettings({ ...store.settings(), additionalSubagentModels: [] });
+  await runner.approve(session.id, 1);
+  expect(requests.map(item => item.profile.model)).toEqual(['planner', 'main', 'remote-sub', 'main']);
+  expect(store.session(session.id).status).toBe('completed');
+});
+
 it('returns delegation failures to Main without granting write tools or changing provider', async () => {
   const { store, session } = fixture(); let mainCalls = 0;
   const providers = { chat: async (input: ChatInput) => {

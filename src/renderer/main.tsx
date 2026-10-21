@@ -1,5 +1,4 @@
 import { ConnectionProgress } from './ConnectionProgress';
-import { contextLimitDetails } from '../shared/cloud-context';
 import { refreshModelContext } from '../shared/model-context';
 import { useDiscovery } from './useDiscovery';
 import { connectionGroups } from '../shared/connections';
@@ -9,7 +8,7 @@ import type { ModelConnection, ModelInfo, ModelProfile, PlanContent, ProviderKin
 import './style.css';
 import { ChatPanel } from './ChatPanel';
 import { Markdown } from './Markdown';
-import { ModelSelect as ProfileSelect } from './ModelSelect';
+import { RoleModels } from './RoleModels';
 
 const modelRoles = [
   { key: 'plannerModel', label: 'Planner model', description: 'Plans project infrastructure and the approach to project changes.' },
@@ -41,6 +40,8 @@ function SettingsPanel({ settings, onClose, onSave, run }: { settings: Settings;
         .map(item => ({ ...latest.settings.connections.find(saved => saved.id === item.id), ...item, hasToken: latest.settings.connections.find(saved => saved.id === item.id)?.hasToken ?? item.hasToken })),
         ...latest.settings.connections.filter(item => !current.connections.some(saved => saved.id === item.id))];
       return { ...current, connections,
+        additionalMainModels: current.additionalMainModels?.filter(profile => connections.some(item => item.id === profile.connectionId)),
+        additionalSubagentModels: current.additionalSubagentModels?.filter(profile => connections.some(item => item.id === profile.connectionId)),
         ...Object.fromEntries(modelRoles.map(({ key }) => [key, current[key] && connections.some(item => item.id === current[key]?.connectionId) ? current[key] : null])) };
     });
     await refresh(true);
@@ -58,7 +59,10 @@ function SettingsPanel({ settings, onClose, onSave, run }: { settings: Settings;
   };
   useEffect(() => {
     if (!discovery) return;
-    setDraft(current => ({ ...current, ...Object.fromEntries(modelRoles.map(({ key }) => [key, current[key] ? refreshModelContext(current[key]!, discovery.models) : null])), connections: [...current.connections.map(saved => {
+    setDraft(current => ({ ...current, ...Object.fromEntries(modelRoles.map(({ key }) => [key, current[key] ? refreshModelContext(current[key]!, discovery.models) : null])),
+      additionalMainModels: current.additionalMainModels?.map(profile => refreshModelContext(profile, discovery.models)),
+      additionalSubagentModels: current.additionalSubagentModels?.map(profile => refreshModelContext(profile, discovery.models)),
+      connections: [...current.connections.map(saved => {
       const found = discovery.connections.find(item => item.id === saved.id);
       return found ? { ...saved, deviceId: found.deviceId, deviceLabel: found.deviceLabel } : saved;
     }), ...discovery.connections.filter(item => !current.connections.some(saved => saved.id === item.id))] }));
@@ -122,15 +126,9 @@ function SettingsPanel({ settings, onClose, onSave, run }: { settings: Settings;
       </div>)}
     </article>)}</section>
     {hasModels && <section aria-label="Model roles"><h3>Model roles</h3><div className="model-grid">{modelRoles.map(({ key, label, description }) => {
-      const selected = models.find(model => model.provider === draft[key]?.provider && model.connectionId === draft[key]?.connectionId && model.id === draft[key]?.model);
-      const context = contextLimitDetails(selected);
-      return <div className="model-role" key={key}>
-      <ProfileSelect hideUnavailable label={label} description={description} value={draft[key]} models={models} connections={draft.connections} onOther={() => setOther(true)} optional={key !== 'mainModel'} onChange={profile => setDraft(current => ({ ...current, [key]: profile ?? null }))} />
-      {draft[key] && selected && <><label className="field compact"><span>Context limit · {label}</span><input type="number" min={2048} max={context?.tokens} aria-describedby={`context-source-${key}`} value={draft[key]!.contextLimit} onChange={event => { const contextLimit = Number(event.target.value); setDraft(current => ({ ...current, [key]: current[key] ? { ...current[key]!, contextLimit, contextMode: 'manual' } : null })); }} /></label>
-        <p className="hint" id={`context-source-${key}`}>{context?.source === 'published' ? `Published model limit · ${context.tokens.toLocaleString()} tokens · Verified ${context.verifiedAt}. Your account may have a lower limit.` : context ? `Reported by connection · ${context.tokens.toLocaleString()} tokens` : 'Maximum unknown. Set a working limit for this model.'}</p>
-        {context && draft[key]!.contextMode === 'manual' && <button className="text-button" aria-label={`Use model maximum · ${label}`} onClick={() => setDraft(current => ({ ...current, [key]: current[key] ? { ...current[key]!, contextLimit: context.tokens, contextMode: 'auto' } : null }))}>Use model maximum</button>}
-      </>}
-    </div>; })}</div></section>}
+      const extrasKey = key === 'mainModel' ? 'additionalMainModels' : key === 'subagentModel' ? 'additionalSubagentModels' : null;
+      return <RoleModels key={key} label={label} description={description} value={draft[key]} extras={extrasKey ? draft[extrasKey] : []} models={models} connections={draft.connections} onOther={() => setOther(true)} optional={key !== 'mainModel'} onChange={(profile, extras) => setDraft(current => ({ ...current, [key]: profile, ...(extrasKey ? { [extrasKey]: extras } : {}) }))} />;
+    })}</div></section>}
     <p className="hint">Context defaults to the reported or published model maximum. You can lower it manually.</p>
     <p className="hint">Unset Planner and Subagent models use Main. Subagents return read-only findings; Main handles changes. Project implementation starts after plan approval.</p>
     <footer><button className="primary" disabled={connecting} onClick={() => run(async () => { setBusyMessage('Saving settings…'); setConnecting(true); try { await onSave(draft); onClose(); } finally { setConnecting(false); } })}>Save settings</button></footer>

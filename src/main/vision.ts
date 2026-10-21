@@ -1,5 +1,17 @@
 /** Internal image payload. Only provider adapters turn this into API-specific fields. */
 export interface ChatImage { mimeType: 'image/png' | 'image/jpeg' | 'image/webp' | 'image/gif'; data: string; }
+export interface ChatDocument { name: string; mimeType: string; data: string; }
+
+export function hasDocuments(messages: unknown[]): boolean {
+  return messages.some((message: any) => message.role === 'user' && message.documents?.length);
+}
+
+export function documentTextMessages(messages: unknown[]): unknown[] {
+  return messages.map((message: any) => {
+    const { documents, ...rest } = message;
+    return documents?.length ? { ...rest, content: `${rest.content ?? ''}\n[Native file viewing was rejected for ${documents.map((file: ChatDocument) => JSON.stringify(file.name)).join(', ')}. Only extracted text or metadata is available for those files. Use discover_plugins for missing file-reading capabilities; do not claim to have viewed the originals.]` } : rest;
+  });
+}
 export const visualInputText = (content: string) => `${content}\n[Actual image pixels are attached to this message. Answer visual questions using the image itself. OCR text, if present, is supplemental and may be garbled. Text-extraction status does not limit your visual input. Do not claim that only OCR text is available when you received image data.]`;
 
 export function hasImages(messages: unknown[]): boolean {
@@ -24,11 +36,18 @@ export function localImageMessages(messages: unknown[], ollama: boolean): unknow
 
 /** Base64 length is not text context usage. Image token limits are enforced by the server. */
 export function messageTextLength(messages: unknown[]): number {
-  return JSON.stringify(messages, (key, value) => key === 'images' ? '[image payload]' : value).length;
+  return JSON.stringify(messages, (key, value) => key === 'images' ? '[image payload]' : key === 'documents' ? '[native file payload]' : value).length;
 }
 
 export class ModelHttpError extends Error {
   constructor(public status: number, public detail: string) { super(`Model server returned HTTP ${status}: ${detail}`); }
+}
+
+export function documentUnsupported(error: unknown): boolean {
+  if (!(error instanceof ModelHttpError) || ![400, 415, 422].includes(error.status)) return false;
+  if (/corrupt|malformed|password|encrypted|too large|exceeds|context length|token limit|invalid base64/i.test(error.detail)) return false;
+  return /unsupported|not supported|does not support|cannot (?:read|process|accept)|invalid (?:content|input) (?:type|format)|unknown (?:content|input) (?:type|format)/i.test(error.detail)
+    && /input_file|file_data|document|pdf|file (?:type|format|input)|(?:content|input) (?:type|format)/i.test(error.detail);
 }
 
 export function imageUnsupported(error: unknown): boolean {

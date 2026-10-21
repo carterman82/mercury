@@ -1,4 +1,4 @@
-import { delegateTask, delegationTool, resolveModel } from './delegation';
+import { delegateTask, delegationTool, mainDelegationInstructions, resolveModel, resolveCandidates, reserveAgent } from './delegation';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { parsePlan, planMarkdown, planSchema } from '../shared/plan';
@@ -84,8 +84,10 @@ export class Runner {
   private async useTool(workspace: Workspace, call: ToolRequest, role: AgentRole, session: Session, signal: AbortSignal, gate: CommandGate): Promise<string> {
     if (role === 'main' && call.name === 'delegate_task') {
       this.event(session, 'tool', 'Subagent is analyzing the delegated task.', 'subagent');
+      const lease = reserveAgent(this.providers, session.subagentCandidates ?? [session.assignments!.subagent], session.assignments!.main);
       try {
-        const findings = await delegateTask(this.providers, session.assignments!.subagent, call.arguments, signal, readTools.filter((tool: any) => tool.function.name !== 'discover_plugins'), async read => this.useTool(workspace, read, 'subagent', session, signal, gate), notice => this.event(session, 'status', notice, 'subagent'));
+        this.event(session, 'status', `Using Subagent (${lease.profile.model}).`, 'subagent');
+        const findings = await delegateTask(this.providers, lease.profile, call.arguments, signal, readTools.filter((tool: any) => tool.function.name !== 'discover_plugins'), async read => this.useTool(workspace, read, 'subagent', session, signal, gate), notice => this.event(session, 'status', notice, 'subagent'), undefined, lease.id);
         this.event(session, 'message', findings, 'subagent');
         return findings;
       } catch (error) {
@@ -93,7 +95,7 @@ export class Runner {
         const message = 'Subagent failed: ' + String(error);
         this.event(session, 'error', message, 'subagent');
         return message;
-      }
+      } finally { lease.release(); }
     }
     const parsed = role === 'main' ? codeSchema.parse(call) : readSchema.parse(call);
     const args: any = parsed.arguments;
@@ -137,6 +139,7 @@ export class Runner {
     this.onChange();
     const profile = session.assignments![role];
     const messages: any[] = [{ role: 'system', content: `You are the ${role} agent in a local coding assistant. Follow the user's objective and project evidence. Only use offered tools. Main may use delegate_task for bounded read-only analysis and must act on the returned findings itself. When a task may need a specialized capability, call discover_plugins before proceeding; it is safe and informational. Never claim unrun checks passed. Keep responses concise.` }, { role: 'user', content: prompt }];
+    if (role === 'main') messages[0].content += mainDelegationInstructions;
     let finalText = '';
     let repairedToolError = false;
     for (let turn = 0; turn < maxTurns; turn++) {
@@ -173,9 +176,14 @@ export class Runner {
   async plan(sessionId: string, feedback = ''): Promise<void> {
     const session = this.store.session(sessionId);
     if (!['draft', 'awaiting_review', 'awaiting_input', 'interrupted', 'failed'].includes(session.status)) throw new Error('This session cannot start planning now.');
-    const assignments = this.assignments(this.store.settings());
+    const settings = this.store.settings();
+    const assignments = this.assignments(settings);
+    const mainLease = reserveAgent(this.providers, resolveCandidates(settings, 'main'));
+    assignments.main = mainLease.profile;
+    mainLease.release();
     const { controller, gate } = this.begin(session);
     session.assignments = assignments;
+    session.subagentCandidates = resolveCandidates(settings, 'subagent', assignments.main);
     session.status = 'planning';
     this.save(session);
     try {

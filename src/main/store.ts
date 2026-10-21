@@ -79,7 +79,9 @@ export class Store {
     return { connections,
       mainModel: migrateProfile('mainModel' in saved ? saved.mainModel : saved.defaultModel ?? saved.overrides?.coder) ?? null,
       plannerModel: migrateProfile('plannerModel' in saved ? saved.plannerModel : saved.overrides?.planner) ?? null,
-      subagentModel: migrateProfile(saved.subagentModel) ?? null };
+      subagentModel: migrateProfile(saved.subagentModel) ?? null,
+      additionalMainModels: (saved.additionalMainModels ?? []).map(migrateProfile),
+      additionalSubagentModels: (saved.additionalSubagentModels ?? []).map(migrateProfile) };
   }
   saveSettings(settings: Settings): void { this.db.prepare("INSERT OR REPLACE INTO settings (key,data) VALUES ('app',?)").run(JSON.stringify(settings)); }
   discoveryCache(): unknown {

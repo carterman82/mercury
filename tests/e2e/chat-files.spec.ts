@@ -56,6 +56,7 @@ test('uploads files, creates and saves a PDF, reads that PDF, and restores file 
   let sawExtractedPdf = false;
   const server = createServer(async (request, response) => {
     if (request.url === '/api/tags') { response.end(JSON.stringify({ models: [{ name: 'file-model' }] })); return; }
+    if (request.url !== '/api/chat') { response.end('{}'); return; }
     let raw = ''; for await (const chunk of request) raw += chunk;
     const input = JSON.parse(raw);
     expect(input.tools.some((tool: any) => tool.function.name === 'create_pdf')).toBe(true);

@@ -2,21 +2,26 @@ import type { CodexService } from './codex';
 import type { ModelConnection, ModelInfo, ModelProfile, Settings, ToolRequest } from '../shared/types';
 import { ReasoningStream } from './reasoning';
 import { cloudChat, cloudDiscover, cloudEndpoint } from './cloud-providers';
-import { hasImages, imageUnsupported, localImageMessages, ModelHttpError, textOnlyMessages } from './vision';
+import { documentTextMessages, documentUnsupported, hasDocuments, hasImages, imageUnsupported, localImageMessages, ModelHttpError, textOnlyMessages } from './vision';
 import { ModelRequests } from './model-requests';
+import { AgentScheduler, type AgentLease } from './agent-scheduler';
+import { connectionGroups } from '../shared/connections';
 import { InactivityWatchdog } from './inactivity';
 import { ThinkingLimitError } from './thinking-guard';
 import { isSubscription, openAIRoutes } from '../shared/openai-routing';
 
 export interface ChatResult { text: string; reasoning?: string; tools: ToolRequest[]; usage?: { input?: number; output?: number }; }
-export interface ChatInput { profile: ModelProfile; messages: unknown[]; tools?: unknown[]; signal: AbortSignal; disableThinking?: boolean; onRoutingNotice?: (notice: string) => void; onRequestState?: (state: 'queued' | 'running') => void; onImageFallback?: (reason?: string) => void; onText?: (delta: string) => void; onReasoning?: (delta: string) => void; onToolProgress?: () => void; }
+export interface ChatInput { profile: ModelProfile; agentLease?: symbol; messages: unknown[]; tools?: unknown[]; signal: AbortSignal; disableThinking?: boolean; onRoutingNotice?: (notice: string) => void; onRequestState?: (state: 'queued' | 'running') => void; onImageFallback?: (reason?: string) => void; onFileFallback?: (reason?: string) => void; onText?: (delta: string) => void; onReasoning?: (delta: string) => void; onToolProgress?: () => void; }
 export interface ModelProvider {
+  reserveAgent?(profiles: ModelProfile[], avoid?: ModelProfile): AgentLease;
   discover(connection: ModelConnection): Promise<ModelInfo[]>;
   chat(input: ChatInput): Promise<ChatResult>;
   probe(profile: ModelProfile, signal?: AbortSignal): Promise<boolean>;
+  viewingCapabilities?(profile: ModelProfile, signal: AbortSignal): Promise<{ images: boolean | null; nativeFiles: boolean }>;
 }
 
 function subscriptionUnavailable(error: unknown): boolean {
+  if (documentUnsupported(error)) return false;
   if (error instanceof ModelHttpError && ([401, 403, 404, 408, 429].includes(error.status) || error.status >= 500)) return true;
   if (error instanceof TypeError && /fetch|network|connection/i.test(error.message)) return true;
   const message = error instanceof Error ? error.message : '';
@@ -67,8 +72,16 @@ export async function* streamLines(response: Response, signal: AbortSignal): Asy
 export class LocalProviders implements ModelProvider {
   private cloudModels: ModelInfo[] = [];
   private textOnlyModels = new Map<string, number>();
-  private modelMetadata = new Map<string, { parallel?: number; vision?: boolean; canonical: string }>();
+  private modelMetadata = new Map<string, { parallel?: number; vision?: boolean; canonical: string; checkedAt?: number }>();
   private requests: ModelRequests;
+  private scheduler = new AgentScheduler(profile => {
+    const capacity = this.requestCapacity(profile);
+    const connection = this.settings().connections.find(item => item.id === profile.connectionId);
+    const device = connection ? connectionGroups([connection], [])[0].id : capacity.base;
+    const pool = this.requestCounts.find(item => item.key === capacity.key);
+    return { ...capacity, device, active: (pool?.active ?? 0) + (pool?.queued ?? 0) };
+  });
+  reserveAgent(profiles: ModelProfile[], avoid?: ModelProfile): AgentLease { return this.scheduler.reserve(profiles, avoid); }
   get requestCounts() { return this.requests.snapshot(); }
   constructor(private settings: () => Settings, private tokenFor: (id: string) => string | undefined = () => undefined, private connectionFailed: () => void = () => {}, private chatGPTToken: (id: string) => Promise<string> = async () => { throw new Error('ChatGPT sign-in is unavailable.'); }, requestsChanged: () => void = () => {}, private codex?: CodexService) { this.requests = new ModelRequests(requestsChanged); }
 
@@ -102,7 +115,7 @@ export class LocalProviders implements ModelProvider {
       if (!connection || !['lmstudio', 'ollama'].includes(model.provider)) continue;
       const key = JSON.stringify([model.provider, endpoint(connection.url), model.id]);
       const previous = this.modelMetadata.get(key);
-      this.modelMetadata.set(key, { canonical: model.id, vision: model.visionCapable ?? previous?.vision, parallel: model.parallelRequests ?? previous?.parallel });
+      this.modelMetadata.set(key, { canonical: model.id, vision: model.visionCapable ?? previous?.vision, parallel: model.parallelRequests ?? previous?.parallel, checkedAt: typeof model.visionCapable === 'boolean' ? Date.now() : previous?.checkedAt });
     }
   }
 
@@ -139,19 +152,24 @@ export class LocalProviders implements ModelProvider {
             const model = models[next++];
             try {
               const details = await requestJson(`${base}/api/show`, { ...init, method: 'POST', headers: { ...init.headers, 'content-type': 'application/json' }, body: JSON.stringify({ model: model.id }) });
+              if (Array.isArray(details.capabilities)) {
+                model.visionCapable = details.capabilities.includes('vision');
+                model.toolCapable = details.capabilities.includes('tools');
+              }
               const info = details.model_info ?? {};
               const maximum = info[`${info['general.architecture']}.context_length`] ?? Object.entries(info).find(([key]) => key.endsWith('.context_length'))?.[1];
               if (Number.isSafeInteger(maximum) && maximum >= 2048) model.contextLimit = maximum;
             } catch { /* Keep the catalog usable when optional metadata is absent. */ }
           }
         }));
+        for (const model of models) this.modelMetadata.set(JSON.stringify([kind, base, model.id]), { canonical: model.id, vision: model.visionCapable, checkedAt: Date.now() });
         return models;
       }
       const data = await requestJson(`${base}/api/v1/models`, { signal: controller.signal, headers: this.headers(connection.id, connection.apiToken) });
       return (data.models ?? data.data ?? []).filter((model: any) => !model.type || model.type === 'llm').map((model: any) => {
         const id = String(model.key ?? model.id);
         const parallel = model.loaded_instances?.[0]?.config?.parallel;
-        const info = { canonical: id, vision: model.capabilities?.vision, parallel: Number.isInteger(parallel) && parallel > 0 ? Math.min(parallel, 32) : undefined };
+        const info = { canonical: id, vision: typeof model.capabilities?.vision === 'boolean' ? model.capabilities.vision : undefined, checkedAt: Date.now(), parallel: Number.isInteger(parallel) && parallel > 0 ? Math.min(parallel, 32) : undefined };
         for (const alias of [id, ...(model.loaded_instances ?? []).map((instance: any) => instance.id)]) this.modelMetadata.set(JSON.stringify([kind, base, alias]), info);
         return {
         provider: kind, connectionId: connection.id, connectionLabel: connection.label, id: String(model.key ?? model.id), label: String(model.display_name ?? model.key ?? model.id),
@@ -166,6 +184,51 @@ export class LocalProviders implements ModelProvider {
 
   private rememberCloudConnection(connection: ModelConnection, models: ModelInfo[]): void {
     this.cloudModels = [...this.cloudModels.filter(model => model.connectionId !== connection.id), ...models.filter(model => model.provider === 'openai' || model.provider === 'codex')];
+  }
+
+  async viewingCapabilities(profile: ModelProfile, signal: AbortSignal): Promise<{ images: boolean | null; nativeFiles: boolean }> {
+    signal.throwIfAborted();
+    if (profile.provider === 'openai' || profile.provider === 'claude') return { images: true, nativeFiles: true };
+    if (profile.provider === 'codex') {
+      const model = this.cloudModels.find(item => item.provider === 'codex' && item.connectionId === profile.connectionId && item.id === profile.model);
+      return { images: model?.visionCapable ?? null, nativeFiles: false };
+    }
+    const base = this.url(profile);
+    const key = JSON.stringify([profile.provider, base, profile.model]);
+    const cached = this.modelMetadata.get(key);
+    if (typeof cached?.vision === 'boolean' && Date.now() - (cached.checkedAt ?? 0) < 5 * 60_000) return { images: cached.vision, nativeFiles: false };
+    const connection = this.settings().connections.find(item => item.id === profile.connectionId && item.provider === profile.provider)
+      ?? this.settings().connections.find(item => item.provider === profile.provider && endpoint(item.url) === base);
+    const controller = new AbortController();
+    const abort = () => controller.abort(signal.reason);
+    signal.addEventListener('abort', abort, { once: true });
+    const timer = setTimeout(() => controller.abort(new Error('Model capability check timed out.')), 5_000);
+    try {
+      signal.throwIfAborted();
+      const headers = this.headers(connection?.id, connection?.apiToken);
+      if (profile.provider === 'ollama') {
+        const details = await requestJson(`${base}/api/show`, { method: 'POST', headers: { ...headers, 'content-type': 'application/json' }, body: JSON.stringify({ model: profile.model }), signal: controller.signal });
+        if (Array.isArray(details.capabilities)) this.modelMetadata.set(key, { ...cached, canonical: cached?.canonical ?? profile.model, vision: details.capabilities.includes('vision'), checkedAt: Date.now() });
+        else return { images: null, nativeFiles: false };
+      } else {
+        const data = await requestJson(`${base}/api/v1/models`, { headers, signal: controller.signal });
+        for (const model of data.models ?? data.data ?? []) {
+          if (model.type && model.type !== 'llm') continue;
+          const id = String(model.key ?? model.id);
+          const parallel = model.loaded_instances?.[0]?.config?.parallel;
+          const info = { canonical: id, vision: typeof model.capabilities?.vision === 'boolean' ? model.capabilities.vision : undefined, checkedAt: Date.now(), parallel: Number.isInteger(parallel) && parallel > 0 ? Math.min(parallel, 32) : undefined };
+          for (const alias of [id, ...(model.loaded_instances ?? []).map((instance: any) => instance.id)]) this.modelMetadata.set(JSON.stringify([profile.provider, base, alias]), info);
+        }
+      }
+      signal.throwIfAborted();
+      return { images: this.modelMetadata.get(key)?.vision ?? null, nativeFiles: false };
+    } catch {
+      signal.throwIfAborted();
+      return { images: null, nativeFiles: false };
+    } finally {
+      clearTimeout(timer);
+      signal.removeEventListener('abort', abort);
+    }
   }
 
   async chat(input: ChatInput): Promise<ChatResult> {
@@ -193,17 +256,43 @@ export class LocalProviders implements ModelProvider {
     throw new Error('No model connection is available.');
   }
 
+  private requestCapacity(profile: ModelProfile) {
+    const connection = this.settings().connections.find(item => item.id === profile.connectionId && item.provider === profile.provider);
+    const base = profile.provider === 'openai' || profile.provider === 'claude' ? connection?.url ?? profile.endpoint ?? '' : this.url(profile);
+    const metadata = this.modelMetadata.get(JSON.stringify([profile.provider, base, profile.model]));
+    const limit = Math.max(1, Math.min(32, connection?.maxConcurrentRequests ?? metadata?.parallel ?? (profile.provider === 'ollama' ? 1 : 4)));
+    const server = profile.provider === 'lmstudio' || profile.provider === 'ollama' ? new URL(base) : null;
+    if (server && ['localhost', '127.0.0.1', '[::1]'].includes(server.hostname.toLowerCase())) server.hostname = '127.0.0.1';
+    const key = JSON.stringify([profile.provider, server?.toString().replace(/\/$/, '') ?? base, metadata?.canonical ?? profile.model]);
+    return { base, key, limit };
+  }
   private async chatOnConnection(input: ChatInput): Promise<ChatResult> {
-    const connection = this.settings().connections.find(item => item.id === input.profile.connectionId && item.provider === input.profile.provider);
-    const base = input.profile.provider === 'openai' || input.profile.provider === 'claude' ? connection?.url ?? input.profile.endpoint ?? '' : this.url(input.profile);
-    const metadata = this.modelMetadata.get(JSON.stringify([input.profile.provider, base, input.profile.model]));
-    const limit = Math.max(1, Math.min(32, connection?.maxConcurrentRequests ?? metadata?.parallel ?? (input.profile.provider === 'ollama' ? 1 : 4)));
-    const key = JSON.stringify([input.profile.provider, base, metadata?.canonical ?? input.profile.model]);
-    const release = await this.requests.acquire(key, { ...input.profile, endpoint: base }, limit, input.signal, () => input.onRequestState?.('queued'));
+    const { base, key, limit } = this.requestCapacity(input.profile);
+    const finish = this.scheduler.requestStarted(input.agentLease, key);
     try {
-      input.signal.throwIfAborted(); input.onRequestState?.('running');
-      return await this.chatWithImages(input);
-    } finally { release(); }
+      const release = await this.requests.acquire(key, { ...input.profile, endpoint: base }, limit, input.signal, () => input.onRequestState?.('queued'));
+      try {
+        input.signal.throwIfAborted(); input.onRequestState?.('running');
+        return await this.chatWithDocuments(input);
+      } finally { release(); }
+    } finally { finish(); }
+  }
+
+  private async chatWithDocuments(input: ChatInput): Promise<ChatResult> {
+    if (!hasDocuments(input.messages)) return this.chatWithImages(input);
+    let emitted = false;
+    try {
+      return await this.chatWithImages({ ...input,
+        onText: delta => { if (delta) emitted = true; input.onText?.(delta); },
+        onReasoning: delta => { if (delta) emitted = true; input.onReasoning?.(delta); },
+        onToolProgress: () => { emitted = true; input.onToolProgress?.(); },
+      });
+    } catch (error) {
+      input.signal.throwIfAborted();
+      if (emitted || !documentUnsupported(error)) throw error;
+      input.onFileFallback?.('The model could not read the attached file directly. Using extracted content and available plugins.');
+      return this.chatWithImages({ ...input, messages: documentTextMessages(input.messages) });
+    }
   }
 
   private async chatWithImages(input: ChatInput): Promise<ChatResult> {
@@ -215,6 +304,10 @@ export class LocalProviders implements ModelProvider {
       return this.chatOnce({ ...input, messages: textOnlyMessages(input.messages) });
     };
     if ((this.textOnlyModels.get(key) ?? 0) > Date.now()) return fallback();
+    if (input.profile.provider === 'ollama' || input.profile.provider === 'lmstudio') {
+      const metadata = this.modelMetadata.get(JSON.stringify([input.profile.provider, this.url(input.profile), input.profile.model]));
+      if (metadata?.vision === false) return fallback();
+    }
     let emitted = false;
     try {
       return await this.chatOnce({ ...input,

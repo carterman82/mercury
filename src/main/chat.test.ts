@@ -1,4 +1,4 @@
-import { afterEach, expect, it } from 'vitest';
+import { afterEach, expect, it, vi } from 'vitest';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
@@ -75,6 +75,121 @@ it('returns unauthorized Subagent file reads as errors for Main to handle', asyn
   const id = await new ChatService(store, provider, () => {}, () => false, files).send(null, profile, 'Analyze');
   expect(store.chat(id).status).toBe('idle');
   expect(store.chat(id).messages.at(-1)?.toolActivity?.[0].status).toBe('failed');
+});
+
+async function uploadSources(store: Store, count: number, content = 'Source evidence') {
+  const root = directories.at(-1)!;
+  const files = new ChatFiles(path.join(root, 'files'), async text => makePdf(text), async () => 'PDF');
+  const uploads = [];
+  for (let index = 0; index < count; index++) {
+    const filename = path.join(root, `source-${index}.txt`);
+    writeFileSync(filename, `${content} ${index}`);
+    uploads.push(await files.import(filename));
+  }
+  store.saveSettings({ ...store.settings(), subagentModel: { ...profile, model: 'gemma' } });
+  return { files, uploads };
+}
+
+it('automatically dispatches eight files to the configured model before Main, with at most three concurrent tasks', async () => {
+  const store = fixture();
+  const { files, uploads } = await uploadSources(store, 8, 'Raw source only');
+  let active = 0, peak = 0, completed = 0, started = 0, main = 0;
+  let release!: () => void;
+  const gate = new Promise<void>(resolve => { release = resolve; });
+  const provider = { chat: async (input: ChatInput) => {
+    if (input.profile.model === 'gemma') {
+      started++; active++; peak = Math.max(peak, active);
+      expect((input.tools as any[]).map(tool => tool.function.name)).toEqual(['read_file']);
+      await gate;
+      input.signal.throwIfAborted();
+      active--; completed++;
+      return { text: `File finding ${completed}`, tools: [] };
+    }
+    main++;
+    expect(completed).toBe(8);
+    expect(JSON.stringify(input.messages)).toContain('File finding 8');
+    expect(JSON.stringify(input.messages)).not.toContain('Raw source only');
+    return { text: 'Synthesized findings', tools: [] };
+  } } as unknown as ModelProvider;
+  const service = new ChatService(store, provider, () => {}, () => false, files);
+  const sending = service.send(null, profile, 'Compare all eight sources', uploads.map(file => file.id));
+  await vi.waitFor(() => expect(started).toBe(3));
+  expect(main).toBe(0);
+  expect(store.chats()[0].messages.at(-1)?.notice).toContain('Using Subagents (gemma)');
+  release();
+  const id = await sending;
+  expect(peak).toBe(3); expect(started).toBe(8); expect(main).toBe(1);
+  expect(store.chat(id).status).toBe('idle');
+  const response = store.chat(id).messages.at(-1)!;
+  expect(response.notice).toContain('8/8 finished');
+  expect(response.notice).not.toContain('0/8');
+  expect(response.toolActivity).toHaveLength(8);
+  expect(response.toolActivity!.every(task => task.status === 'succeeded' && task.label?.includes('gemma'))).toBe(true);
+});
+
+it('automatically delegates a single large upload without asking Main to call a tool', async () => {
+  const store = fixture();
+  const { files, uploads } = await uploadSources(store, 1, 'x'.repeat(13000));
+  const models: string[] = [];
+  const provider = { chat: async (input: ChatInput) => {
+    models.push(input.profile.model);
+    return { text: input.profile.model === 'gemma' ? 'Large file findings' : 'Final answer', tools: [] };
+  } } as unknown as ModelProvider;
+  const id = await new ChatService(store, provider, () => {}, () => false, files).send(null, profile, 'Summarize', [uploads[0].id]);
+  expect(models).toEqual(['gemma', 'one']);
+  expect(store.chat(id).status).toBe('idle');
+});
+
+it('reports an automatic Subagent failure and passes the failed source to Main', async () => {
+  const store = fixture();
+  const { files, uploads } = await uploadSources(store, 2, 'Fallback evidence');
+  let workers = 0;
+  const provider = { chat: async (input: ChatInput) => {
+    if (input.profile.model === 'gemma') {
+      if (++workers === 1) throw new Error('Gemma offline');
+      return { text: 'Successful findings', tools: [] };
+    }
+    expect(JSON.stringify(input.messages)).toContain('Fallback evidence 0');
+    expect(JSON.stringify(input.messages)).toContain('Successful findings');
+    return { text: 'Answer with fallback', tools: [] };
+  } } as unknown as ModelProvider;
+  const id = await new ChatService(store, provider, () => {}, () => false, files).send(null, profile, 'Analyze', uploads.map(file => file.id));
+  expect(store.chat(id).status).toBe('idle');
+  expect(store.chat(id).messages.at(-1)?.notice).toContain('1 failed');
+  expect(store.chat(id).messages.at(-1)?.toolActivity?.[0]).toMatchObject({ status: 'failed', result: 'Gemma offline' });
+});
+
+it('restricts automatic Subagents to their assigned source file', async () => {
+  const store = fixture();
+  const { files, uploads } = await uploadSources(store, 2);
+  const provider = { chat: async (input: ChatInput) => {
+    if (input.profile.model === 'gemma') {
+      const context = JSON.stringify(input.messages);
+      const other = context.includes(uploads[0].id) ? uploads[1].id : uploads[0].id;
+      return { text: '', tools: [{ id: 'read', name: 'read_file', arguments: { id: other } }] };
+    }
+    return { text: 'Fallback answer', tools: [] };
+  } } as unknown as ModelProvider;
+  const id = await new ChatService(store, provider, () => {}, () => false, files).send(null, profile, 'Analyze', uploads.map(file => file.id));
+  expect(store.chat(id).messages.at(-1)?.toolActivity?.every(task => task.status === 'failed' && task.result?.includes('not attached to this delegated task'))).toBe(true);
+});
+
+it('Stop cancels automatic workers and never calls Main or starts pending workers', async () => {
+  const store = fixture();
+  const { files, uploads } = await uploadSources(store, 8);
+  let started = 0, cancelled = 0;
+  const provider = { chat: (input: ChatInput) => {
+    expect(input.profile.model).toBe('gemma'); started++;
+    return new Promise((_resolve, reject) => input.signal.addEventListener('abort', () => { cancelled++; reject(input.signal.reason); }, { once: true }));
+  } } as unknown as ModelProvider;
+  const service = new ChatService(store, provider, () => {}, () => false, files);
+  const sending = service.send(null, profile, 'Analyze', uploads.map(file => file.id));
+  await vi.waitFor(() => expect(started).toBe(3));
+  service.stop(service.activeId!);
+  const id = await sending;
+  expect(started).toBe(3); expect(cancelled).toBe(3);
+  expect(store.chat(id).status).toBe('stopped');
+  expect(store.chat(id).messages.at(-1)?.toolActivity?.every(task => task.status === 'failed')).toBe(true);
 });
 
 it('keeps conversation history when switching models and offers read-only delegation', async () => {

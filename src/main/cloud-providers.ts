@@ -1,7 +1,7 @@
 import type { ModelConnection, ModelInfo } from '../shared/types';
 import type { ChatInput, ChatResult } from './providers';
 import { requestJson, streamLines } from './providers';
-import { ModelHttpError, visualInputText, type ChatImage } from './vision';
+import { ModelHttpError, visualInputText, type ChatImage, type ChatDocument } from './vision';
 import { InactivityWatchdog } from './inactivity';
 import { ThinkingLimitError } from './thinking-guard';
 import { validContextLimit, withContextLimit } from '../shared/cloud-context';
@@ -41,7 +41,11 @@ export async function cloudDiscover(connection: ModelConnection, token: string):
 export function responsesInput(messages: any[]): any[] {
   return messages.flatMap(message => {
     if (message.role === 'tool') return [{ type: 'function_call_output', call_id: message.tool_call_id, output: message.content }];
-    const content = message.role === 'user' && message.images?.length ? [{ type: 'input_text', text: visualInputText(message.content ?? '') }, ...message.images.map((image: ChatImage) => ({ type: 'input_image', image_url: `data:${image.mimeType};base64,${image.data}` }))] : message.content;
+    const content = message.role === 'user' && (message.images?.length || message.documents?.length) ? [
+      { type: 'input_text', text: message.images?.length ? visualInputText(message.content ?? '') : (message.content ?? '') },
+      ...(message.images ?? []).map((image: ChatImage) => ({ type: 'input_image', image_url: `data:${image.mimeType};base64,${image.data}` })),
+      ...(message.documents ?? []).map((document: ChatDocument) => ({ type: 'input_file', filename: document.name, file_data: `data:${document.mimeType};base64,${document.data}` })),
+    ] : message.content;
     const items: any[] = content ? [{ role: message.role, content }] : [];
     for (const call of message.tool_calls ?? []) items.push({ type: 'function_call', call_id: call.id, name: call.function.name, arguments: call.function.arguments });
     return items;
@@ -55,6 +59,11 @@ export function claudeInput(messages: any[]): { system?: string; messages: any[]
     const content: any[] = message.role === 'tool' ? [{ type: 'tool_result', tool_use_id: message.tool_call_id, content: message.content }] : message.content ? [{ type: 'text', text: message.content }] : [];
     if (message.role === 'user' && message.images?.length && content[0]?.type === 'text') content[0].text = visualInputText(message.content);
     if (message.role === 'user') for (const image of (message.images ?? []) as ChatImage[]) content.push({ type: 'image', source: { type: 'base64', media_type: image.mimeType, data: image.data } });
+    if (message.role === 'user') for (const document of (message.documents ?? []) as ChatDocument[]) {
+      if (document.mimeType === 'application/pdf') content.push({ type: 'document', title: document.name, source: { type: 'base64', media_type: 'application/pdf', data: document.data } });
+      else if (document.mimeType.startsWith('text/')) content.push({ type: 'document', title: document.name, source: { type: 'text', media_type: 'text/plain', data: Buffer.from(document.data, 'base64').toString('utf8') } });
+      else throw new Error(`Claude cannot accept ${document.mimeType} as a native document. Use extracted text or a file plugin.`);
+    }
     for (const call of message.tool_calls ?? []) content.push({ type: 'tool_use', id: call.id, name: call.function.name, input: JSON.parse(call.function.arguments) });
     if (!content.length) continue;
     if (result.at(-1)?.role === role) result.at(-1).content.push(...content);
