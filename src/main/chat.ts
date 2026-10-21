@@ -12,7 +12,12 @@ import { chatConversationInstructions } from './chat-instructions';
 import { documentSchema, spreadsheetSchema, presentationSchema, graphicSchema, archiveSchema } from './file-formats';
 import { messageTextLength, type ChatImage } from './vision';
 import { ChatCapabilities, chatCapabilityInstructions, chatCapabilityTools } from './chat-capabilities';
+import { webTools } from './web-search';
+import { AnswerCompletion, answerCompletionInstructions } from './answer-completion';
 import { chatEvidence, sourceEvidence, sourceMemoryInstructions, sourceMemoryContext, recallContextTool, recallContext, rememberedReadTools } from './source-memory';
+import { MAX_CHAT_ATTACHMENTS } from '../shared/chat-files';
+import { subagentIdentity } from '../shared/subagent-identity';
+import { ProjectTools, projectTools, projectReadTools } from './project-tools';
 
 const tool = (name: string, description: string, properties: object, required: string[]) => ({ type: 'function', function: { name, description, parameters: { type: 'object', properties, required, additionalProperties: false } } });
 const schemaTool = (name: string, description: string, schema: z.ZodType) => {
@@ -36,20 +41,32 @@ export class ChatService {
   private active = new Map<string, AbortController>();
   get activeId(): string | null { return this.active.keys().next().value ?? null; }
   get activeIds(): string[] { return [...this.active.keys()]; }
-  constructor(private store: Store, private providers: ModelProvider, private notify: () => void, private agentRunning: () => boolean, private files?: ChatFiles, private capabilities?: ChatCapabilities) {}
+  constructor(private store: Store, private providers: ModelProvider, private notify: () => void, private agentRunning: () => boolean, private files?: ChatFiles, private capabilities?: ChatCapabilities, private projects?: ProjectTools) {}
   private save(chat: ChatThread): void { this.store.saveChat(chat); this.notify(); }
   stop(id: string): void {
     const controller = this.active.get(id);
     if (!controller) throw new Error('This chat is not generating a response.');
     controller.abort(new Error('Response stopped.'));
   }
-  async send(id: string | null, selected: ModelProfile, message: string, attachmentIds: string[] = []): Promise<string> {
+  projectPolicyChanged(projectId: string): void {
+    this.projects?.invalidate(projectId);
+    for (const [chatId, controller] of this.active) if (this.store.chat(chatId).projectId === projectId) controller.abort(new Error('Project permissions changed. Send a new message to continue with the updated permissions.'));
+  }
+  async send(id: string | null, selected: ModelProfile, message: string, attachmentIds: string[] = [], submittedAt?: number, projectId?: string): Promise<string> {
+    const receivedAt = Date.now();
+    const startedAt = typeof submittedAt === 'number' && Number.isFinite(submittedAt) && submittedAt >= 0 ? Math.min(submittedAt, receivedAt) : receivedAt;
     if ((id && this.active.has(id)) || this.agentRunning()) throw new Error('Wait for the current response in this chat or stop it first.');
-    if (attachmentIds.length > 8) throw new Error('Attach up to eight files per message.');
+    if (attachmentIds.length > MAX_CHAT_ATTACHMENTS) throw new Error(`Attach up to ${MAX_CHAT_ATTACHMENTS} files per message.`);
     const connection = this.store.settings().connections.find(item => item.id === selected.connectionId && item.provider === selected.provider);
     if (!connection) throw new Error('Save this model connection in Model settings first.');
     const delegationSettings = this.store.settings();
     const existing = id ? this.store.chat(id) : null;
+    if (existing && projectId !== undefined && existing.projectId !== projectId) throw new Error('This chat belongs to a different project.');
+    const owner = existing?.projectId ?? projectId;
+    if (owner) {
+      this.store.project(owner);
+      if (!this.projects) throw new Error('Project execution is unavailable.');
+    }
     const usesMainPool = Boolean(isLocalModel(selected) && delegationSettings.mainModel && isLocalModel(delegationSettings.mainModel)
       && (sameModel(selected, delegationSettings.mainModel) || (existing?.usesMainPool && sameModel(selected, existing.profile))));
     const mainCandidates = usesMainPool
@@ -57,11 +74,11 @@ export class ChatService {
     const mainLease = reserveAgent(this.providers, mainCandidates);
     try {
     const profile = mainLease.profile;
-    const chat: ChatThread = existing ?? { id: randomUUID(), title: message.slice(0, 70), profile, messages: [], status: 'idle', updatedAt: Date.now() };
+    const chat: ChatThread = existing ?? { id: randomUUID(), title: message.slice(0, 70), profile, ...(owner ? { projectId: owner } : {}), messages: [], status: 'idle', updatedAt: Date.now() };
     const prior = chat.messages.filter(item => item.content.trim() || item.files?.length);
     const history = prior.map(({ role, content, files }) => ({ role, content: content + (files?.length ? `\nConversation files available through read_file: ${JSON.stringify(files)}` : '') }));
     const messages: { role: string; content: string; images?: ChatImage[] }[] = [{ role: 'system', content: 'You are Mercury, a helpful assistant. Answer the user directly. Use Markdown formatting when helpful: headings, bold, italics, lists, quotes, tables, and fenced code blocks with a language label. For underline use <u>text</u>.' }, ...history, { role: 'user', content: message }];
-    messages[0].content += chatConversationInstructions + mainDelegationInstructions + sourceMemoryInstructions;
+    messages[0].content += chatConversationInstructions + mainDelegationInstructions + sourceMemoryInstructions + answerCompletionInstructions;
     if (this.files) messages[0].content += chatFileInstructions;
     if (this.capabilities) messages[0].content += chatCapabilityInstructions;
     if (messageTextLength(messages) > Math.min(profile.contextLimit * 3, 300_000)) throw new Error('This chat exceeds the selected model’s context limit. Start a new chat or choose a larger context in settings.');
@@ -74,7 +91,7 @@ export class ChatService {
     chat.status = 'streaming';
     delete chat.error;
     chat.messages.push({ id: randomUUID(), role: 'user', content: message });
-    const response: ChatMessage = { id: randomUUID(), role: 'assistant', content: '', model: profile.model, startedAt: Date.now() };
+    const response: ChatMessage = { id: randomUUID(), role: 'assistant', content: '', model: profile.model, startedAt };
     chat.messages.push(response);
     this.save(chat);
     const notices = new Set<string>();
@@ -85,6 +102,16 @@ export class ChatService {
     };
     try {
       this.capabilities?.beginTurn(chat.id);
+      if (chat.projectId) {
+        addNotice('Preparing the project workspace.');
+        const projectContext = await this.projects!.prepare(chat, controller.signal);
+        const budget = Math.max(0, contextMaximum - messageTextLength(messages) - 2500);
+        if (budget < 2000) throw new Error('Not enough model context remains for project instructions. Choose a larger context or start another project chat.');
+        messages[0].content += projectContext.slice(0, budget) + (projectContext.length > budget ? '\n[Project context was truncated; read the relevant instruction files and maps with project tools.]' : '');
+        notices.delete('Preparing the project workspace.');
+        addNotice('Project workspace ready.');
+        this.save(chat);
+      }
       if (attachmentIds.length && !this.files) throw new Error('File uploads are unavailable.');
       const attached = this.files ? await Promise.all(attachmentIds.map(fileId => this.files!.get(fileId))) : [];
       if (attached.some(file => file.kind !== 'upload')) throw new Error('Only uploaded files can be attached.');
@@ -122,7 +149,7 @@ export class ChatService {
             const file = attached[index];
             const lease = reserveAgent(this.providers, candidates, profile);
             const subagent = lease.profile;
-            const activity: NonNullable<ChatMessage['toolActivity']>[number] = { name: 'delegate_task', label: `${subagent.model} · ${file.name}`, status: 'running', at: Date.now() };
+            const activity: NonNullable<ChatMessage['toolActivity']>[number] = { name: 'delegate_task', label: `${subagentIdentity(index)} · ${subagent.model} · ${file.name}`, status: 'running', at: Date.now() };
             (response.toolActivity ??= []).push(activity); this.save(chat);
             try {
               // Leave space for tool reads even on small local-model contexts.
@@ -181,11 +208,12 @@ export class ChatService {
       }
       let complete = false;
       let actions = 0;
+      const completion = new AnswerCompletion(message);
       for (let turn = 0; turn < 128; turn++) {
       if (controller.signal.aborted) throw controller.signal.reason;
       if (messageTextLength(messages) > Math.min(profile.contextLimit * 3, 300_000)) throw new Error('Files exceed this model’s context limit. Choose a larger context or attach smaller files.');
       const prefix = response.content;
-      const tools = [delegationTool, recallContextTool, ...(this.files ? fileTools : []), ...(this.capabilities ? chatCapabilityTools : [])];
+      const tools = [delegationTool, recallContextTool, ...(this.files ? fileTools : []), ...(this.capabilities ? chatCapabilityTools : []), ...(chat.projectId ? projectTools : [])];
       const result = await generateChatTurn(this.providers, { profile, agentLease: mainLease.id, messages, tools: tools.length ? tools : undefined, signal: controller.signal, onRequestState: state => {
         response.queued = state === 'queued';
         this.save(chat);
@@ -208,10 +236,20 @@ export class ChatService {
       if (controller.signal.aborted) throw controller.signal.reason;
       response.content = prefix + result.text;
       if (!response.reasoning && result.reasoning) response.reasoning = result.reasoning.slice(0, 100_000);
-      if (!result.tools.length) { complete = true; break; }
+      if (!result.tools.length) {
+        if (completion.continue(messages, result.text, Boolean(response.files?.length))) {
+          addNotice('The model stopped before answering. Continuing the request.');
+          // Replace only the unfinished terminal announcement; retain earlier
+          // tool progress and every successful result in model context.
+          response.content = prefix;
+          this.save(chat);
+          continue;
+        }
+        complete = true; break;
+      }
       (messages as any[]).push({ role: 'assistant', content: result.text || null, tool_calls: result.tools.map(call => ({ id: call.id, type: 'function', function: { name: call.name, arguments: JSON.stringify(call.arguments) } })) });
       const visualResults: { role: string; content: string; images?: ChatImage[]; browserCapture?: boolean }[] = [];
-      for (const call of result.tools) {
+      const executeCall = async (call: (typeof result.tools)[number]) => {
         if (controller.signal.aborted) throw controller.signal.reason;
         if (++actions > 256) throw new Error('Tool action safety limit reached (256 actions). Send a follow-up to continue; this is not a timeout.');
         const activity: NonNullable<ChatMessage['toolActivity']>[number] = { name: call.name, status: 'running', at: Date.now() };
@@ -223,13 +261,25 @@ export class ChatService {
           } else if (call.name === 'delegate_task') {
             const lease = reserveAgent(this.providers, resolveCandidates(delegationSettings, 'subagent', profile), profile);
             const subagent = lease.profile;
-            activity.label = subagent.model;
-            addNotice(`Using Subagent (${subagent.model}) for delegated analysis.`);
+            const subagentNumber = (response.toolActivity ?? []).filter(item => item.name === 'delegate_task').length - 1;
+            activity.label = `${subagentIdentity(subagentNumber)} · ${subagent.model}`;
+            addNotice(`Using ${subagentIdentity(subagentNumber)} (${subagent.model}) for delegated analysis.`);
             try {
-              output = { findings: await delegateTask(this.providers, subagent, call.arguments, controller.signal, this.files ? fileTools.filter((tool: any) => tool.function.name === 'read_file') : [], read => readForSubagent(read), notice => { addNotice('Subagent: ' + notice); activity.result = notice; this.save(chat); }, undefined, lease.id, chatEvidence(chat)) };
+              const reads = [...(this.files ? fileTools.filter((tool: any) => tool.function.name === 'read_file') : []), ...(this.capabilities ? webTools : []), ...(chat.projectId ? projectReadTools : [])];
+              output = { findings: await delegateTask(this.providers, subagent, call.arguments, controller.signal, reads, async read => {
+                if (read.name === 'read_file') return readForSubagent(read);
+                if (chat.projectId && this.projects!.handles(read.name)) return JSON.stringify(await this.projects!.execute(chat, read.name, read.arguments, controller.signal));
+                const result = await this.capabilities!.execute(chat.id, read.name, read.arguments, controller.signal);
+                controller.signal.throwIfAborted();
+                (response.sourceEvidence ??= []).push(sourceEvidence(read.name, read.arguments, result, `Subagent web research`)); this.save(chat);
+                return JSON.stringify(result);
+              }, notice => { addNotice('Subagent: ' + notice); activity.result = notice; this.save(chat); }, undefined, lease.id, chatEvidence(chat)) };
             } finally { lease.release(); }
             activity.result = (output as { findings: string }).findings;
+          } else if (chat.projectId && this.projects!.handles(call.name)) {
+            output = await this.projects!.execute(chat, call.name, call.arguments, controller.signal);
           } else if (this.capabilities?.handles(call.name)) {
+            if (chat.projectId && ['install_plugin', 'plugin_list_tools', 'plugin_call_tool'].includes(call.name)) await this.projects!.authorizePlugin(chat, call.name, call.arguments, controller.signal);
             output = await this.capabilities.execute(chat.id, call.name, call.arguments, controller.signal);
             if (call.name === 'browser_screenshot' && (output as any)?._browserImage) {
               const { _browserImage, ...metadata } = output as any;
@@ -260,12 +310,30 @@ export class ChatService {
           } else throw new Error('Unknown tool. Use an offered file tool.');
           }
           activity.status = (output as any)?.isError ? 'failed' : 'succeeded';
-          if (activity.status === 'succeeded' && !(output as any)?.error && (call.name === 'delegate_task' || rememberedReadTools.has(call.name))) {
+          if (chat.projectId && this.projects!.handles(call.name)) activity.result = JSON.stringify(output).slice(0, 16000);
+          if (activity.status === 'succeeded' && !(output as any)?.error && (call.name === 'delegate_task' || rememberedReadTools.has(call.name) || ['read_project_file', 'search_project_files', 'list_project_files'].includes(call.name))) {
             (response.sourceEvidence ??= []).push(sourceEvidence(call.name, call.arguments, call.name === 'delegate_task' ? (output as { findings: string }).findings : output, activity.label ?? call.name));
           }
-        } catch (error) { activity.status = 'failed'; output = { error: error instanceof Error ? error.message : String(error) }; }
+        } catch (error) { activity.status = 'failed'; output = { error: error instanceof Error ? error.message : String(error) }; activity.result = (output as { error: string }).error; }
         this.save(chat);
-        (messages as any[]).push({ role: 'tool', tool_call_id: call.id, content: JSON.stringify(output) });
+        return { role: 'tool', tool_call_id: call.id, content: JSON.stringify(output) };
+      };
+      if (chat.projectId && result.tools.length > 1 && result.tools.every(call => call.name === 'delegate_task')) {
+        // Calls emitted together cannot depend on one another's unseen results.
+        // Keep tools associated and ordered, while bounding concurrent workers.
+        const outputs: Awaited<ReturnType<typeof executeCall>>[] = [];
+        let next = 0;
+        const workers = await Promise.allSettled(Array.from({ length: Math.min(3, result.tools.length) }, async () => {
+          while (next < result.tools.length) {
+            const index = next++;
+            outputs[index] = await executeCall(result.tools[index]);
+          }
+        }));
+        const failure = workers.find((worker): worker is PromiseRejectedResult => worker.status === 'rejected');
+        if (failure) throw failure.reason;
+        (messages as any[]).push(...outputs);
+      } else {
+        for (const call of result.tools) (messages as any[]).push(await executeCall(call));
       }
       messages.push(...visualResults);
       const captures = messages.filter((item: any) => item.browserCapture && item.images?.length);

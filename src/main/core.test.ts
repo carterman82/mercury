@@ -13,6 +13,7 @@ import { Runner } from './runner';
 import { LocalProviders } from './providers';
 import { CommandGate } from './commands';
 import { DatabaseSync } from 'node:sqlite';
+import { WebSearch } from './web-search';
 
 const directories: string[] = [];
 const fixture = () => { const root = mkdtempSync(path.join(os.tmpdir(), 'local-plan-agent-')); directories.push(root); return root; };
@@ -55,6 +56,44 @@ describe('workspace boundaries', () => {
 });
 
 describe('approval and recovery', () => {
+  it('offers web research to project Planner, Main and Subagent and saves their source evidence', async () => {
+    const root = fixture(), store = new Store(path.join(root, 'research.sqlite'));
+    const project = { id: randomUUID(), path: root, name: 'Research project' };
+    store.saveProject(project);
+    const profile = { provider: 'ollama' as const, connectionId: 'local', model: 'fixture', contextLimit: 32000, toolVerified: true };
+    store.saveSettings({ connections: [{ id: 'local', provider: 'ollama', label: 'Local', url: 'http://127.0.0.1:11434' }], mainModel: profile, plannerModel: null, subagentModel: null });
+    const session: Session = { id: randomUUID(), projectId: project.id, objective: 'Research official docs', status: 'draft', createdAt: Date.now(), updatedAt: Date.now(), events: [], plan: null, changes: [], command: null, assignments: null };
+    store.saveSession(session);
+    let planner = 0, main = 0, subagent = 0;
+    const web = new WebSearch();
+    const execute = vi.spyOn(web, 'execute').mockImplementation(async name => name === 'web_search'
+      ? { results: [{ title: 'Official docs', url: 'https://example.com/docs', snippet: 'Summary' }] }
+      : { url: 'https://example.com/docs', content: 'Verified source total: 721' });
+    const provider = { chat: async (input: ChatInput): Promise<ChatResult> => {
+      const prompt = String((input.messages[0] as any).content), names = (input.tools as any[]).map(item => item.function.name);
+      expect(names).toContain('web_search'); expect(names).toContain('web_fetch');
+      if (prompt.includes('read-only Subagent')) {
+        if (++subagent === 1) return { text: '', tools: [{ id: 'source', name: 'web_fetch', arguments: { url: 'https://example.com/docs' } }] };
+        expect(JSON.stringify(input.messages)).toContain('Verified source total: 721');
+        return { text: '721 verified in https://example.com/docs', tools: [] };
+      }
+      if (prompt.includes('planner agent')) {
+        if (++planner === 1) return { text: '', tools: [{ id: 'search', name: 'web_search', arguments: { query: 'official docs' } }] };
+        return { text: JSON.stringify({ objective: session.objective, assumptions: [], steps: [{ title: 'Verify source', details: 'Read the docs.', checks: ['Check total'] }], blockers: [] }), tools: [] };
+      }
+      if (++main === 1) return { text: '', tools: [{ id: 'delegate', name: 'delegate_task', arguments: { task: 'Verify the source total', context: 'Read https://example.com/docs' } }] };
+      return { text: '', tools: [{ id: 'finish', name: 'finish', arguments: { summary: 'Verified 721', verification: 'Read original source' } }] };
+    } } as unknown as LocalProviders;
+    try {
+      const runner = new Runner(store, provider, () => {}, web);
+      await runner.plan(session.id);
+      expect(store.session(session.id).status).toBe('awaiting_review');
+      await runner.approve(session.id, 1);
+      expect(store.session(session.id).status).toBe('completed');
+      expect(execute.mock.calls.map(args => args[0])).toEqual(['web_search', 'web_fetch']);
+      expect(store.session(session.id).sourceEvidence?.map(item => item.tool)).toEqual(['web_search', 'web_fetch', 'delegate_task']);
+    } finally { store.close(); }
+  });
   it('invalidates approval when the plan changes and completes a fixture change', async () => {
     const root = fixture();
     const projectPath = path.join(root, 'project');

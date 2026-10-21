@@ -23,3 +23,13 @@ it('rejects oversized approval details rather than hiding arguments from the use
   await expect(approvals.request('one', 'Call plugin?', 'x'.repeat(12001), new AbortController().signal)).rejects.toThrow('no permission was granted');
   expect(approvals.snapshot()).toEqual([]);
 });
+
+it('bypasses prompts only when the host resolves a full-access project and invalidates project requests', async () => {
+  const approvals = new ChatApprovals(() => {}, id => id === 'full-access');
+  await expect(approvals.request('full-access', 'Run action', '', new AbortController().signal)).resolves.toBeUndefined();
+  expect(approvals.snapshot()).toEqual([]);
+  const pending = approvals.request('restricted', 'Outside file', 'Exact action', new AbortController().signal, { projectId: 'project', policyRevision: 1, kind: 'write' });
+  const check = expect(pending).rejects.toThrow(/denied/);
+  approvals.cancelProject('project'); await check;
+  expect(approvals.snapshot()).toEqual([]);
+});

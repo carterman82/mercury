@@ -15,6 +15,7 @@ test('sends the actual image, restores it on follow-ups, and falls back to OCR f
   const requests: any[] = [];
   const server = createServer(async (request, response) => {
     if (request.url === '/api/tags') { response.end(JSON.stringify({ models: [{ name: 'vision-model' }, { name: 'text-model' }] })); return; }
+    if (request.url === '/api/show' || request.url === '/api/ps') { response.end('{}'); return; }
     let raw = ''; for await (const chunk of request) raw += chunk;
     const body = JSON.parse(raw); requests.push(body);
     if (body.model === 'text-model' && body.messages.some((message: any) => message.images?.length)) {

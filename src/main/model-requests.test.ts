@@ -33,7 +33,7 @@ it('releases provider slots after success, error, and Stop, using reported model
   providers.rememberModels([{ id: 'one', label: 'One', provider: 'lmstudio', connectionId: 'local', connectionLabel: 'Server', available: true, parallelRequests: 2 }], [connection]);
   const finish: (() => void)[] = [];
   const fetch = vi.fn((_url, init: RequestInit) => new Promise<Response>((resolve, reject) => {
-    finish.push(() => resolve(new Response('data: {"choices":[{"delta":{"content":"ok"}}]}\n\n')));
+    finish.push(() => resolve(new Response('data: {"choices":[{"delta":{"content":"ok"},"finish_reason":"stop"}]}\n\ndata: [DONE]\n')));
     init.signal?.addEventListener('abort', () => reject(init.signal!.reason), { once: true });
   }));
   vi.stubGlobal('fetch', fetch);

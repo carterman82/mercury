@@ -79,6 +79,46 @@ it('repairs one malformed Planner response and preserves blocking questions', as
   expect(store.session(session.id).status).toBe('awaiting_input');
 });
 
+it('continues Planner, Main and Subagent announcements through source reads to a real completed result', async () => {
+  const { root, store, session } = fixture(); writeFileSync(path.join(root, 'note.txt'), 'Actual source evidence');
+  let plannerCalls = 0, mainCalls = 0, subagentCalls = 0;
+  const providers = { chat: async (input: ChatInput) => {
+    if (input.profile.model === 'planner') return ++plannerCalls === 1
+      ? { text: 'Let me inspect the project.', tools: [] }
+      : { text: JSON.stringify(plan), tools: [] };
+    if (input.profile.model === 'small') {
+      if (++subagentCalls === 1) return { text: 'Let me read the source.', tools: [] };
+      if (subagentCalls === 2) return { text: '', tools: [{ id: 'read', name: 'read_file', arguments: { path: 'note.txt' } }] };
+      expect(JSON.stringify(input.messages)).toContain('Actual source evidence');
+      return { text: 'Verified evidence in note.txt.', tools: [] };
+    }
+    if (++mainCalls === 1) return { text: 'Let me check the relevant documentation.', tools: [] };
+    if (mainCalls === 2) return { text: '', tools: [{ id: 'delegate', name: 'delegate_task', arguments: { task: 'Inspect the note', context: 'Read note.txt' } }] };
+    if (mainCalls === 3) return { text: 'Let me review those findings.', tools: [] };
+    expect(JSON.stringify(input.messages)).toContain('Verified evidence in note.txt.');
+    return { text: '', tools: [{ id: 'finish', name: 'finish', arguments: { summary: 'The note contains source evidence.', verification: 'Read note.txt once through Subagent.' } }] };
+  } } as unknown as LocalProviders;
+  const runner = new Runner(store, providers, () => {});
+  await runner.plan(session.id); expect(store.session(session.id).status).toBe('awaiting_review');
+  await runner.approve(session.id, 1);
+  const saved = store.session(session.id);
+  expect(saved.status).toBe('completed');
+  expect([plannerCalls, mainCalls, subagentCalls]).toEqual([2, 4, 3]);
+  expect(saved.sourceEvidence?.filter(item => item.tool === 'read_file')).toHaveLength(1);
+  expect(saved.events.some(event => event.text === 'The note contains source evidence.\n\nVerification: Read note.txt once through Subagent.')).toBe(true);
+});
+
+it('does not mark a project completed when Main repeatedly returns only a progress announcement', async () => {
+  const { store, session } = fixture(); let mainCalls = 0;
+  const providers = { chat: async (input: ChatInput) => input.profile.model === 'planner'
+    ? { text: JSON.stringify(plan), tools: [] }
+    : (++mainCalls, { text: 'Let me find the correct documentation.', tools: [] }) } as unknown as LocalProviders;
+  const runner = new Runner(store, providers, () => {});
+  await runner.plan(session.id); await runner.approve(session.id, 1);
+  expect(mainCalls).toBe(3); expect(store.session(session.id).status).toBe('interrupted');
+  expect(store.session(session.id).events.some(event => event.kind === 'error' && event.text.includes('two continuation attempts'))).toBe(true);
+});
+
 it('pins the ordered Subagent pool at planning and routes project delegation to another device', async () => {
   const { store, session } = fixture();
   const remote = { ...profile, connectionId: 'remote', model: 'remote-sub' };

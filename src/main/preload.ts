@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer, webUtils } from 'electron';
 import type { DesktopApi, DiscoveryResult, Snapshot } from '../shared/types';
+import { MAX_CHAT_ATTACHMENTS } from '../shared/chat-files';
 
 const call = <T>(name: string, ...args: unknown[]): Promise<T> => ipcRenderer.invoke(`api:${name}`, ...args);
 const api: DesktopApi = {
@@ -10,6 +11,7 @@ const api: DesktopApi = {
     return () => ipcRenderer.removeListener('state:update', listener);
   },
   openProject: () => call('openProject'),
+  updateProjectPermissions: (projectId, mode) => call('updateProjectPermissions', projectId, mode),
   createSession: (projectId, objective) => call('createSession', projectId, objective),
   updateSettings: settings => call('updateSettings', settings),
   connectChatGPT: id => call('connectChatGPT', id),
@@ -27,7 +29,7 @@ const api: DesktopApi = {
   autoDiscover: force => call('autoDiscover', force),
   probe: profile => call('probe', profile),
   addChatFiles: async files => {
-    if (!files.length || files.length > 8) throw new Error('Drop between one and eight files.');
+    if (!files.length || files.length > MAX_CHAT_ATTACHMENTS) throw new Error(`Drop between one and ${MAX_CHAT_ATTACHMENTS} files.`);
     const paths = files.map(file => webUtils.getPathForFile(file));
     if (paths.some(filename => !filename)) throw new Error('Drop files from your computer. Browser-generated files are not supported.');
     return call('addChatFiles', paths);
@@ -35,7 +37,7 @@ const api: DesktopApi = {
   saveChatFile: id => call('saveChatFile', id),
   previewChatFile: (id, page) => call('previewChatFile', id, page),
   previewChatBrowser: id => call('previewChatBrowser', id),
-  sendChat: (id, profile, message, attachments) => call('sendChat', id, profile, message, attachments),
+  sendChat: (id, profile, message, attachments, submittedAt, projectId) => call('sendChat', id, profile, message, attachments, submittedAt, projectId),
   stopChat: id => call('stopChat', id),
   answerChatApproval: (id, allow) => call('answerChatApproval', id, allow),
   openLink: url => call('openLink', url),

@@ -22,6 +22,10 @@ import { ChatBrowser } from './chat-browser';
 import { ChatPlugins } from './chat-plugins';
 import { ChatCapabilities } from './chat-capabilities';
 import { WebPolicy } from './web-policy';
+import { WebSearch } from './web-search';
+import { MAX_CHAT_ATTACHMENTS } from '../shared/chat-files';
+import { ProjectTools } from './project-tools';
+import { ProjectWorktreeService } from './project-worktrees';
 
 declare const MAIN_WINDOW_VITE_DEV_SERVER_URL: string | undefined;
 declare const MAIN_WINDOW_VITE_NAME: string;
@@ -81,18 +85,23 @@ app.whenReady().then(async () => {
   const chatGPT = new ChatGPTAuth(readSecret, writeSecret, url => shell.openExternal(url));
   const codex = new CodexService(path.join(app.getPath('userData'), 'codex'), url => shell.openExternal(url));
   providers = new LocalProviders(() => store.settings(), readSecret, () => discovery.invalidate(), id => chatGPT.token(id), notify, codex);
-  runner = new Runner(store, providers, notify);
   const pdfRuntime = app.isPackaged ? path.join(process.resourcesPath, 'pdf-runtime', 'node_modules', 'pdfjs-dist') : path.join(app.getAppPath(), 'node_modules', 'pdfjs-dist');
   const formats = new FileFormats(app.isPackaged ? path.join(process.resourcesPath, 'file-runtime') : app.getAppPath(), app.isPackaged ? path.join(process.resourcesPath, 'pdf-runtime') : app.getAppPath());
   const chatFiles = new ChatFiles(path.join(app.getPath('userData'), 'chat-files'), renderChatPdf, bytes => readChatPdf(bytes, pdfRuntime, image => formats.ocr(image)), formats);
-  approvals = new ChatApprovals(notify);
+  approvals = new ChatApprovals(notify, chatId => {
+    const chat = store.chat(chatId);
+    return Boolean(chat.projectId && store.project(chat.projectId).permissionMode === 3);
+  });
   // Network fixtures are only possible with an explicitly isolated test data profile.
   const fixtureOrigin = process.env.LOCAL_PLAN_AGENT_USER_DATA ? process.env.MERCURY_TEST_NETWORK_ORIGIN : undefined;
   const policy = new WebPolicy(fixtureOrigin);
+  const web = new WebSearch(policy, process.env.LOCAL_PLAN_AGENT_USER_DATA ? process.env.MERCURY_TEST_WEB_SEARCH : undefined);
+  runner = new Runner(store, providers, notify, web);
   const browser = new ChatBrowser(app.isPackaged ? path.join(process.resourcesPath, 'browser-tools', 'node_modules') : path.join(app.getAppPath(), 'node_modules'), app.isPackaged ? path.join(process.resourcesPath, 'browser-runtime') : path.join(app.getAppPath(), '.build-resources', 'browser-runtime'), policy, approvals);
   const plugins = new ChatPlugins(path.join(app.getPath('userData'), 'plugins'), app.isPackaged ? path.join(process.resourcesPath, 'file-runtime') : app.getAppPath(), policy, approvals, process.env.LOCAL_PLAN_AGENT_USER_DATA ? process.env.MERCURY_TEST_PLUGIN_REGISTRY : undefined);
-  const capabilities = new ChatCapabilities(browser, plugins);
-  chats = new ChatService(store, providers, notify, () => runner.running, chatFiles, capabilities);
+  const capabilities = new ChatCapabilities(browser, plugins, web);
+  const projectTools = new ProjectTools(store, approvals, new ProjectWorktreeService(path.join(app.getPath('userData'), 'project-workspaces')));
+  chats = new ChatService(store, providers, notify, () => runner.running, chatFiles, capabilities, projectTools);
   let quitting = false;
   app.on('before-quit', event => { if (quitting) return; event.preventDefault(); quitting = true; codex.dispose(); void capabilities.dispose().finally(() => app.quit()); });
   discovery = new DiscoveryCache(settings => autoDiscover(settings, providers), store.discoveryCache(), value => store.saveDiscoveryCache(value));
@@ -159,13 +168,23 @@ app.whenReady().then(async () => {
     const chosen = await dialog.showOpenDialog(window!, { properties: ['openDirectory'] });
     if (chosen.canceled || !chosen.filePaths[0]) return null;
     const canonical = await fs.realpath(chosen.filePaths[0]);
-    let project = store.projects().find(item => item.path.toLowerCase() === canonical.toLowerCase());
+    const identity = (value: string) => process.platform === 'win32' ? value.toLowerCase() : value;
+    let project = store.projects().find(item => identity(item.path) === identity(canonical));
     if (!project) {
-      project = { id: randomUUID(), path: canonical, name: path.basename(canonical) };
+      project = { id: randomUUID(), path: canonical, name: path.basename(canonical), permissionMode: 2, policyRevision: 1 };
       store.saveProject(project);
     }
     notify();
     return project;
+  });
+  handle('updateProjectPermissions', (_event, rawId: string, rawMode: number) => {
+    const project = store.project(z.string().uuid().parse(rawId));
+    const mode = z.union([z.literal(1), z.literal(2), z.literal(3)]).parse(rawMode);
+    if (project.permissionMode === mode) return;
+    store.saveProject({ ...project, permissionMode: mode, policyRevision: (project.policyRevision ?? 1) + 1 });
+    chats.projectPolicyChanged(project.id);
+    for (const chat of store.chats()) if (chat.projectId === project.id) approvals.cancelChat(chat.id);
+    notify();
   });
   handle('createSession', (_event, projectId: string, objective: string) => {
     if (!store.projects().some(project => project.id === projectId)) throw new Error('Project not found.');
@@ -221,7 +240,7 @@ app.whenReady().then(async () => {
   });
   handle('probe', async (_event, profile: ModelProfile) => { noChat(); if (runner.running) throw new Error('Wait for the current agent run.'); return providers.probe(profileSchema.parse(profile)); });
   handle('addChatFiles', async (_event, raw: string[]) => {
-    const paths = z.array(z.string().min(1).max(32768)).min(1).max(8).parse(raw);
+    const paths = z.array(z.string().min(1).max(32768)).min(1).max(MAX_CHAT_ATTACHMENTS).parse(raw);
     return Promise.all(paths.map(filename => chatFiles.import(filename)));
   });
   handle('saveChatFile', async (_event, raw: string) => {
@@ -246,12 +265,12 @@ app.whenReady().then(async () => {
     if (image) return { kind: 'image', image: `data:${image.mimeType};base64,${image.data}` };
     return { kind: 'text', text: await chatFiles.text(id), note: file.note };
   });
-  handle('sendChat', (_event, id: string | null, profile: ModelProfile, message: string, rawIds?: string[]) => {
-    const ids = z.array(z.string().uuid()).max(8).optional().parse(rawIds) ?? [];
+  handle('sendChat', (_event, id: string | null, profile: ModelProfile, message: string, rawIds?: string[], rawSubmittedAt?: number, rawProjectId?: string) => {
+    const ids = z.array(z.string().uuid()).max(MAX_CHAT_ATTACHMENTS).optional().parse(rawIds) ?? [];
     const text = z.string().trim().max(30_000).parse(message);
     if (!text && !ids.length) throw new Error('Add a message or attach a file.');
     const before = new Set(chats.activeIds);
-    const completion = chats.send(z.string().uuid().nullable().parse(id), profileSchema.parse(profile), text || 'Please read the attached files.', ids);
+    const completion = chats.send(z.string().uuid().nullable().parse(id), profileSchema.parse(profile), text || 'Please read the attached files.', ids, z.number().finite().nonnegative().optional().parse(rawSubmittedAt), z.string().uuid().optional().parse(rawProjectId));
     const started = chats.activeIds.find(chatId => !before.has(chatId));
     if (!started) return completion; // Validation failures still reach the caller.
     // Acknowledge creation immediately; streaming state and errors arrive through snapshots.

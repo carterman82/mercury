@@ -31,6 +31,13 @@ export class Store {
       this.db.exec('CREATE TABLE IF NOT EXISTS chats (id TEXT PRIMARY KEY, updated_at INTEGER NOT NULL, data TEXT NOT NULL)');
       this.db.prepare("INSERT OR REPLACE INTO meta (key,value) VALUES ('version','3')").run();
     }
+    if (version < 4) {
+      const columns = this.db.prepare('PRAGMA table_info(chats)').all() as { name: string }[];
+      if (!columns.some(column => column.name === 'project_id')) this.db.exec('ALTER TABLE chats ADD COLUMN project_id TEXT REFERENCES projects(id)');
+      this.db.exec("UPDATE chats SET project_id = json_extract(data, '$.projectId')");
+      this.db.exec('CREATE INDEX IF NOT EXISTS chats_project_id ON chats(project_id, updated_at DESC)');
+      this.db.prepare("INSERT OR REPLACE INTO meta (key,value) VALUES ('version','4')").run();
+    }
     for (const chat of this.chats()) {
       if (chat.status === 'streaming') { chat.status = 'interrupted'; this.saveChat(chat); }
     }
@@ -42,7 +49,12 @@ export class Store {
       }
     }
   }
-  projects(): Project[] { return (this.db.prepare('SELECT data FROM projects').all() as any[]).map(row => JSON.parse(row.data)); }
+  projects(): Project[] { return (this.db.prepare('SELECT data FROM projects').all() as any[]).map(row => ({ permissionMode: 2, policyRevision: 1, ...JSON.parse(row.data) })); }
+  project(id: string): Project {
+    const project = this.projects().find(item => item.id === id);
+    if (!project) throw new Error('Project not found.');
+    return project;
+  }
   chats(): ChatThread[] { return (this.db.prepare('SELECT data FROM chats ORDER BY updated_at DESC').all() as any[]).map(row => JSON.parse(row.data)); }
   chat(id: string): ChatThread {
     const row = this.db.prepare('SELECT data FROM chats WHERE id = ?').get(id) as any;
@@ -50,8 +62,11 @@ export class Store {
     return JSON.parse(row.data);
   }
   saveChat(chat: ChatThread): void {
+    if (chat.projectId) this.project(chat.projectId);
+    const previous = this.db.prepare('SELECT project_id FROM chats WHERE id = ?').get(chat.id) as { project_id: string | null } | undefined;
+    if (previous && (previous.project_id ?? undefined) !== chat.projectId) throw new Error('A chat cannot be moved to a different project.');
     chat.updatedAt = Date.now();
-    this.db.prepare('INSERT OR REPLACE INTO chats (id,updated_at,data) VALUES (?,?,?)').run(chat.id, chat.updatedAt, JSON.stringify(chat));
+    this.db.prepare('INSERT OR REPLACE INTO chats (id,updated_at,data,project_id) VALUES (?,?,?,?)').run(chat.id, chat.updatedAt, JSON.stringify(chat), chat.projectId ?? null);
   }
   saveProject(project: Project): void { this.db.prepare('INSERT OR REPLACE INTO projects (id,data) VALUES (?,?)').run(project.id, JSON.stringify(project)); }
   sessions(): Session[] { return (this.db.prepare('SELECT data FROM sessions ORDER BY updated_at DESC').all() as any[]).map(row => this.migrateSession(JSON.parse(row.data))); }

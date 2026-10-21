@@ -71,4 +71,4 @@ export function sourceMemoryContext(evidence: SourceEvidence[], budget: number):
   return text + footer;
 }
 
-export const rememberedReadTools = new Set(['read_file', 'search_text', 'browser_search', 'browser_open', 'browser_read', 'browser_click']);
+export const rememberedReadTools = new Set(['read_file', 'search_text', 'web_search', 'web_fetch', 'browser_search', 'browser_open', 'browser_read', 'browser_click']);

@@ -23,6 +23,7 @@
     "image-size": "^1.2.1",
     "ipaddr.js": "^2.5.0",
     "npm": "^11.21.1",
+    "parse5": "^7.3.0",
     "pdfjs-dist": "^6.4.299",
     "playwright": "^1.0.0",
     "pptxgenjs": "^4.0.1",

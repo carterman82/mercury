@@ -24,7 +24,7 @@ function fixture() {
   additionalSubagentModels: [{ ...remote, model: 'sub' }, { ...main, connectionId: 'third', model: 'sub' }] });
   return { root, store, providers: new LocalProviders(() => store.settings()) };
 }
-const answer = (content: string) => new Response(`data: ${JSON.stringify({ choices: [{ delta: { content } }] })}\n\n`);
+const answer = (content: string) => new Response(`data: ${JSON.stringify({ choices: [{ delta: { content }, finish_reason: 'stop' }] })}\n\ndata: [DONE]\n`);
 afterEach(() => { vi.unstubAllGlobals(); stores.splice(0).forEach(store => store.close()); roots.splice(0).forEach(root => rmSync(root, { recursive: true, force: true })); });
 
 it('persists ordered pools and resolves endpoints without altering legacy role defaults', () => {

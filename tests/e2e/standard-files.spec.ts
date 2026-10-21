@@ -26,8 +26,15 @@ test('generates common native files and re-reads Office files, images, scans, ar
   const created: any[] = [];
   const server = createServer(async (request, response) => {
     if (request.url === '/api/tags') { response.end(JSON.stringify({ models: [{ name: 'format-model' }] })); return; }
+    if (request.url === '/api/show' || request.url === '/api/ps') { response.end('{}'); return; }
     let raw = ''; for await (const chunk of request) raw += chunk;
     const input = JSON.parse(raw);
+    if (String(input.messages[0]?.content).startsWith('You are the read-only Subagent')) {
+      // File analysts receive one source each. Preserve its extracted evidence
+      // for Main rather than advancing the artifact-generation fixture stage.
+      const context = input.messages.find((message: any) => message.role === 'user')?.content ?? '';
+      response.end(JSON.stringify({ message: { content: 'Extracted source evidence: ' + context }, done: true }) + '\n'); return;
+    }
     const calls: any[] = [];
     let text = '';
     const toolMessages = input.messages.filter((message: any) => message.role === 'tool');

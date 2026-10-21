@@ -8,9 +8,12 @@ import { LocalProviders } from './providers';
 import { Store } from './store';
 import { Workspace } from './workspace';
 import { discoverPlugins } from './plugins';
+import { WebSearch, webInstructions, webSchemas, webTools } from './web-search';
+import { AnswerCompletion, answerCompletionInstructions } from './answer-completion';
 import { projectEvidence, sourceEvidence, sourceMemoryContext, sourceMemoryInstructions, recallContextTool, recallContext } from './source-memory';
 
 const readTools = [
+  ...webTools,
   recallContextTool,
   { type: 'function', function: { name: 'list_files', description: 'List project files', parameters: { type: 'object', properties: {}, additionalProperties: false } } },
   { type: 'function', function: { name: 'read_file', description: 'Read numbered lines of a project file and obtain its content hash', parameters: { type: 'object', properties: { path: { type: 'string' }, start: { type: 'integer' }, end: { type: 'integer' } }, required: ['path'] } } },
@@ -25,6 +28,8 @@ const codeTools = [
   { type: 'function', function: { name: 'finish', description: 'Finish implementation with a summary of changes and verification results', parameters: { type: 'object', properties: { summary: { type: 'string' }, verification: { type: 'string' } }, required: ['summary', 'verification'] } } },
 ];
 const readSchema = z.discriminatedUnion('name', [
+  z.object({ name: z.literal('web_search'), arguments: webSchemas.web_search }),
+  z.object({ name: z.literal('web_fetch'), arguments: webSchemas.web_fetch }),
   z.object({ name: z.literal('list_files'), arguments: z.object({}) }),
   z.object({ name: z.literal('read_file'), arguments: z.object({ path: z.string(), start: z.number().int().optional(), end: z.number().int().optional() }) }),
   z.object({ name: z.literal('search_text'), arguments: z.object({ query: z.string() }) }),
@@ -42,7 +47,7 @@ export class Runner {
   private active: { sessionId: string; controller: AbortController; gate: CommandGate } | null = null;
   activeRole: AgentRole | null = null;
   get running(): boolean { return this.active !== null; }
-  constructor(private store: Store, private providers: LocalProviders, private onChange: () => void) {}
+  constructor(private store: Store, private providers: LocalProviders, private onChange: () => void, private web = new WebSearch()) {}
   private save(session: Session): void { this.store.saveSession(session); this.onChange(); }
   private event(session: Session, kind: Session['events'][number]['kind'], text: string, role?: AgentRole): void {
     session.events.push({ id: randomUUID(), at: Date.now(), kind, text: text.slice(0, 50_000), role });
@@ -103,6 +108,12 @@ export class Runner {
     }
     const parsed = role === 'main' ? codeSchema.parse(call) : readSchema.parse(call);
     const args: any = parsed.arguments;
+    if (this.web.handles(parsed.name)) {
+      const output = JSON.stringify(await this.web.execute(parsed.name, args, signal));
+      signal.throwIfAborted();
+      (session.sourceEvidence ??= projectEvidence(session)).push(sourceEvidence(parsed.name, args, output, `${role} · ${args.url ?? args.query}`)); this.save(session);
+      return output;
+    }
     if (parsed.name === 'list_files') return JSON.stringify(await workspace.list());
     if (parsed.name === 'read_file' || parsed.name === 'search_text') {
       const output = JSON.stringify(parsed.name === 'read_file' ? await workspace.read(args.path, args.start, args.end) : await workspace.search(args.query));
@@ -148,6 +159,9 @@ export class Runner {
     const profile = session.assignments![role];
     const messages: any[] = [{ role: 'system', content: `You are the ${role} agent in a local coding assistant. Follow the user's objective and project evidence. Only use offered tools. Main may use delegate_task for bounded read-only analysis and must act on the returned findings itself. When a task may need a specialized capability, call discover_plugins before proceeding; it is safe and informational. Never claim unrun checks passed. Keep responses concise.` }, { role: 'user', content: prompt }];
     if (role === 'main') messages[0].content += mainDelegationInstructions;
+    messages[0].content += webInstructions;
+    messages[0].content += answerCompletionInstructions;
+    const completion = new AnswerCompletion(prompt);
     session.sourceEvidence ??= projectEvidence(session);
     messages[0].content += sourceMemoryInstructions;
     const contextMaximum = Math.min(profile.contextLimit * 3, 80_000);
@@ -162,8 +176,12 @@ export class Runner {
         const item = session.events[current];
         if (item) { item.text = (item.text + delta).slice(0, 50_000); this.save(session); }
       } });
+      signal.throwIfAborted();
       finalText = result.text;
-      if (result.tools.length === 0) return result.text;
+      if (result.tools.length === 0) {
+        if (completion.continue(messages, result.text)) { this.event(session, 'status', 'The model stopped before finishing. Continuing the task.', role); continue; }
+        return result.text;
+      }
       const assistant: any = { role: 'assistant', content: result.text || null, tool_calls: result.tools.map(call => ({ id: call.id, type: 'function', function: { name: call.name, arguments: JSON.stringify(call.arguments) } })) };
       messages.push(assistant);
       for (const call of result.tools) {

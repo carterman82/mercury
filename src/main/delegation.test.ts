@@ -32,6 +32,24 @@ it('uses isolated explicit context, read tools, and a bounded result', async () 
   expect(execute).toHaveBeenCalledTimes(1);
 });
 
+it('requires substantive findings after a Subagent preamble and preserves its successful reads', async () => {
+  let calls = 0; const execute = vi.fn(async () => 'Verified source total: 721');
+  const provider = { chat: async (input: ChatInput) => {
+    if (++calls === 1) return { text: 'Let me find the correct documentation.', tools: [] };
+    if (calls === 2) return { text: '', tools: [{ id: 'read', name: 'read_file', arguments: { path: 'note.txt' } }] };
+    if (calls === 3) return { text: 'Let me review the evidence.', tools: [] };
+    expect(JSON.stringify(input.messages)).toContain('Verified source total: 721');
+    return { text: 'The source reports 721.', tools: [] };
+  } } as unknown as ModelProvider;
+  const result = await delegateTask(provider, profile, { task: 'Inspect docs', context: '' }, signal(), [readTool], execute);
+  expect(result).toBe('The source reports 721.'); expect(execute).toHaveBeenCalledTimes(1); expect(calls).toBe(4);
+});
+it('bounds empty and status-only Subagent replies instead of returning them as findings', async () => {
+  const chat = vi.fn(async () => ({ text: 'Let me inspect the source.', tools: [] }));
+  await expect(delegateTask({ chat } as unknown as ModelProvider, profile, { task: 'Inspect docs', context: '' }, signal())).rejects.toThrow('two continuation attempts');
+  expect(chat).toHaveBeenCalledTimes(3);
+});
+
 it.each(['delegate_task', 'edit_file', 'create_pdf', 'run_command', 'plugin_call_tool'])('rejects unauthorized Subagent tool %s before execution', async name => {
   const provider = { chat: async () => ({ text: '', tools: [{ id: 'bad', name, arguments: {} }] }) } as unknown as ModelProvider;
   const execute = vi.fn();

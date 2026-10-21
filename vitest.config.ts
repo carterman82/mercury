@@ -1,3 +1,3 @@
 import { defineConfig } from 'vitest/config';
 
-export default defineConfig({ test: { include: ['src/**/*.test.ts'], pool: 'threads', maxWorkers: 1, css: { include: [/katex/] } } });
+export default defineConfig({ test: { include: ['src/**/*.test.{ts,tsx}'], pool: 'threads', maxWorkers: 1, css: { include: [/katex/] } } });

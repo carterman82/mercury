@@ -366,10 +366,12 @@ export class LocalProviders implements ModelProvider {
       let usage: ChatResult['usage'];
       const calls = new Map<number, { id: string; name: string; arguments: string }>();
       let ollamaCallIndex = 0;
+      let completed = false;
       for await (const line of streamLines(response, controller.signal)) {
         if (controller.signal.aborted) throw controller.signal.reason;
         const json = isOllama ? line : line.startsWith('data:') ? line.slice(5).trim() : '';
-        if (!json || json === '[DONE]') continue;
+        if (!json) continue;
+        if (!isOllama && json === '[DONE]') { completed = true; continue; }
         const chunk = JSON.parse(json);
         if (chunk.error) throw new ModelHttpError(400, typeof chunk.error === 'string' ? chunk.error : chunk.error.message ?? JSON.stringify(chunk.error));
         if (isOllama) {
@@ -382,7 +384,11 @@ export class LocalProviders implements ModelProvider {
             const index = ollamaCallIndex++;
             calls.set(index, { id: `call_${index}`, name: String(call.function?.name ?? ''), arguments: JSON.stringify(call.function?.arguments ?? {}) });
           }
-          if (chunk.done) usage = { input: chunk.prompt_eval_count, output: chunk.eval_count };
+          if (chunk.done === true) {
+            if (chunk.done_reason === 'length') throw new Error('The model reached its output token limit before finishing. Partial output is saved; no tool actions from this response were executed.');
+            completed = true;
+            usage = { input: chunk.prompt_eval_count, output: chunk.eval_count };
+          }
         } else {
           const delta = chunk.choices?.[0]?.delta ?? {};
           thinking(delta.reasoning_content ?? delta.reasoning);
@@ -397,9 +403,13 @@ export class LocalProviders implements ModelProvider {
             calls.set(item.index, prior);
           }
           if (chunk.usage) usage = { input: chunk.usage.prompt_tokens, output: chunk.usage.completion_tokens };
+          const finish = chunk.choices?.[0]?.finish_reason;
+          if (finish === 'length' || finish === 'content_filter') throw new Error(`The model stopped before finishing (${finish}). Partial output is saved; no tool actions from this response were executed.`);
+          if (['stop', 'tool_calls', 'function_call'].includes(finish)) completed = true;
         }
       }
       content.finish();
+      if (!completed) throw new Error('The model stream ended without a completion marker. Partial output is saved; no tool actions from this response were executed.');
       const parsed: ToolRequest[] = [...calls.values()].map(call => ({ id: call.id, name: call.name, arguments: JSON.parse(call.arguments || '{}') }));
       return { text, ...(reasoning ? { reasoning } : {}), tools: parsed, usage };
     } catch (error) {

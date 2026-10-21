@@ -4,6 +4,7 @@ import path from 'node:path';
 export interface PluginMatch { id: string; name: string; description: string; source: 'built-in' | 'project'; }
 
 const builtIns: PluginMatch[] = [
+  { id: 'web-search', name: 'Web search', description: 'Built-in lightweight internet search and webpage reading with web_search and web_fetch. Uses direct HTTP without Playwright or API keys; available to Main, Planner and read-only Subagents.', source: 'built-in' },
   { id: 'playwright', name: 'Playwright', description: 'Browser automation and end-to-end testing. Use it to test web apps, inspect browser behavior, or reproduce UI flows. It is bundled with Mercury; request a command before running browser tests.', source: 'built-in' },
   { id: 'workspace-files', name: 'Workspace files', description: 'Read and create Markdown, source code, JSON, text, and simple text PDFs inside the selected project.', source: 'built-in' },
 ];

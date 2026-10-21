@@ -49,13 +49,14 @@ export interface Session {
   subagentCandidates?: ModelProfile[];
   sourceEvidence?: SourceEvidence[];
 }
-export interface Project { id: string; path: string; name: string; }
+export type ProjectPermissionMode = 1 | 2 | 3;
+export interface Project { id: string; path: string; name: string; permissionMode?: ProjectPermissionMode; policyRevision?: number; }
 export interface ChatFile { id: string; name: string; size: number; kind: 'upload' | 'generated'; format?: string; readStatus?: 'readable' | 'partial' | 'metadata'; note?: string; }
 export interface FilePreview { kind: 'image' | 'pdf' | 'text'; text?: string; image?: string; page?: number; pages?: number; note?: string; }
 export interface BrowserPreview { url: string; image?: string; }
 export interface ChatMessage { id: string; role: 'user' | 'assistant'; content: string; files?: ChatFile[]; sourceEvidence?: SourceEvidence[]; model?: string; reasoning?: string; notice?: string; queued?: boolean; toolActivity?: { name: string; label?: string; status: 'running' | 'succeeded' | 'failed'; at: number; result?: string }[]; startedAt?: number; thinkingEndedAt?: number; completedAt?: number; }
-export interface ChatThread { id: string; title: string; profile: ModelProfile; usesMainPool?: boolean; messages: ChatMessage[]; status: 'idle' | 'streaming' | 'stopped' | 'failed' | 'interrupted'; error?: string; updatedAt: number; }
-export interface ChatApproval { id: string; chatId: string; title: string; details: string; at: number; }
+export interface ChatThread { id: string; title: string; profile: ModelProfile; usesMainPool?: boolean; projectId?: string; workspacePath?: string; messages: ChatMessage[]; status: 'idle' | 'streaming' | 'stopped' | 'failed' | 'interrupted'; error?: string; updatedAt: number; }
+export interface ChatApproval { id: string; chatId: string; title: string; details: string; at: number; projectId?: string; policyRevision?: number; kind?: 'read' | 'write' | 'command' | 'plugin' | 'integrate'; agentId?: string; paths?: string[]; }
 export interface Snapshot { projects: Project[]; sessions: Session[]; chats: ChatThread[]; settings: Settings; activeRole: AgentRole | null; activeChatId: string | null; activeChatIds?: string[]; modelRequests?: ModelRequestCount[]; chatApprovals?: ChatApproval[]; }
 export interface ToolRequest { id: string; name: string; arguments: unknown; }
 
@@ -63,6 +64,7 @@ export interface DesktopApi {
   snapshot(): Promise<Snapshot>;
   onUpdate(callback: (snapshot: Snapshot) => void): () => void;
   openProject(): Promise<Project | null>;
+  updateProjectPermissions(projectId: string, mode: ProjectPermissionMode): Promise<void>;
   createSession(projectId: string, objective: string): Promise<Session>;
   updateSettings(settings: Settings): Promise<void>;
   connectChatGPT(id?: string): Promise<void>;
@@ -79,7 +81,7 @@ export interface DesktopApi {
   saveChatFile(fileId: string): Promise<string | null>;
   previewChatFile(fileId: string, page?: number): Promise<FilePreview>;
   previewChatBrowser(chatId: string): Promise<BrowserPreview | null>;
-  sendChat(chatId: string | null, profile: ModelProfile, message: string, attachmentIds?: string[]): Promise<string>;
+  sendChat(chatId: string | null, profile: ModelProfile, message: string, attachmentIds?: string[], submittedAt?: number, projectId?: string): Promise<string>;
   stopChat(chatId: string): Promise<void>;
   answerChatApproval(id: string, allow: boolean): Promise<void>;
   openLink(url: string): Promise<void>;

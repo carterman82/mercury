@@ -170,7 +170,8 @@ test('finds the shared LM Studio models and verifies streamed tool use', async (
   } finally { await app.close(); rmSync(data, { recursive: true, force: true }); }
 });
 
-test('plans, waits for approval, edits, asks before a command, and restores the session', async () => {
+test('starts project chats with Main, reviews isolated changes, switches permissions, and restores history', async () => {
+  test.setTimeout(120_000);
   test.skip(process.platform !== 'win32', 'Windows packaged build workflow test');
   const executablePath = path.resolve('out', process.env.LOCAL_PLAN_AGENT_BUILD_ID ?? '', 'Mercury-win32-x64', 'Mercury.exe');
   const data = mkdtempSync(path.join(os.tmpdir(), 'local-plan-agent-workflow-'));
@@ -179,7 +180,10 @@ test('plans, waits for approval, edits, asks before a command, and restores the 
   mkdirSync(project);
   writeFileSync(path.join(project, 'note.txt'), 'old');
   const expectedHash = createHash('sha256').update('old').digest('hex');
-  let coderTurn = 0;
+  const { execFileSync } = await import('node:child_process');
+  const git = (...args: string[]) => execFileSync('git', ['-C', project, ...args], { windowsHide: true });
+  git('init'); git('config', 'user.name', 'Project test'); git('config', 'user.email', 'test@example.invalid'); git('add', '.'); git('commit', '-m', 'Fixture');
+  const codingRequests: any[] = [];
   const server = createServer(async (request, response) => {
     response.setHeader('content-type', 'application/json');
     if (request.headers.authorization !== 'Bearer fixture-secret') { response.statusCode = 401; response.end('{}'); return; }
@@ -192,16 +196,21 @@ test('plans, waits for approval, edits, asks before a command, and restores the 
     let message: any = { role: 'assistant', content: '' };
     if (input.tools?.some((tool: any) => tool.function?.name === 'probe')) {
       message.tool_calls = [{ function: { name: 'probe', arguments: { value: 'ready' } } }];
-    } else if (system.includes('planner')) {
-      message.content = JSON.stringify({ objective: 'Update note', assumptions: [], steps: [{ title: 'Update note', details: 'Replace old with new.', checks: ['Run node --version'] }], blockers: [] });
-    } else if (system.includes('main')) {
-      coderTurn++;
-      message.tool_calls = [coderTurn === 1
-        ? { function: { name: 'edit_file', arguments: { path: 'note.txt', expectedHash, content: 'new' } } }
-        : coderTurn === 2
-          ? { function: { name: 'run_command', arguments: { command: 'node --version' } } }
-          : { function: { name: 'finish', arguments: { summary: 'Updated note.', verification: 'node --version passed.' } } }];
-    } else message.content = 'Inspect note.txt and replace old with new.';
+    } else if (system.includes('PROJECT CODING CONTEXT')) {
+      codingRequests.push(input);
+      const latestUser = input.messages.findLastIndex((item: any) => item.role === 'user');
+      const task = input.messages[latestUser].content;
+      const results = input.messages.slice(latestUser + 1).filter((item: any) => item.role === 'tool');
+      const call = (name: string, args: unknown) => { message.tool_calls = [{ function: { name, arguments: args } }]; };
+      if (task === 'Update note') {
+        if (!results.length) call('edit_project_file', { path: 'note.txt', expectedHash, content: 'new' });
+        else if (results.length === 1) call('run_project_command', { command: 'echo verified' });
+        else if (results.length === 2) call('review_project_changes', {});
+        else if (results.length === 3) call('integrate_project_changes', { reviewToken: JSON.parse(results.at(-1).content).token });
+        else message.content = 'Updated note after review. Command checks were blocked in restricted mode.';
+      } else if (task === 'Check command' && !results.length) call('run_project_command', { command: 'echo verified' });
+      else message.content = task === 'Check command' ? 'Command completed: verified.' : 'Another project conversation.';
+    } else message.content = 'Ordinary chat conversation.';
     response.end(JSON.stringify({ message, done: true }) + '\n');
   });
   server.listen(0, '127.0.0.1');
@@ -214,7 +223,7 @@ test('plans, waits for approval, edits, asks before a command, and restores the 
     let page = await app.firstWindow();
     await app.evaluate(({ dialog }, fixturePath) => { dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [fixturePath] }); }, project);
     await page.getByRole('button', { name: 'Projects', exact: true }).click();
-    await page.getByRole('button', { name: /Open project/ }).click();
+    await page.getByRole('button', { name: /Open project/ }).first().click();
     await page.getByRole('button', { name: /Model settings/ }).click();
     await page.getByRole('button', { name: /Other: add a server address/ }).click();
     await page.getByLabel('Server type').selectOption('ollama');
@@ -224,26 +233,42 @@ test('plans, waits for approval, edits, asks before a command, and restores the 
     await page.getByRole('button', { name: 'Check and add' }).click();
     await page.getByLabel('Main model', { exact: true }).selectOption({ label: 'fake-local · Fixture server' });
     await page.getByRole('button', { name: 'Save settings' }).click();
-    await page.getByPlaceholder(/Describe the change/).fill('Update note');
-    await page.getByRole('button', { name: /Start planning/ }).click();
-    await expect(page.locator('.topbar .status')).toHaveText('awaiting review');
+    await expect(page.getByLabel('Project permission mode')).toHaveValue('2');
+    await page.getByLabel('Message', { exact: true }).fill('Update note');
+    await page.getByRole('button', { name: 'Send ↑' }).click();
+    await expect(page.getByLabel('Project action approval')).toBeVisible({ timeout: 30000 });
     expect(readFileSync(path.join(project, 'note.txt'), 'utf8')).toBe('old');
-    await page.getByRole('button', { name: 'Plan', exact: true }).click();
-    await expect(page.getByRole('textbox', { name: 'Objective' })).toHaveValue('Update note');
-    await page.getByRole('button', { name: 'Approve and implement' }).click();
-    await expect(page.getByRole('heading', { name: 'Run this command?' })).toBeVisible();
+    await expect(page.getByLabel('Project action approval')).toContainText('note.txt');
+    await page.getByRole('button', { name: 'Allow once' }).click();
+    await expect(page.locator('.chat-assistant')).toContainText('Updated note after review');
     expect(readFileSync(path.join(project, 'note.txt'), 'utf8')).toBe('new');
-    await page.getByRole('button', { name: 'Run command' }).click();
-    await expect(page.locator('.topbar .status')).toHaveText('completed');
+    const originalChat = (await page.evaluate(() => window.desktop.snapshot())).chats[0];
+    expect(originalChat.projectId).toBeTruthy(); expect(originalChat.workspacePath).not.toBe(project);
+    expect(codingRequests.every(input => input.model === 'fake-local')).toBe(true);
+    expect(codingRequests.every(input => !input.tools.some((tool: any) => tool.function.name === 'submit_plan'))).toBe(true);
+    await page.getByLabel('Project permission mode').selectOption('3');
+    await expect.poll(async () => (await page.evaluate(() => window.desktop.snapshot())).projects[0].permissionMode).toBe(3);
+    await page.getByLabel('Message', { exact: true }).fill('Check command');
+    await page.getByRole('button', { name: 'Send ↑' }).click();
+    await expect(page.locator('.chat-assistant').last()).toContainText('Command completed: verified.');
+    await page.locator('.project-new-chat').click();
+    await page.getByLabel('Message', { exact: true }).fill('Another task');
+    await page.getByRole('button', { name: 'Send ↑' }).click();
+    await expect(page.locator('.chat-assistant')).toContainText('Another project conversation.');
+    await page.getByRole('button', { name: 'Chat', exact: true }).click();
+    await expect(page.locator('.session-list')).not.toContainText('Update note');
+    await page.getByLabel('Message', { exact: true }).fill('ordinary hello');
+    await page.getByRole('button', { name: 'Send ↑' }).click();
+    await expect(page.locator('.chat-assistant')).toContainText('Ordinary chat conversation.');
     await app.close();
     app = await electron.launch({ executablePath, env });
     page = await app.firstWindow();
     expect(await app.evaluate(({ app }) => app.getPath('userData'))).toBe(data);
     await page.getByRole('button', { name: 'Projects', exact: true }).click();
-    await expect(page.getByText('Update note', { exact: true }).first()).toBeVisible();
-    await page.getByRole('button', { name: /Update note.*completed/ }).click();
-    await page.getByRole('button', { name: /Changes/ }).click();
-    await expect(page.locator('.change').getByText('note.txt')).toBeVisible();
+    await page.getByRole('button', { name: 'Update note', exact: true }).click();
+    await expect(page.getByLabel('Project permission mode')).toHaveValue('3');
+    await expect(page.locator('.chat-assistant').last()).toContainText('Command completed: verified.');
+    expect((await page.evaluate(() => window.desktop.snapshot())).chats.filter(chat => chat.projectId)).toHaveLength(2);
   } finally {
     await app.close();
     server.close();

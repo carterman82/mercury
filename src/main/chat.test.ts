@@ -7,6 +7,7 @@ import { Store } from './store';
 import type { ChatInput, ModelProvider } from './providers';
 import { ChatFiles } from './chat-files';
 import { makePdf } from './pdf';
+import { cloudChat } from './cloud-providers';
 
 const stores: Store[] = [];
 const directories: string[] = [];
@@ -31,6 +32,133 @@ it('retains routing and billing notices in saved replies without duplicate notic
   } } as unknown as ModelProvider;
   const id = await new ChatService(store, provider, () => {}, () => false).send(null, profile, 'Hello');
   expect(store.chat(id).messages.at(-1)?.notice).toBe('Using ChatGPT subscription.\nUsing OpenAI API; API charges apply.');
+});
+
+it.each([
+  ['Give me the latest hip hop news.', 'Let me pull the latest hip hop news for you.', 'Here are the verified headlines.'],
+  ['Give me Windows terminal commands.', 'Let me find the correct Windows CLI syntax.', 'Use `Get-Command` to list commands.'],
+  ['Write the command line to list all files.', 'Let me find the correct Windows CLI syntax.', 'Use `Get-ChildItem` in PowerShell.'],
+  ['Give me the latest hip hop news.', 'Sure!\nLet me pull the latest hip hop news for you.', 'Here are the verified headlines.'],
+  ['Answer the question.', '', 'The answer is 42.'],
+  ['Answer the question.', '   ', 'The answer is 42.'],
+])('continues a normally stopped unfinished reply for %s', async (request, preamble, answer) => {
+  const store = fixture(); let calls = 0;
+  const provider = { chat: async (input: ChatInput) => {
+    const text = ++calls === 1 ? preamble : answer;
+    if (calls === 2) {
+      expect(JSON.stringify(input.messages)).toContain('COMPLETION RECOVERY:');
+      expect(JSON.stringify(input.messages)).toContain(request);
+    }
+    input.onText?.(text); return { text, tools: [] };
+  } } as unknown as ModelProvider;
+  const id = await new ChatService(store, provider, () => {}, () => false).send(null, profile, request);
+  expect(calls).toBe(2); expect(store.chat(id).status).toBe('idle');
+  expect(store.chat(id).messages.at(-1)?.content).toBe(answer);
+});
+
+it('continues into real search tools, preserves evidence, and does not replay tools after another preamble', async () => {
+  const store = fixture(); let calls = 0;
+  const execute = vi.fn(async () => ({ results: [{ url: 'https://example.com/news', title: 'Source', snippet: 'New release' }] }));
+  const capabilities = { beginTurn: () => {}, endTurn: async () => {}, handles: (name: string) => name === 'web_search', execute } as any;
+  const provider = { chat: async (input: ChatInput) => {
+    calls++;
+    if (calls === 1) return { text: 'Let me pull the latest hip hop news for you.', tools: [] };
+    if (calls === 2) return { text: '', tools: [{ id: 'search', name: 'web_search', arguments: { query: 'latest hip hop news' } }] };
+    if (calls === 3) return { text: 'Let me review those sources.', tools: [] };
+    expect(JSON.stringify(input.messages)).toContain('https://example.com/news');
+    return { text: 'The source reports a new release. [Source](https://example.com/news)', tools: [] };
+  } } as unknown as ModelProvider;
+  const id = await new ChatService(store, provider, () => {}, () => false, undefined, capabilities).send(null, profile, 'Find the latest news');
+  expect(calls).toBe(4); expect(execute).toHaveBeenCalledTimes(1); expect(store.chat(id).status).toBe('idle');
+  expect(store.chat(id).messages.at(-1)?.sourceEvidence?.[0].tool).toBe('web_search');
+});
+
+it('does not treat an empty response after reading a source as a completed answer', async () => {
+  const store = fixture(); let calls = 0;
+  const execute = vi.fn(async () => ({ url: 'https://example.com/report', content: 'Verified total: 721' }));
+  const capabilities = { beginTurn: () => {}, endTurn: async () => {}, handles: () => true, execute } as any;
+  const provider = { chat: async () => ++calls === 1
+    ? { text: 'Let me read the report.', tools: [{ id: 'read', name: 'web_fetch', arguments: { url: 'https://example.com/report' } }] }
+    : { text: calls === 2 ? '' : 'The total is 721.', tools: [] } } as unknown as ModelProvider;
+  const id = await new ChatService(store, provider, () => {}, () => false, undefined, capabilities).send(null, profile, 'Read the report');
+  expect(calls).toBe(3); expect(execute).toHaveBeenCalledTimes(1);
+  expect(store.chat(id).messages.at(-1)?.content).toContain('The total is 721.');
+});
+
+it('fails visibly after bounded status-only continuations instead of marking the request answered', async () => {
+  const store = fixture(); const chat = vi.fn(async () => ({ text: 'Let me find the documentation.', tools: [] }));
+  const id = await new ChatService(store, { chat } as unknown as ModelProvider, () => {}, () => false).send(null, profile, 'Find the docs');
+  expect(chat).toHaveBeenCalledTimes(3); expect(store.chat(id).status).toBe('failed');
+  expect(store.chat(id).error).toContain('two continuation attempts');
+  expect(store.chat(id).messages.at(-1)?.completedAt).toBeDefined();
+});
+
+it.each(['Thanks!', 'Which Windows version?', 'I cannot access that private website.', '"Let me search."'])('does not add model calls for a valid brief reply: %s', async text => {
+  const store = fixture(); const chat = vi.fn(async () => ({ text, tools: [] }));
+  const id = await new ChatService(store, { chat } as unknown as ModelProvider, () => {}, () => false).send(null, profile, 'Help me');
+  expect(chat).toHaveBeenCalledTimes(1); expect(store.chat(id).status).toBe('idle');
+});
+
+it.each(['claude', 'openai'] as const)('recovers through the actual %s request adapter with a valid continuation transcript', async provider => {
+  const store = fixture(), cloudProfile = { ...profile, provider, contextLimit: 32768 };
+  const connection = { id: profile.connectionId, provider, label: 'Cloud fixture', url: provider === 'claude' ? 'https://api.anthropic.com' : 'https://api.openai.com' };
+  store.saveSettings({ ...store.settings(), connections: [connection], mainModel: cloudProfile });
+  const requests: any[] = [];
+  vi.stubGlobal('fetch', vi.fn(async (_url, init) => {
+    const body = JSON.parse(init.body); requests.push(body);
+    const text = requests.length === 1 ? 'Let me find the correct Windows CLI syntax.' : 'Use Get-Command in PowerShell.';
+    const transcript = provider === 'claude' ? body.messages : body.input;
+    // Simulate current APIs rejecting an assistant prefill. This verifies the
+    // converted wire payload, including Claude's adjacent-role merging.
+    if (transcript.at(-1).role !== 'user') return new Response('{"error":{"message":"Assistant prefill is unsupported"}}', { status: 400 });
+    const events = provider === 'claude'
+      ? [{ type: 'content_block_delta', delta: { type: 'text_delta', text } }, { type: 'message_delta', delta: { stop_reason: 'end_turn' } }, { type: 'message_stop' }]
+      : [{ type: 'response.output_text.delta', delta: text }, { type: 'response.completed', response: {} }];
+    return new Response(events.map(event => 'data: ' + JSON.stringify(event) + '\n\n').join(''));
+  }));
+  try {
+    const model = { chat: (input: ChatInput) => cloudChat(connection, 'fixture-key', input) } as unknown as ModelProvider;
+    const id = await new ChatService(store, model, () => {}, () => false).send(null, cloudProfile, 'Give me Windows terminal commands');
+    expect(requests).toHaveLength(2); expect(store.chat(id).status).toBe('idle');
+    expect(store.chat(id).messages.at(-1)?.content).toBe('Use Get-Command in PowerShell.');
+    expect(JSON.stringify(requests[1])).toContain('Let me find the correct Windows CLI syntax.');
+  } finally { vi.unstubAllGlobals(); }
+});
+
+it('honors Stop at the continuation boundary without dispatching another generation', async () => {
+  const store = fixture(); let service!: ChatService;
+  const provider = { chat: vi.fn(async () => ({ text: 'Let me check the documentation.', tools: [] })) };
+  const notify = () => {
+    const id = service?.activeId;
+    if (id && store.chat(id).messages.at(-1)?.notice?.includes('Continuing the request')) service.stop(id);
+  };
+  service = new ChatService(store, provider as unknown as ModelProvider, notify, () => false);
+  const id = await service.send(null, profile, 'Find documentation');
+  expect(provider.chat).toHaveBeenCalledTimes(1); expect(store.chat(id).status).toBe('stopped');
+});
+
+it('records prompt-to-final duration across a queue, an early preamble, a tool and delegated research', async () => {
+  const store = fixture(); let now = 100_000, mainTurns = 0;
+  const clock = vi.spyOn(Date, 'now').mockImplementation(() => now);
+  const execute = vi.fn(async () => { now += 7000; return { url: 'https://example.com/docs', content: 'Source evidence' }; });
+  const capabilities = { beginTurn: () => {}, endTurn: async () => { now += 1000; }, handles: () => true, execute } as any;
+  const provider = { chat: async (input: ChatInput) => {
+    if (String((input.messages[0] as any).content).includes('read-only Subagent')) { now += 9000; return { text: 'Verified findings', tools: [] }; }
+    if (++mainTurns === 1) {
+      input.onRequestState?.('queued'); now += 5000; input.onRequestState?.('running');
+      input.onText?.('Let me check.'); now += 2000;
+      return { text: 'Let me check.', tools: [{ id: 'read', name: 'web_fetch', arguments: { url: 'https://example.com/docs' } }, { id: 'delegate', name: 'delegate_task', arguments: { task: 'Analyze', context: 'Source evidence' } }] };
+    }
+    now += 3000; input.onText?.('Final answer'); return { text: 'Final answer', tools: [] };
+  } } as unknown as ModelProvider;
+  try {
+    const id = await new ChatService(store, provider, () => {}, () => false, undefined, capabilities).send(null, profile, 'Research', [], 99_000);
+    const reply = store.chat(id).messages.at(-1)!;
+    expect(reply.startedAt).toBe(99_000); expect(reply.thinkingEndedAt).toBe(105_000);
+    expect(reply.completedAt).toBe(127_000); expect(reply.completedAt! - reply.startedAt!).toBe(28_000);
+    const restored = new Store(path.join(directories.at(-1)!, 'state.sqlite'));
+    try { expect(restored.chat(id).messages.at(-1)?.completedAt).toBe(reply.completedAt); } finally { restored.close(); }
+  } finally { clock.mockRestore(); }
 });
 
 it.each([true, false])('delegates conversation-file analysis with explicit Subagent selection: %s', async explicit => {
@@ -90,6 +218,17 @@ async function uploadSources(store: Store, count: number, content = 'Source evid
   return { files, uploads };
 }
 
+it('accepts ten attachments and rejects an eleventh', async () => {
+  const store = fixture();
+  const { files, uploads } = await uploadSources(store, 11);
+  store.saveSettings({ ...store.settings(), subagentModel: null });
+  const provider = { chat: async () => ({ text: 'Read the attachments', tools: [] }) } as unknown as ModelProvider;
+  const service = new ChatService(store, provider, () => {}, () => false, files);
+
+  await expect(service.send(null, profile, 'Read these files', uploads.slice(0, 10).map(file => file.id))).resolves.toEqual(expect.any(String));
+  await expect(service.send(null, profile, 'Read these files', uploads.map(file => file.id))).rejects.toThrow('Attach up to 10 files per message.');
+});
+
 it('automatically dispatches eight files to the configured model before Main, with at most three concurrent tasks', async () => {
   const store = fixture();
   const { files, uploads } = await uploadSources(store, 8, 'Raw source only');
@@ -125,6 +264,7 @@ it('automatically dispatches eight files to the configured model before Main, wi
   expect(response.notice).not.toContain('0/8');
   expect(response.toolActivity).toHaveLength(8);
   expect(response.toolActivity!.every(task => task.status === 'succeeded' && task.label?.includes('gemma'))).toBe(true);
+  expect(response.toolActivity?.map(task => task.label?.split(' · ')[0])).toEqual(['🌸 Subagent Flower', '🦊 Subagent Fox', '🌙 Subagent Moon', '🔥 Subagent Flame', '🍄 Subagent Mushroom', '🐙 Subagent Octopus', '⭐ Subagent Star', '🌊 Subagent Wave']);
 });
 
 it('automatically delegates a single large upload without asking Main to call a tool', async () => {
@@ -311,6 +451,32 @@ it('retains webpage text, citation URL, and pagination on follow-up without anot
   await new ChatService(store, followup, () => {}, () => false, undefined, capabilities).send(id, profile, 'What was that total?');
   expect(execute).toHaveBeenCalledTimes(1);
   expect(store.chat(id).messages.at(-1)?.content).toContain('915');
+});
+
+it('lets a delegated researcher search and read web sources without file tools, retaining evidence for Main', async () => {
+  const store = fixture(); let mainTurns = 0, researchTurns = 0;
+  const execute = vi.fn(async (_chat, name) => name === 'web_search'
+    ? { results: [{ title: 'Official source', url: 'https://example.com/report', snippet: 'Result' }] }
+    : { url: 'https://example.com/report', content: 'The current total is 721.', nextOffset: null });
+  const capabilities = { beginTurn: () => {}, endTurn: async () => {}, handles: (name: string) => ['web_search', 'web_fetch'].includes(name), execute } as any;
+  const provider = { chat: async (input: ChatInput) => {
+    const names = (input.tools as any[]).map(tool => tool.function.name);
+    if (String((input.messages[0] as any).content).includes('read-only Subagent')) {
+      expect(names).toEqual(['web_search', 'web_fetch']);
+      if (++researchTurns === 1) return { text: '', tools: [{ id: 'search', name: 'web_search', arguments: { query: 'official report' } }] };
+      if (researchTurns === 2) return { text: '', tools: [{ id: 'read', name: 'web_fetch', arguments: { url: 'https://example.com/report' } }] };
+      expect(JSON.stringify(input.messages)).toContain('721');
+      return { text: '721 from [official source](https://example.com/report)', tools: [] };
+    }
+    expect(names).toContain('web_search');
+    if (++mainTurns === 1) return { text: '', tools: [{ id: 'delegate', name: 'delegate_task', arguments: { task: 'Research current report', context: 'Find and verify the total with public web tools.' } }] };
+    expect(JSON.stringify(input.messages)).toContain('721');
+    return { text: 'The total is 721. [Source](https://example.com/report)', tools: [] };
+  } } as unknown as ModelProvider;
+  const id = await new ChatService(store, provider, () => {}, () => false, undefined, capabilities).send(null, profile, 'Research the report');
+  expect(store.chat(id).status).toBe('idle');
+  expect(execute.mock.calls.map(args => args[1])).toEqual(['web_search', 'web_fetch']);
+  expect(store.chat(id).messages.at(-1)?.sourceEvidence?.map(item => item.tool)).toEqual(['web_search', 'web_fetch', 'delegate_task']);
 });
 
 it('remembers the initial excerpt of a small upload even when no Subagent or read tool was called', async () => {

@@ -4,7 +4,7 @@ import { useDiscovery } from './useDiscovery';
 import { connectionGroups } from '../shared/connections';
 import React, { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import type { ModelConnection, ModelInfo, ModelProfile, PlanContent, ProviderKind, Session, Settings, Snapshot } from '../shared/types';
+import type { ModelConnection, ModelInfo, ModelProfile, ProviderKind, Session, Settings, Snapshot } from '../shared/types';
 import './style.css';
 import { ChatPanel } from './ChatPanel';
 import { Markdown } from './Markdown';
@@ -12,11 +12,9 @@ import { RoleModels } from './RoleModels';
 
 const modelRoles = [
   { key: 'plannerModel', label: 'Planner model', description: 'Plans project infrastructure and the approach to project changes.' },
-  { key: 'mainModel', label: 'Main model', description: 'Handles chats, everyday tasks, and approved project implementation.' },
+  { key: 'mainModel', label: 'Main model', description: 'Handles chats, everyday tasks, and direct project implementation.' },
   { key: 'subagentModel', label: 'Subagent model', description: 'Breaks down data and handles small analysis tasks for the Main model.' },
 ] as const;
-const emptyPlan: PlanContent = { objective: '', assumptions: [], steps: [{ title: '', details: '', checks: [] }], blockers: [] };
-const lines = (value: string) => value.split('\n').map(x => x.trim()).filter(Boolean);
 const initial: Snapshot = { projects: [], sessions: [], chats: [], settings: { connections: [], mainModel: null, plannerModel: null, subagentModel: null }, activeRole: null, activeChatId: null };
 
 function SettingsPanel({ settings, onClose, onSave, run }: { settings: Settings; onClose: () => void; onSave: (settings: Settings) => Promise<void>; run: (job: () => Promise<unknown>) => void }) {
@@ -130,81 +128,43 @@ function SettingsPanel({ settings, onClose, onSave, run }: { settings: Settings;
       return <RoleModels key={key} label={label} description={description} value={draft[key]} extras={extrasKey ? draft[extrasKey] : []} models={models} connections={draft.connections} onOther={() => setOther(true)} optional={key !== 'mainModel'} onChange={(profile, extras) => setDraft(current => ({ ...current, [key]: profile, ...(extrasKey ? { [extrasKey]: extras } : {}) }))} />;
     })}</div></section>}
     <p className="hint">Context defaults to the reported or published model maximum. You can lower it manually.</p>
-    <p className="hint">Unset Planner and Subagent models use Main. Subagents return read-only findings; Main handles changes. Project implementation starts after plan approval.</p>
+    <p className="hint">Unset Planner and Subagent models use Main. Subagents return read-only findings; Main handles changes. Project chats start directly with Main and inherit project permissions.</p>
     <footer><button className="primary" disabled={connecting} onClick={() => run(async () => { setBusyMessage('Saving settings…'); setConnecting(true); try { await onSave(draft); onClose(); } finally { setConnecting(false); } })}>Save settings</button></footer>
   </div></section>{busy && <ConnectionProgress message={connecting ? busyMessage : 'Refreshing models…'} browserSignIn={signingIn || codexSignIn} onCancel={cancelSignIn} />}</div>;
 }
 
-function PlanEditor({ session, run }: { session: Session; run: (job: () => Promise<unknown>) => void }) {
-  const [draft, setDraft] = useState<PlanContent>(session.plan ? structuredClone(session.plan.content) : structuredClone(emptyPlan));
-  const [feedback, setFeedback] = useState('');
-  useEffect(() => { setDraft(session.plan ? structuredClone(session.plan.content) : structuredClone(emptyPlan)); }, [session.id, session.plan?.revision]);
-  const editable = ['awaiting_review', 'awaiting_input', 'interrupted', 'failed'].includes(session.status);
-  const updateStep = (index: number, key: 'title' | 'details' | 'checks', value: string) => setDraft(current => {
-    const steps = current.steps.map((step, i) => i === index ? { ...step, [key]: key === 'checks' ? lines(value) : value } : step);
-    return { ...current, steps };
-  });
-  return <div className="plan-editor"><div className="panel-head"><div><small>PLAN {session.plan ? `· REVISION ${session.plan.revision}` : ''}</small><h2>{session.plan ? 'Review the approach' : 'Waiting for a plan'}</h2></div>{session.plan && <button onClick={() => run(() => window.desktop.exportPlan(session.id))}>Export Markdown</button>}</div>
-    {session.plan && <div className="plan-fields"><label className="field"><span>Objective</span><textarea disabled={!editable} rows={2} value={draft.objective} onChange={event => setDraft({ ...draft, objective: event.target.value })} /></label>
-      <label className="field"><span>Assumptions · one per line</span><textarea disabled={!editable} rows={3} value={draft.assumptions.join('\n')} onChange={event => setDraft({ ...draft, assumptions: lines(event.target.value) })} /></label>
-      {draft.steps.map((step, index) => <div className="plan-step" key={index}><div className="step-title"><strong>Step {index + 1}</strong>{editable && <button className="ghost danger" onClick={() => setDraft({ ...draft, steps: draft.steps.filter((_, i) => i !== index) })}>Remove</button>}</div><label className="field"><span>Title</span><input disabled={!editable} value={step.title} onChange={event => updateStep(index, 'title', event.target.value)} /></label><label className="field"><span>Changes</span><textarea disabled={!editable} rows={3} value={step.details} onChange={event => updateStep(index, 'details', event.target.value)} /></label><label className="field"><span>Checks · one per line</span><textarea disabled={!editable} rows={2} value={step.checks.join('\n')} onChange={event => updateStep(index, 'checks', event.target.value)} /></label></div>)}
-      {editable && <button onClick={() => setDraft({ ...draft, steps: [...draft.steps, { title: '', details: '', checks: [] }] })}>Add step</button>}
-      <label className="field"><span>Open questions · resolve these before implementation</span><textarea disabled={!editable} rows={3} value={draft.blockers.join('\n')} onChange={event => setDraft({ ...draft, blockers: lines(event.target.value) })} /></label>
-      {editable && <div className="plan-actions"><button onClick={() => run(() => window.desktop.savePlan(session.id, draft))}>Save revision</button><button className="primary" disabled={draft.blockers.length > 0 || JSON.stringify(draft) !== JSON.stringify(session.plan.content)} onClick={() => run(() => window.desktop.approvePlan(session.id, session.plan!.revision))}>Approve and implement</button></div>}
-      {editable && <div className="feedback"><label className="field"><span>Feedback for another planning cycle</span><textarea rows={3} value={feedback} onChange={event => setFeedback(event.target.value)} placeholder="What should the team revise or investigate?" /></label><button onClick={() => run(async () => { await window.desktop.plan(session.id, feedback); setFeedback(''); })}>Revise with agents</button></div>}
-    </div>}
-  </div>;
+function LegacySession({ session }: { session: Session }) {
+  return <section className="legacy-session"><header><small>LEGACY HISTORY · READ ONLY</small><h1>{session.objective}</h1><p>{session.status.replaceAll('_', ' ')}</p></header>
+    <details open><summary>Conversation</summary>{session.events.map(event => <article className="event" key={event.id}><small>{event.role ?? 'System'} · {event.kind}</small><Markdown content={event.text || 'Working…'} /></article>)}</details>
+    {session.plan && <details><summary>Plan · revision {session.plan.revision}</summary><h2>{session.plan.content.objective}</h2>{session.plan.content.assumptions.map((item, i) => <p key={i}>{item}</p>)}{session.plan.content.steps.map((step, i) => <article key={i}><h3>{step.title}</h3><p>{step.details}</p><ul>{step.checks.map((check, j) => <li key={j}>{check}</li>)}</ul></article>)}{session.plan.content.blockers.map((item, i) => <p key={i}>{item}</p>)}</details>}
+    <details><summary>Changes · {session.changes.length}</summary>{session.changes.map((change, i) => <article key={i}><h3>{change.path}</h3><div className="diff-grid"><pre>{change.before ?? '(new file)'}</pre><pre>{change.after ?? '(deleted)'}</pre></div></article>)}</details>
+  </section>;
 }
 
 function App() {
   const [state, setState] = useState<Snapshot>(initial);
   const [mode, setMode] = useState<'chat' | 'projects'>('chat');
   const [chatId, setChatId] = useState<string | null>(null);
+  const [projectChatId, setProjectChatId] = useState<string | null>(null);
   const [projectId, setProjectId] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [sessionId, setSessionId] = useState<string | null>(null);
-  const [objective, setObjective] = useState('');
-  const [tab, setTab] = useState<'conversation' | 'plan' | 'changes' | 'commands'>('conversation');
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [error, setError] = useState('');
-  const [remember, setRemember] = useState(false);
-  useEffect(() => {
-    window.desktop.snapshot().then(setState).catch(error => setError(String(error)));
-    return window.desktop.onUpdate(setState);
-  }, []);
-  useEffect(() => { if (!projectId && state.projects[0]) setProjectId(state.projects[0].id); }, [state.projects, projectId]);
-  const session = state.sessions.find(item => item.id === sessionId) ?? null;
-  const project = state.projects.find(item => item.id === (session?.projectId ?? projectId));
-  const busy = session && ['planning', 'implementing', 'awaiting_command'].includes(session.status);
+  useEffect(() => { window.desktop.snapshot().then(setState).catch(error => setError(String(error))); return window.desktop.onUpdate(setState); }, []);
+  useEffect(() => { if (!projectId && state.projects[0]) { setProjectId(state.projects[0].id); setExpanded(current => new Set([...current, state.projects[0].id])); } }, [state.projects, projectId]);
+  const session = state.sessions.find(item => item.id === sessionId);
+  const project = state.projects.find(item => item.id === projectId);
   const run = (job: () => Promise<unknown>) => { setError(''); void job().catch(error => setError(String(error?.message ?? error))); };
-  const events = session?.events ?? [];
-  const commandEvents = events.filter(event => event.kind === 'command');
-  const newSession = () => run(async () => {
-    if (!projectId) throw new Error('Open a project first.');
-    const created = await window.desktop.createSession(projectId, objective);
-    setSessionId(created.id); setTab('conversation'); setObjective('');
-    await window.desktop.plan(created.id);
-  });
+  const selectProject = (id: string) => { setProjectId(id); setProjectChatId(null); setSessionId(null); setExpanded(current => new Set([...current, id])); };
+  const chatButton = (id: string, title: string, streaming: boolean, selected: boolean, onClick: () => void) => <button key={id} className={`session-item ${selected ? 'active' : ''}`} onClick={onClick}><span>{title}</span>{streaming && <small>Responding…</small>}</button>;
   return <div className="app"><aside className="sidebar"><div className="brand"><div className="brand-mark">M</div><strong>Mercury<span className="brand-dot">.</span></strong></div>
-    <nav className="mode-nav" aria-label="Main navigation"><button aria-label="Chat" className={mode === 'chat' ? 'active' : ''} onClick={() => setMode('chat')}>◌ <span>Chat</span></button><button aria-label="Projects" className={mode === 'projects' ? 'active' : ''} onClick={() => setMode('projects')}>▱ <span>Projects</span>{state.activeRole && <span className="activity-dot" />}</button></nav>
-    {mode === 'chat' ? <><button className="project-button" onClick={() => setChatId(null)}>＋ New chat</button><div className="sidebar-label">RECENT CHATS</div><div className="session-list">{state.chats.map(item => <button key={item.id} className={`session-item ${chatId === item.id ? 'active' : ''}`} onClick={() => setChatId(item.id)}><span>{item.title}</span>{item.status === 'streaming' && <small>{item.messages.at(-1)?.queued ? 'Queued…' : 'Responding…'}</small>}</button>)}</div></> : <><button className="project-button" onClick={() => run(async () => { const result = await window.desktop.openProject(); if (result) { setProjectId(result.id); setSessionId(null); } })}>＋ Open project</button><div className="sidebar-label">PROJECTS</div><div className="project-list">{state.projects.map(item => <button key={item.id} className={`project-item ${projectId === item.id ? 'active' : ''}`} onClick={() => { setProjectId(item.id); setSessionId(null); }}><span className="folder">▱</span><span>{item.name}</span></button>)}</div><div className="sidebar-label">SESSIONS</div><div className="session-list">{state.sessions.filter(item => !projectId || item.projectId === projectId).map(item => <button key={item.id} className={`session-item ${sessionId === item.id ? 'active' : ''}`} onClick={() => { setSessionId(item.id); setTab('conversation'); }}><span>{item.objective}</span><small>{item.status.replaceAll('_', ' ')}</small></button>)}</div></>}
+    <nav className="mode-nav" aria-label="Main navigation"><button aria-label="Chat" className={mode === 'chat' ? 'active' : ''} onClick={() => setMode('chat')}>◌ <span>Chat</span></button><button aria-label="Projects" className={mode === 'projects' ? 'active' : ''} onClick={() => setMode('projects')}>▱ <span>Projects</span></button></nav>
+    {mode === 'chat' ? <><button className="project-button" onClick={() => setChatId(null)}>＋ New chat</button><div className="sidebar-label">RECENT CHATS</div><div className="session-list">{state.chats.filter(item => !item.projectId).map(item => chatButton(item.id, item.title, item.status === 'streaming', chatId === item.id, () => setChatId(item.id)))}</div></> : <><button className="project-button" onClick={() => run(async () => { const result = await window.desktop.openProject(); if (result) selectProject(result.id); })}>＋ Open project</button><div className="sidebar-label">PROJECTS</div><div className="project-tree">{state.projects.map(item => <section key={item.id} className="project-group"><div className="project-group-heading"><button aria-label={`${expanded.has(item.id) ? 'Collapse' : 'Expand'} ${item.name}`} aria-expanded={expanded.has(item.id)} className="project-expand" onClick={() => setExpanded(current => { const next = new Set(current); if (next.has(item.id)) next.delete(item.id); else next.add(item.id); return next; })}>{expanded.has(item.id) ? '▾' : '▸'}</button><button className={`project-item ${projectId === item.id ? 'active' : ''}`} title={item.path} onClick={() => selectProject(item.id)}>▱ {item.name}</button></div>{expanded.has(item.id) && <div className="project-chats"><button className="project-new-chat" onClick={() => selectProject(item.id)}>＋ New chat</button>{state.chats.filter(chat => chat.projectId === item.id).map(chat => chatButton(chat.id, chat.title, chat.status === 'streaming', projectChatId === chat.id && !sessionId, () => { setProjectId(item.id); setProjectChatId(chat.id); setSessionId(null); }))}{state.sessions.some(session => session.projectId === item.id) && <details className="legacy-history"><summary>Legacy history · read only</summary>{state.sessions.filter(session => session.projectId === item.id).map(session => <button key={session.id} className={`session-item ${sessionId === session.id ? 'active' : ''}`} onClick={() => { setProjectId(item.id); setSessionId(session.id); }}><span>{session.objective}</span><small>{session.status.replaceAll('_', ' ')}</small></button>)}</details>}</div>}</section>)}</div></>}
     <div className="sidebar-bottom"><button onClick={() => setSettingsOpen(true)}>⚙ &nbsp; Model settings</button></div></aside>
-    <main className="main">{mode === 'chat' ? <>{error && <div className="error-banner"><span>{error}</span><button onClick={() => setError('')}>Dismiss</button></div>}<ChatPanel state={state} chatId={chatId} onSelect={setChatId} openSettings={() => setSettingsOpen(true)} /></> : <><header className="topbar"><div><small>{project?.path ?? 'PROJECTS'}</small><h1>{session ? session.objective : 'Plan your next change'}</h1></div><div className="topbar-actions">{session && <span className={`status status-${session.status}`}>{session.status.replaceAll('_', ' ')}</span>}{state.activeRole && <span className="role-badge">{state.activeRole} · {session?.assignments?.[state.activeRole]?.model}</span>}{busy && <button className="danger" onClick={() => run(() => window.desktop.stop(session!.id))}>Stop</button>}{session?.status === 'interrupted' && session.plan?.approved && <button className="primary" onClick={() => run(() => window.desktop.resume(session.id))}>Resume</button>}</div></header>
-      {error && <div className="error-banner"><span>{error}</span><button onClick={() => setError('')}>Dismiss</button></div>}
-      {!session ? <div className="welcome"><div className="eyebrow">FROM IDEA TO VERIFIED CHANGE</div><h2>What would you like to build?</h2><p>Planner will inspect your project and prepare a plan for your review. Main starts implementation after you approve it.</p><textarea rows={5} value={objective} onChange={event => setObjective(event.target.value)} placeholder="Describe the change, constraints, and what success looks like..." /><div className="welcome-footer"><span>{project ? `Working in ${project.name}` : 'Open a project to begin'}</span><button className="primary" disabled={!projectId || !objective.trim() || !state.settings.mainModel} onClick={newSession}>Start planning →</button></div>{!state.settings.mainModel && <button className="text-button" onClick={() => setSettingsOpen(true)}>Choose a Main model first</button>}</div>
-      : <div className="content"><nav className="tabs">{(['conversation', 'plan', 'changes', 'commands'] as const).map(item => <button key={item} className={tab === item ? 'selected' : ''} onClick={() => setTab(item)}>{item[0].toUpperCase() + item.slice(1)}{item === 'changes' && session.changes.length ? ` · ${session.changes.length}` : ''}</button>)}</nav>
-        <div className="panel-scroll" key={`${session.id}:${tab}`}>
-          {tab === 'conversation' && <div className="timeline"><div className="objective-card"><small>YOUR REQUEST</small><p>{session.objective}</p></div>{events.map(event => <article className={`event event-${event.kind}`} key={event.id}><div className="event-meta"><span>{event.role ?? 'System'} · {event.kind}</span><time>{new Date(event.at).toLocaleTimeString()}</time></div>{event.kind === 'message' && event.text ? <Markdown content={event.text} /> : <pre>{event.text || 'Working…'}</pre>}</article>)}{session.status === 'draft' && <button className="primary" onClick={() => run(() => window.desktop.plan(session.id))}>Start planning</button>}{session.status === 'awaiting_review' && <button className="primary" onClick={() => setTab('plan')}>Review plan →</button>}{session.status === 'awaiting_input' && <button className="primary" onClick={() => setTab('plan')}>Answer open questions →</button>}</div>}
-          {tab === 'plan' && <PlanEditor session={session} run={run} />}
-          {tab === 'changes' && <div className="changes"><div className="panel-head"><div><small>WORKSPACE</small><h2>Changes made in this session</h2></div></div>{session.changes.length ? session.changes.map((change, index) => <article className="change" key={index}><h3>{change.path}</h3><div className="diff-grid"><div><small>BEFORE</small><pre>{change.before ?? '(new file)'}</pre></div><div><small>AFTER</small><pre>{change.after ?? '(deleted)'}</pre></div></div></article>) : <p className="empty">No files changed in this session.</p>}</div>}
-          {tab === 'commands' && <div className="commands"><div className="panel-head"><div><small>VERIFICATION</small><h2>Commands and results</h2></div></div>{commandEvents.length ? commandEvents.map(event => <article className="command-result" key={event.id}><time>{new Date(event.at).toLocaleTimeString()}</time><pre>{event.text}</pre></article>) : <p className="empty">No commands requested yet.</p>}</div>}
-        </div>
-      </div>}
-    </>}</main>
-    {session?.command && <div className="modal-backdrop"><section className="modal command-modal"><small>APPROVAL REQUIRED</small><h2>Run this command?</h2><p>The coding agent is waiting for your decision.</p><div className="command-detail"><small>WORKING DIRECTORY</small><code>{session.command.cwd}</code><small>COMMAND</small><code>{session.command.command}</code></div><label className="checkbox"><input type="checkbox" checked={remember} onChange={event => setRemember(event.target.checked)} />Allow this exact command again in this session</label><footer><button onClick={() => run(() => window.desktop.answerCommand(session.id, session.command!.id, false, false))}>Deny</button><button className="primary" onClick={() => run(async () => { await window.desktop.answerCommand(session.id, session.command!.id, true, remember); setRemember(false); })}>Run command</button></footer></section></div>}
+    <main className="main">{error && <div className="error-banner"><span>{error}</span><button onClick={() => setError('')}>Dismiss</button></div>}{mode === 'chat' ? <ChatPanel key="ordinary" state={state} chatId={chatId} onSelect={setChatId} openSettings={() => setSettingsOpen(true)} /> : session ? <LegacySession session={session} /> : project ? <ChatPanel key={project.id} state={state} chatId={projectChatId} projectId={project.id} onSelect={setProjectChatId} openSettings={() => setSettingsOpen(true)} /> : <div className="welcome"><div className="eyebrow">PROJECTS</div><h2>Work on a local project</h2><p>Open a folder to start a project chat with Main. Keep related conversations together and choose the project’s permission setting.</p><button className="primary" onClick={() => run(async () => { const result = await window.desktop.openProject(); if (result) selectProject(result.id); })}>Open project</button></div>}</main>
     {settingsOpen && <SettingsPanel settings={state.settings} onClose={() => setSettingsOpen(false)} onSave={settings => window.desktop.updateSettings(settings)} run={run} />}
   </div>;
 }
 
 createRoot(document.getElementById('root')!).render(<App />);
-
-

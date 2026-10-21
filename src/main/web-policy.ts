@@ -18,9 +18,9 @@ export class WebPolicy {
     if (!addresses.length || addresses.some(item => !publicAddress(item.address))) throw new Error('Local/private/reserved network addresses are not allowed.');
     return url;
   }
-  async fetch(raw: string | URL | Request, init: RequestInit = {}): Promise<Response> {
+  async fetch(raw: string | URL | Request, init: RequestInit = {}, redirects: 'error' | 'manual' = 'error'): Promise<Response> {
     const url = await this.check(raw instanceof Request ? raw.url : String(raw));
-    const response = await fetch(raw instanceof Request ? raw : url, { ...init, redirect: 'error', signal: init.signal ?? AbortSignal.timeout(25_000) });
+    const response = await fetch(raw instanceof Request ? raw : url, { ...init, redirect: redirects, signal: init.signal ?? AbortSignal.timeout(25_000) });
     if (!response.body) return response;
     let size = 0;
     const body = response.body.pipeThrough(new TransformStream<Uint8Array, Uint8Array>({ transform(chunk, controller) { size += chunk.byteLength; if (size > 2_000_000) throw new Error('Service response exceeds 2 MB.'); controller.enqueue(chunk); } }));

@@ -9,6 +9,7 @@ test('passes real game screenshots to the model and controls an iframe only afte
   test.setTimeout(90_000); const data = mkdtempSync(path.join(os.tmpdir(), 'mercury-game-')); let base = '', observedMoves = false, pictures = 0;
   const server = createServer(async (request, response) => {
     if (request.url === '/api/tags') { response.end(JSON.stringify({ models: [{ name: 'game-model' }] })); return; }
+    if (request.url === '/api/show') { response.end('{}'); return; }
     if (request.url === '/page') { response.end('<body style="margin:0"><iframe src="/game" style="border:0;width:800px;height:500px"></iframe>'); return; }
     if (request.url === '/game') { response.end('<body style="margin:0"><canvas id="game" tabindex="0" width="600" height="300" onclick="this.focus()"></canvas><p id="moves">Moves: 0</p><script>let n=0;game.onkeydown=e=>{moves.textContent="Moves: "+(++n);const ctx=game.getContext("2d");ctx.fillStyle="red";ctx.fillRect(n*20,20,50,50)};</script>'); return; }
     if (request.method !== 'POST') { response.writeHead(404); response.end(); return; }

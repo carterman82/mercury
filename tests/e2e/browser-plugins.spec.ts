@@ -13,6 +13,7 @@ for (const npm of [false, true]) test(npm ? 'installs and invokes the real pinne
   const errors: string[] = [];
   const server = createServer(async (request, response) => {
     if (request.url === '/api/tags') { response.end(JSON.stringify({ models: [{ name: 'tools-model' }] })); return; }
+    if (request.url === '/api/show') { response.end('{}'); return; }
     if (request.url === '/page') { response.setHeader('content-type', 'text/html'); response.end('<title>Fixture home</title><body><p id="rendered">Loading</p><a href="/article">Read article</a><script>document.getElementById("rendered").textContent="Browser JavaScript works";</script></body>'); return; }
     if (request.url === '/article') { response.end('<title>Source article</title><body>Verified source fact: Mercury browser test 2026.</body>'); return; }
     if (request.url?.startsWith('/registry')) {
