@@ -8,8 +8,10 @@ import { LocalProviders } from './providers';
 import { Store } from './store';
 import { Workspace } from './workspace';
 import { discoverPlugins } from './plugins';
+import { projectEvidence, sourceEvidence, sourceMemoryContext, sourceMemoryInstructions, recallContextTool, recallContext } from './source-memory';
 
 const readTools = [
+  recallContextTool,
   { type: 'function', function: { name: 'list_files', description: 'List project files', parameters: { type: 'object', properties: {}, additionalProperties: false } } },
   { type: 'function', function: { name: 'read_file', description: 'Read numbered lines of a project file and obtain its content hash', parameters: { type: 'object', properties: { path: { type: 'string' }, start: { type: 'integer' }, end: { type: 'integer' } }, required: ['path'] } } },
   { type: 'function', function: { name: 'search_text', description: 'Search project text for a literal phrase', parameters: { type: 'object', properties: { query: { type: 'string' } }, required: ['query'] } } },
@@ -82,12 +84,14 @@ export class Runner {
     return `Files (first 150):\n${files.join('\n')}\n\n${excerpts.join('\n\n')}`.slice(0, 22_000);
   }
   private async useTool(workspace: Workspace, call: ToolRequest, role: AgentRole, session: Session, signal: AbortSignal, gate: CommandGate): Promise<string> {
+    if (call.name === 'recall_context') return recallContext(projectEvidence(session), call.arguments);
     if (role === 'main' && call.name === 'delegate_task') {
       this.event(session, 'tool', 'Subagent is analyzing the delegated task.', 'subagent');
       const lease = reserveAgent(this.providers, session.subagentCandidates ?? [session.assignments!.subagent], session.assignments!.main);
       try {
         this.event(session, 'status', `Using Subagent (${lease.profile.model}).`, 'subagent');
-        const findings = await delegateTask(this.providers, lease.profile, call.arguments, signal, readTools.filter((tool: any) => tool.function.name !== 'discover_plugins'), async read => this.useTool(workspace, read, 'subagent', session, signal, gate), notice => this.event(session, 'status', notice, 'subagent'), undefined, lease.id);
+        const findings = await delegateTask(this.providers, lease.profile, call.arguments, signal, readTools.filter((tool: any) => tool.function.name !== 'discover_plugins'), async read => this.useTool(workspace, read, 'subagent', session, signal, gate), notice => this.event(session, 'status', notice, 'subagent'), undefined, lease.id, projectEvidence(session));
+        (session.sourceEvidence ??= projectEvidence(session)).push(sourceEvidence('delegate_task', call.arguments, findings, `${lease.profile.model} · delegated analysis`));
         this.event(session, 'message', findings, 'subagent');
         return findings;
       } catch (error) {
@@ -100,8 +104,12 @@ export class Runner {
     const parsed = role === 'main' ? codeSchema.parse(call) : readSchema.parse(call);
     const args: any = parsed.arguments;
     if (parsed.name === 'list_files') return JSON.stringify(await workspace.list());
-    if (parsed.name === 'read_file') return JSON.stringify(await workspace.read(args.path, args.start, args.end));
-    if (parsed.name === 'search_text') return JSON.stringify(await workspace.search(args.query));
+    if (parsed.name === 'read_file' || parsed.name === 'search_text') {
+      const output = JSON.stringify(parsed.name === 'read_file' ? await workspace.read(args.path, args.start, args.end) : await workspace.search(args.query));
+      signal.throwIfAborted();
+      (session.sourceEvidence ??= projectEvidence(session)).push(sourceEvidence(parsed.name, args, output, `${role} · ${args.path ?? args.query}`)); this.save(session);
+      return output;
+    }
     if (parsed.name === 'discover_plugins') return JSON.stringify(await discoverPlugins(workspace.root, args.query));
     if (parsed.name === 'edit_file') {
       this.event(session, 'tool', `Editing ${args.path}`, role);
@@ -140,6 +148,10 @@ export class Runner {
     const profile = session.assignments![role];
     const messages: any[] = [{ role: 'system', content: `You are the ${role} agent in a local coding assistant. Follow the user's objective and project evidence. Only use offered tools. Main may use delegate_task for bounded read-only analysis and must act on the returned findings itself. When a task may need a specialized capability, call discover_plugins before proceeding; it is safe and informational. Never claim unrun checks passed. Keep responses concise.` }, { role: 'user', content: prompt }];
     if (role === 'main') messages[0].content += mainDelegationInstructions;
+    session.sourceEvidence ??= projectEvidence(session);
+    messages[0].content += sourceMemoryInstructions;
+    const contextMaximum = Math.min(profile.contextLimit * 3, 80_000);
+    messages[0].content += sourceMemoryContext(session.sourceEvidence, Math.min(30000, Math.floor(contextMaximum * .35), Math.max(0, contextMaximum - JSON.stringify(messages).length - 2500)));
     let finalText = '';
     let repairedToolError = false;
     for (let turn = 0; turn < maxTurns; turn++) {

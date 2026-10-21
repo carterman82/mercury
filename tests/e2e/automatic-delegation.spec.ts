@@ -23,7 +23,7 @@ test('eight uploaded files call Gemma automatically and show delegation in the p
     const input = JSON.parse(raw); requests.push(input);
     if (input.model === 'gemma-fixture') await workerGate;
     const source = JSON.stringify(input.messages).match(/source-(\d)\.txt/)?.[1];
-    const content = input.model === 'gemma-fixture' ? `Verified finding from source ${source}` : 'Combined answer from eight Subagent findings.';
+    const content = input.model === 'gemma-fixture' ? `Verified finding from source ${source}` : String(input.messages.at(-1)?.content).includes('follow-up') ? 'Follow-up from saved findings.' : 'Combined answer from eight Subagent findings.';
     response.end(JSON.stringify({ message: { role: 'assistant', content }, done: true }) + '\n');
   });
   server.listen(0, '127.0.0.1'); await once(server, 'listening');
@@ -61,6 +61,17 @@ test('eight uploaded files call Gemma automatically and show delegation in the p
     await activity.locator('details').last().locator('summary').click();
     await expect(activity.getByText('Verified finding from source 7', { exact: true })).toBeVisible();
     await page.screenshot({ path: 'test-results/automatic-delegation.png' });
+    await app.close();
+    app = await electron.launch({ executablePath, env: { ...process.env, LOCAL_PLAN_AGENT_USER_DATA: data } });
+    const restored = await app.firstWindow();
+    await restored.getByRole('button', { name: 'Compare these eight files', exact: true }).click();
+    await restored.getByLabel('Message', { exact: true }).fill('Use the saved findings for a follow-up.');
+    await restored.getByRole('button', { name: 'Send ↑' }).click();
+    await expect(restored.locator('.chat-assistant').last()).toContainText('Follow-up from saved findings.');
+    expect(requests).toHaveLength(10);
+    expect(requests.at(-1).model).toBe('main-fixture');
+    const restoredContext = JSON.stringify(requests.at(-1).messages);
+    for (let index = 0; index < 8; index++) expect(restoredContext).toContain(`Verified finding from source ${index}`);
   } finally {
     releaseWorkers();
     await app?.close();

@@ -115,3 +115,32 @@ it('returns delegation failures to Main without granting write tools or changing
   expect(store.session(session.id).changes).toHaveLength(0);
   expect(store.session(session.id).status).toBe('completed');
 });
+
+it('restores saved Subagent source evidence when resuming after a store restart', async () => {
+  const { store, root, filename, session } = fixture();
+  writeFileSync(path.join(root, 'note.txt'), 'Original source fact: 481 items');
+  let mainTurns = 0;
+  const providers = { chat: async (input: ChatInput) => {
+    if (input.profile.model === 'planner') return { text: JSON.stringify(plan), tools: [] };
+    if (input.profile.model === 'small') return input.messages.length === 2
+      ? { text: '', tools: [{ id: 'read', name: 'read_file', arguments: { path: 'note.txt' } }] }
+      : { text: 'Subagent verified 481 items in note.txt; other files were not inspected.', tools: [] };
+    return ++mainTurns === 1 ? { text: '', tools: [{ id: 'delegate', name: 'delegate_task', arguments: { task: 'Read the note', context: 'note.txt' } }] } : { text: 'Paused before finishing', tools: [] };
+  } } as unknown as LocalProviders;
+  const runner = new Runner(store, providers, () => {});
+  await runner.plan(session.id); await runner.approve(session.id, 1);
+  expect(store.session(session.id).status).toBe('interrupted');
+  store.close(); stores.splice(stores.indexOf(store), 1);
+  const reopened = new Store(filename); stores.push(reopened);
+  let calls = 0;
+  const resumed = { chat: async (input: ChatInput) => {
+    calls++;
+    expect(input.profile.model).toBe('main');
+    expect(JSON.stringify(input.messages)).toContain('Subagent verified 481 items');
+    expect(JSON.stringify(input.messages)).toContain('Original source fact: 481 items');
+    expect(JSON.stringify(input.messages)).toContain('other files were not inspected');
+    return { text: '', tools: [{ id: 'finish', name: 'finish', arguments: { summary: 'Used saved evidence', verification: 'Retained Subagent findings' } }] };
+  } } as unknown as LocalProviders;
+  await new Runner(reopened, resumed, () => {}).resume(session.id);
+  expect(calls).toBe(1); expect(reopened.session(session.id).status).toBe('completed');
+});

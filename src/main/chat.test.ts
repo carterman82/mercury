@@ -45,7 +45,7 @@ it.each([true, false])('delegates conversation-file analysis with explicit Subag
     requests.push(input);
     if (String((input.messages[0] as any).content).includes('read-only Subagent')) {
       expect(input.profile.model).toBe(explicit ? 'small' : 'one');
-      expect((input.tools as any[]).map(tool => tool.function.name)).toEqual(['read_file']);
+      expect((input.tools as any[]).map(tool => tool.function.name)).toEqual(['read_file', 'recall_context']);
       if (input.messages.length === 2) return { text: '', tools: [{ id: 'read', name: 'read_file', arguments: { id: upload.id } }] };
       expect(JSON.stringify(input.messages)).toContain('Authorized evidence');
       return { text: 'Subagent findings', tools: [] };
@@ -201,7 +201,7 @@ it('keeps conversation history when switching models and offers read-only delega
   await service.send(id, { ...profile, model: 'two' }, 'Second');
   expect(requests[1].messages).toEqual(expect.arrayContaining([{ role: 'user', content: 'First' }, { role: 'assistant', content: 'Hello' }]));
   expect(requests[1].profile.model).toBe('two');
-  expect(requests[1].tools).toEqual([expect.objectContaining({ function: expect.objectContaining({ name: 'delegate_task' }) })]);
+  expect(requests[1].tools).toEqual(expect.arrayContaining(['delegate_task', 'recall_context'].map(name => expect.objectContaining({ function: expect.objectContaining({ name }) }))));
   expect(store.chat(id).messages).toHaveLength(4);
   expect(service.activeId).toBeNull();
 });
@@ -258,6 +258,73 @@ it('saves reasoning separately and keeps it out of subsequent model prompts', as
   expect(saved.completedAt).toBeGreaterThanOrEqual(saved.startedAt!);
   expect(saved.thinkingEndedAt).toBeGreaterThanOrEqual(saved.startedAt!);
   expect(JSON.stringify(requests[1].messages)).not.toContain('Model-provided reasoning');
+});
+
+it.each(['automatic', 'explicit', 'empty-main'])('restores %s Subagent findings and file reads after a store restart without rereading files', async mode => {
+  const store = fixture();
+  const { files, uploads } = await uploadSources(store, mode === 'automatic' ? 2 : 1, 'Persisted source fact: 732 units');
+  let mainTurns = 0;
+  const provider = { chat: async (input: ChatInput) => {
+    if (input.profile.model === 'gemma') {
+      if (input.messages.length === 2) return { text: '', tools: [{ id: 'source', name: 'read_file', arguments: { id: uploads.find(item => JSON.stringify(input.messages).includes(item.id))!.id } }] };
+      return { text: 'Detailed saved finding: 732 units, from source-0.txt. Some later sections were unread.', tools: [] };
+    }
+    if (++mainTurns === 1 && mode !== 'automatic') return { text: '', tools: [{ id: 'delegate', name: 'delegate_task', arguments: { task: 'Inspect source', context: uploads[0].id } }] };
+    return { text: mode === 'empty-main' ? '' : 'Brief answer', tools: [] };
+  } } as unknown as ModelProvider;
+  const id = await new ChatService(store, provider, () => {}, () => false, files).send(null, profile, 'Analyze sources', uploads.map(item => item.id));
+  expect(store.chat(id).messages.at(-1)?.sourceEvidence?.some(item => item.tool === 'delegate_task')).toBe(true);
+  const root = directories.at(-1)!;
+  store.close(); stores.splice(stores.indexOf(store), 1);
+  const reopened = new Store(path.join(root, 'state.sqlite')); stores.push(reopened);
+  const reads = vi.spyOn(files, 'text'); reads.mockClear();
+  const followup = vi.fn(async (input: ChatInput) => {
+    const context = JSON.stringify(input.messages);
+    expect(context).toContain('Detailed saved finding: 732 units');
+    expect(context).toContain('Some later sections were unread');
+    expect(context).toContain('Persisted source fact: 732 units');
+    expect(context).toContain(uploads[0].id);
+    expect(context).toContain('recall_context');
+    return { text: '732 units from the saved findings', tools: [] };
+  });
+  await new ChatService(reopened, { chat: followup } as unknown as ModelProvider, () => {}, () => false, files).send(id, profile, 'What was the exact number?');
+  expect(followup).toHaveBeenCalledTimes(1); expect(reads).not.toHaveBeenCalled(); reads.mockRestore();
+  expect(reopened.chat(id).status).toBe('idle');
+});
+
+it('retains webpage text, citation URL, and pagination on follow-up without another web access', async () => {
+  const store = fixture(); let turns = 0;
+  const execute = vi.fn(async () => ({ url: 'https://example.com/report', title: 'Original source', content: 'The recorded total was 915.', nextOffset: 14000, truncated: true }));
+  const capabilities = { beginTurn: () => {}, endTurn: async () => {}, handles: (name: string) => name === 'browser_open', execute } as any;
+  const provider = { chat: async () => ++turns === 1 ? { text: '', tools: [{ id: 'web', name: 'browser_open', arguments: { url: 'https://example.com/report' } }] } : { text: 'Summary without the exact total', tools: [] } } as unknown as ModelProvider;
+  const id = await new ChatService(store, provider, () => {}, () => false, undefined, capabilities).send(null, profile, 'Read that report');
+  const item = store.chat(id).messages.at(-1)!.sourceEvidence![0];
+  expect(item.result).toContain('915');
+  let followupTurns = 0;
+  const followup = { chat: async (input: ChatInput) => {
+    expect(JSON.stringify(input.messages)).toContain('https://example.com/report');
+    if (++followupTurns === 1) return { text: '', tools: [{ id: 'recall', name: 'recall_context', arguments: { id: item.id } }] };
+    expect(JSON.stringify(input.messages)).toContain('915');
+    expect(JSON.stringify(input.messages)).toContain('nextOffset');
+    return { text: 'The saved total was 915', tools: [] };
+  } } as unknown as ModelProvider;
+  await new ChatService(store, followup, () => {}, () => false, undefined, capabilities).send(id, profile, 'What was that total?');
+  expect(execute).toHaveBeenCalledTimes(1);
+  expect(store.chat(id).messages.at(-1)?.content).toContain('915');
+});
+
+it('remembers the initial excerpt of a small upload even when no Subagent or read tool was called', async () => {
+  const store = fixture();
+  const { files, uploads } = await uploadSources(store, 1, 'Exact source number 2468');
+  const first = { chat: async () => ({ text: 'Brief overview', tools: [] }) } as unknown as ModelProvider;
+  const id = await new ChatService(store, first, () => {}, () => false, files).send(null, profile, 'Summarize', [uploads[0].id]);
+  const reads = vi.spyOn(files, 'text'); reads.mockClear();
+  const next = { chat: async (input: ChatInput) => {
+    expect(JSON.stringify(input.messages)).toContain('Exact source number 2468');
+    return { text: '2468', tools: [] };
+  } } as unknown as ModelProvider;
+  await new ChatService(store, next, () => {}, () => false, files).send(id, profile, 'What was the number?');
+  expect(reads).not.toHaveBeenCalled(); reads.mockRestore();
 });
 
 it('reads uploads, executes PDF tool calls, persists file cards, and uses tool results in a follow-up request', async () => {

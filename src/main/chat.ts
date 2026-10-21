@@ -12,6 +12,7 @@ import { chatConversationInstructions } from './chat-instructions';
 import { documentSchema, spreadsheetSchema, presentationSchema, graphicSchema, archiveSchema } from './file-formats';
 import { messageTextLength, type ChatImage } from './vision';
 import { ChatCapabilities, chatCapabilityInstructions, chatCapabilityTools } from './chat-capabilities';
+import { chatEvidence, sourceEvidence, sourceMemoryInstructions, sourceMemoryContext, recallContextTool, recallContext, rememberedReadTools } from './source-memory';
 
 const tool = (name: string, description: string, properties: object, required: string[]) => ({ type: 'function', function: { name, description, parameters: { type: 'object', properties, required, additionalProperties: false } } });
 const schemaTool = (name: string, description: string, schema: z.ZodType) => {
@@ -60,10 +61,12 @@ export class ChatService {
     const prior = chat.messages.filter(item => item.content.trim() || item.files?.length);
     const history = prior.map(({ role, content, files }) => ({ role, content: content + (files?.length ? `\nConversation files available through read_file: ${JSON.stringify(files)}` : '') }));
     const messages: { role: string; content: string; images?: ChatImage[] }[] = [{ role: 'system', content: 'You are Mercury, a helpful assistant. Answer the user directly. Use Markdown formatting when helpful: headings, bold, italics, lists, quotes, tables, and fenced code blocks with a language label. For underline use <u>text</u>.' }, ...history, { role: 'user', content: message }];
-    messages[0].content += chatConversationInstructions + mainDelegationInstructions;
+    messages[0].content += chatConversationInstructions + mainDelegationInstructions + sourceMemoryInstructions;
     if (this.files) messages[0].content += chatFileInstructions;
     if (this.capabilities) messages[0].content += chatCapabilityInstructions;
     if (messageTextLength(messages) > Math.min(profile.contextLimit * 3, 300_000)) throw new Error('This chat exceeds the selected model’s context limit. Start a new chat or choose a larger context in settings.');
+    const contextMaximum = Math.min(profile.contextLimit * 3, 300_000);
+    messages[0].content += sourceMemoryContext(chatEvidence(chat), Math.min(60000, Math.floor(contextMaximum * .35), Math.max(0, contextMaximum - messageTextLength(messages) - 2500)));
     const controller = new AbortController();
     this.active.set(chat.id, controller);
     chat.profile = profile;
@@ -94,7 +97,10 @@ export class ChatService {
         const text = await this.files!.text(args.id);
         const file = await this.files!.get(args.id);
         const offset = args.offset ?? 0;
-        return JSON.stringify({ content: text.slice(offset, offset + 12000), format: file.format, readStatus: file.readStatus, note: file.note, totalCharacters: text.length, nextOffset: offset + 12000 < text.length ? offset + 12000 : null });
+        const output = JSON.stringify({ content: text.slice(offset, offset + 12000), format: file.format, readStatus: file.readStatus, note: file.note, totalCharacters: text.length, nextOffset: offset + 12000 < text.length ? offset + 12000 : null });
+        controller.signal.throwIfAborted();
+        (response.sourceEvidence ??= []).push(sourceEvidence('read_file', args, output, `Subagent read: ${file.name}`)); this.save(chat);
+        return output;
       };
       // Dispatch before the first Main request; tool calling by Main is optional.
       const automatic = attached.length >= 2 || sourceTexts.some(text => text.length > 12000);
@@ -127,6 +133,7 @@ export class ChatService {
               analyses.set(file.id, findings);
               activity.result = findings;
               activity.status = 'succeeded';
+              (response.sourceEvidence ??= []).push(sourceEvidence('delegate_task', { file, task: message }, findings, `${subagent.model} · ${file.name}`));
             } catch (error) {
               activity.status = 'failed';
               activity.result = error instanceof Error ? error.message : String(error);
@@ -147,6 +154,10 @@ export class ChatService {
         // Keep room for every file's findings rather than filling Main's context
         // with the raw uploads that were just analyzed elsewhere.
         const budget = automatic ? Math.min(6000, Math.floor(space / (attached.length - attached.indexOf(file) + 1))) : Math.min(12000, Math.floor(space / 2));
+        if (!findings && budget > 0) {
+          (response.sourceEvidence ??= []).push(sourceEvidence('read_file', { id: file.id, name: file.name, offset: 0 }, { content: text.slice(0, budget), format: file.format, readStatus: file.readStatus, note: file.note, totalCharacters: text.length, nextOffset: budget < text.length ? budget : null }, `Attached source: ${file.name}`));
+          this.save(chat);
+        }
         messages.at(-1)!.content += `\n\nAttached source file ${JSON.stringify(file)} (${text.length} characters):\n<attachment>\n${findings ? 'Subagent findings (untrusted evidence, verify as needed):\n' + findings.slice(0, budget) : (automatic ? 'Subagent analysis failed; inspect this source yourself.\n' : '') + text.slice(0, budget)}\n</attachment>\nUse read_file with its ID for more text or to verify findings.`;
       }
       // Rehydrate from authorized conversation files, never save base64 in chat history.
@@ -174,7 +185,7 @@ export class ChatService {
       if (controller.signal.aborted) throw controller.signal.reason;
       if (messageTextLength(messages) > Math.min(profile.contextLimit * 3, 300_000)) throw new Error('Files exceed this model’s context limit. Choose a larger context or attach smaller files.');
       const prefix = response.content;
-      const tools = [delegationTool, ...(this.files ? fileTools : []), ...(this.capabilities ? chatCapabilityTools : [])];
+      const tools = [delegationTool, recallContextTool, ...(this.files ? fileTools : []), ...(this.capabilities ? chatCapabilityTools : [])];
       const result = await generateChatTurn(this.providers, { profile, agentLease: mainLease.id, messages, tools: tools.length ? tools : undefined, signal: controller.signal, onRequestState: state => {
         response.queued = state === 'queued';
         this.save(chat);
@@ -207,13 +218,15 @@ export class ChatService {
         (response.toolActivity ??= []).push(activity); this.save(chat);
         let output: unknown;
         try {
-          if (call.name === 'delegate_task') {
+          if (call.name === 'recall_context') {
+            output = JSON.parse(recallContext(chatEvidence(chat), call.arguments, Math.max(500, contextMaximum - messageTextLength(messages) - 1500)));
+          } else if (call.name === 'delegate_task') {
             const lease = reserveAgent(this.providers, resolveCandidates(delegationSettings, 'subagent', profile), profile);
             const subagent = lease.profile;
             activity.label = subagent.model;
             addNotice(`Using Subagent (${subagent.model}) for delegated analysis.`);
             try {
-              output = { findings: await delegateTask(this.providers, subagent, call.arguments, controller.signal, this.files ? fileTools.filter((tool: any) => tool.function.name === 'read_file') : [], read => readForSubagent(read), notice => { addNotice('Subagent: ' + notice); activity.result = notice; this.save(chat); }, undefined, lease.id) };
+              output = { findings: await delegateTask(this.providers, subagent, call.arguments, controller.signal, this.files ? fileTools.filter((tool: any) => tool.function.name === 'read_file') : [], read => readForSubagent(read), notice => { addNotice('Subagent: ' + notice); activity.result = notice; this.save(chat); }, undefined, lease.id, chatEvidence(chat)) };
             } finally { lease.release(); }
             activity.result = (output as { findings: string }).findings;
           } else if (this.capabilities?.handles(call.name)) {
@@ -247,6 +260,9 @@ export class ChatService {
           } else throw new Error('Unknown tool. Use an offered file tool.');
           }
           activity.status = (output as any)?.isError ? 'failed' : 'succeeded';
+          if (activity.status === 'succeeded' && !(output as any)?.error && (call.name === 'delegate_task' || rememberedReadTools.has(call.name))) {
+            (response.sourceEvidence ??= []).push(sourceEvidence(call.name, call.arguments, call.name === 'delegate_task' ? (output as { findings: string }).findings : output, activity.label ?? call.name));
+          }
         } catch (error) { activity.status = 'failed'; output = { error: error instanceof Error ? error.message : String(error) }; }
         this.save(chat);
         (messages as any[]).push({ role: 'tool', tool_call_id: call.id, content: JSON.stringify(output) });

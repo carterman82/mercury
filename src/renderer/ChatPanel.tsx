@@ -8,7 +8,7 @@ import { ModelSelect } from './ModelSelect';
 import { ContextPanel } from './ContextPanel';
 const activityNames: Record<string, string> = { delegate_task: 'Analyze with Subagent', browser_search: 'Search the web', browser_open: 'Read a webpage', browser_read: 'Read more of the page', browser_click: 'Follow a source link', browser_close: 'Close browser', discover_plugins: 'Find plugins', install_plugin: 'Install plugin', plugin_list_tools: 'Inspect plugin tools', plugin_call_tool: 'Use plugin', create_pdf: 'Create PDF', create_file: 'Create file', read_file: 'Read file', create_document: 'Create Word document', create_spreadsheet: 'Create spreadsheet', create_presentation: 'Create presentation', create_graphic: 'Create graphic', create_archive: 'Create archive' };
 
-Object.assign(activityNames, { browser_screenshot: 'Inspect browser screenshot', browser_enable_controls: 'Request game controls', browser_press: 'Press game keys', browser_pointer: 'Click game viewport' });
+Object.assign(activityNames, { recall_context: 'Recall saved sources', browser_screenshot: 'Inspect browser screenshot', browser_enable_controls: 'Request game controls', browser_press: 'Press game keys', browser_pointer: 'Click game viewport' });
 
 export function ChatPanel({ state, chatId, onSelect, openSettings }: { state: Snapshot; chatId: string | null; onSelect: (id: string) => void; openSettings: () => void }) {
   const chat = state.chats.find(item => item.id === chatId);

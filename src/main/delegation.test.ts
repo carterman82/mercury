@@ -2,6 +2,7 @@ import { expect, it, vi } from 'vitest';
 import { delegateTask, resolveModel } from './delegation';
 import type { ChatInput, ModelProvider } from './providers';
 import type { Settings } from '../shared/types';
+import { sourceEvidence } from './source-memory';
 
 const profile = { provider: 'ollama' as const, model: 'main', connectionId: 'server', contextLimit: 8192 };
 const settings: Settings = { connections: [{ id: 'server', provider: 'ollama', label: 'Server', url: 'http://127.0.0.1:11434' }], mainModel: profile, plannerModel: null, subagentModel: null };
@@ -56,4 +57,17 @@ it('shares cancellation and never executes returned tools after cancellation', a
   const provider = { chat: async () => { controller.abort(new Error('Stopped')); return { text: '', tools: [{ id: 'read', name: 'read_file', arguments: {} }] }; } } as unknown as ModelProvider;
   await expect(delegateTask(provider, profile, { task: 'Analyze', context: '' }, controller.signal, [readTool], execute)).rejects.toThrow('Stopped');
   expect(execute).not.toHaveBeenCalled();
+});
+
+it('lets a later Subagent recall saved findings without accessing the source again', async () => {
+  const saved = sourceEvidence('browser_open', { url: 'https://example.com/report' }, 'Saved report finding: 456', 'Prior report');
+  let calls = 0;
+  const provider = { chat: async (input: ChatInput) => {
+    expect((input.tools as any[]).map(tool => tool.function.name)).toEqual(['recall_context']);
+    if (++calls === 1) return { text: '', tools: [{ id: 'recall', name: 'recall_context', arguments: { id: saved.id } }] };
+    expect(JSON.stringify(input.messages)).toContain('Saved report finding: 456');
+    return { text: '456, using the saved report', tools: [] };
+  } } as unknown as ModelProvider;
+  expect(await delegateTask(provider, profile, { task: 'Find the reported number', context: '' }, signal(), [], undefined, undefined, undefined, undefined, [saved])).toContain('456');
+  expect(calls).toBe(2);
 });

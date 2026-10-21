@@ -33,6 +33,7 @@ export interface PlanRevision { revision: number; content: PlanContent; approved
 export interface RunEvent { id: string; at: number; role?: HistoricalAgentRole; kind: 'message' | 'status' | 'tool' | 'error' | 'command' | 'change'; text: string; }
 export interface ChangeRecord { path: string; before: string | null; after: string | null; at: number; }
 export interface CommandRequest { id: string; command: string; cwd: string; }
+export interface SourceEvidence { id: string; at: number; tool: string; label: string; input: string; result: string; }
 export interface Session {
   id: string;
   projectId: string;
@@ -46,12 +47,13 @@ export interface Session {
   command: CommandRequest | null;
   assignments: Record<AgentRole, ModelProfile> | null;
   subagentCandidates?: ModelProfile[];
+  sourceEvidence?: SourceEvidence[];
 }
 export interface Project { id: string; path: string; name: string; }
 export interface ChatFile { id: string; name: string; size: number; kind: 'upload' | 'generated'; format?: string; readStatus?: 'readable' | 'partial' | 'metadata'; note?: string; }
 export interface FilePreview { kind: 'image' | 'pdf' | 'text'; text?: string; image?: string; page?: number; pages?: number; note?: string; }
 export interface BrowserPreview { url: string; image?: string; }
-export interface ChatMessage { id: string; role: 'user' | 'assistant'; content: string; files?: ChatFile[]; model?: string; reasoning?: string; notice?: string; queued?: boolean; toolActivity?: { name: string; label?: string; status: 'running' | 'succeeded' | 'failed'; at: number; result?: string }[]; startedAt?: number; thinkingEndedAt?: number; completedAt?: number; }
+export interface ChatMessage { id: string; role: 'user' | 'assistant'; content: string; files?: ChatFile[]; sourceEvidence?: SourceEvidence[]; model?: string; reasoning?: string; notice?: string; queued?: boolean; toolActivity?: { name: string; label?: string; status: 'running' | 'succeeded' | 'failed'; at: number; result?: string }[]; startedAt?: number; thinkingEndedAt?: number; completedAt?: number; }
 export interface ChatThread { id: string; title: string; profile: ModelProfile; usesMainPool?: boolean; messages: ChatMessage[]; status: 'idle' | 'streaming' | 'stopped' | 'failed' | 'interrupted'; error?: string; updatedAt: number; }
 export interface ChatApproval { id: string; chatId: string; title: string; details: string; at: number; }
 export interface Snapshot { projects: Project[]; sessions: Session[]; chats: ChatThread[]; settings: Settings; activeRole: AgentRole | null; activeChatId: string | null; activeChatIds?: string[]; modelRequests?: ModelRequestCount[]; chatApprovals?: ChatApproval[]; }
