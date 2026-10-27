@@ -11,11 +11,14 @@ import { ThinkingLimitError } from './thinking-guard';
 import { isSubscription, openAIRoutes } from '../shared/openai-routing';
 
 export interface ChatResult { text: string; reasoning?: string; tools: ToolRequest[]; usage?: { input?: number; output?: number }; }
-export interface ChatInput { profile: ModelProfile; agentLease?: symbol; messages: unknown[]; tools?: unknown[]; signal: AbortSignal; disableThinking?: boolean; onRoutingNotice?: (notice: string) => void; onRequestState?: (state: 'queued' | 'running') => void; onImageFallback?: (reason?: string) => void; onFileFallback?: (reason?: string) => void; onText?: (delta: string) => void; onReasoning?: (delta: string) => void; onToolProgress?: () => void; }
+export interface ProviderToolChoice { type: 'auto' | 'any' | 'tool' | 'none'; name?: string; disable_parallel_tool_use?: boolean; }
+export interface ChatInput { profile: ModelProfile; agentLease?: symbol; messages: unknown[]; tools?: unknown[]; signal: AbortSignal; maxOutputTokens?: number; toolChoice?: ProviderToolChoice; disableThinking?: boolean; onRoutingNotice?: (notice: string) => void; onRequestState?: (state: 'queued' | 'running') => void; onImageFallback?: (reason?: string) => void; onFileFallback?: (reason?: string) => void; onText?: (delta: string) => void; onReasoning?: (delta: string) => void; onToolProgress?: () => void; }
+export interface NativeMessagesInput { profile: ModelProfile; body: Record<string, unknown>; headers?: Record<string, string>; signal: AbortSignal; agentLease?: symbol; onRoutingNotice?: ChatInput['onRoutingNotice']; onRequestState?: ChatInput['onRequestState']; }
 export interface ModelProvider {
   reserveAgent?(profiles: ModelProfile[], avoid?: ModelProfile): AgentLease;
   discover(connection: ModelConnection): Promise<ModelInfo[]>;
   chat(input: ChatInput): Promise<ChatResult>;
+  messages?(input: NativeMessagesInput): Promise<Response | null>;
   probe(profile: ModelProfile, signal?: AbortSignal): Promise<boolean>;
   viewingCapabilities?(profile: ModelProfile, signal: AbortSignal): Promise<{ images: boolean | null; nativeFiles: boolean }>;
 }
@@ -266,6 +269,87 @@ export class LocalProviders implements ModelProvider {
     const key = JSON.stringify([profile.provider, server?.toString().replace(/\/$/, '') ?? base, metadata?.canonical ?? profile.model]);
     return { base, key, limit };
   }
+
+  /** Native Messages transport keeps credentials and request slots inside Mercury.
+   * OpenAI/Codex deliberately use chat() so their established routing is retained. */
+  async messages(input: NativeMessagesInput): Promise<Response | null> {
+    if (!['claude', 'ollama', 'lmstudio'].includes(input.profile.provider)) return null;
+    input.signal.throwIfAborted();
+    const connection = this.settings().connections.find(item => item.id === input.profile.connectionId && item.provider === input.profile.provider);
+    if (!connection) throw new Error('This model connection is unavailable.');
+    if (input.profile.provider === 'claude') cloudEndpoint(connection);
+    const { base, key, limit } = this.requestCapacity(input.profile);
+    const finish = this.scheduler.requestStarted(input.agentLease, key);
+    let release: (() => void) | undefined;
+    const controller = new AbortController();
+    let idle: InactivityWatchdog | undefined;
+    let nativeSignal: AbortSignal | undefined;
+    let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
+    let cleaned = false;
+    const cleanup = () => {
+      if (cleaned) return; cleaned = true;
+      input.signal.removeEventListener('abort', abort);
+      nativeSignal?.removeEventListener('abort', nativeAborted);
+      idle?.dispose(); release?.(); finish();
+    };
+    const abort = () => {
+      controller.abort(input.signal.reason);
+      void reader?.cancel(input.signal.reason).catch(() => {});
+      cleanup();
+    };
+    const nativeAborted = () => { void reader?.cancel(nativeSignal?.reason).catch(() => {}); cleanup(); };
+    input.signal.addEventListener('abort', abort, { once: true });
+    try {
+      release = await this.requests.acquire(key, { ...input.profile, endpoint: base }, limit, input.signal, () => input.onRequestState?.('queued'));
+      if (cleaned) { release(); input.signal.throwIfAborted(); throw new Error('Native model request was cancelled.'); }
+      input.signal.throwIfAborted(); input.onRequestState?.('running');
+      idle = new InactivityWatchdog(120_000, new ThinkingLimitError('timeout'));
+      nativeSignal = AbortSignal.any([input.signal, controller.signal, idle.signal]);
+      nativeSignal.addEventListener('abort', nativeAborted, { once: true });
+      const requestSignal = nativeSignal;
+      const forwarded = Object.fromEntries(Object.entries(input.headers ?? {}).filter(([name]) => name.toLowerCase().startsWith('anthropic-') || name.toLowerCase().startsWith('x-claude-code-')));
+      const headers: Record<string, string> = { 'anthropic-version': '2023-06-01', ...forwarded, 'content-type': 'application/json' };
+      if (input.profile.provider === 'claude') headers['x-api-key'] = await this.cloudToken(connection);
+      else Object.assign(headers, this.headers(connection.id));
+      const response = await fetch(`${base}/v1/messages`, { method: 'POST', headers, body: JSON.stringify({ ...input.body, model: input.profile.model }), signal: requestSignal, redirect: 'error' });
+      if (input.profile.provider !== 'claude' && [404, 405].includes(response.status)) { await response.body?.cancel(); cleanup(); return null; }
+      if (!response.body) { cleanup(); return response; }
+      reader = response.body.getReader();
+      const upstream = reader;
+      const decoder = new TextDecoder(); let lines = '';
+      const progress = (chunk: Uint8Array) => {
+        lines += decoder.decode(chunk, { stream: true });
+        if (lines.length > 2_000_000) throw new Error('Native Messages response has an oversized frame.');
+        let newline: number;
+        while ((newline = lines.indexOf('\n')) >= 0) {
+          const line = lines.slice(0, newline); lines = lines.slice(newline + 1);
+          if (!line.startsWith('data:')) continue;
+          try {
+            const event = JSON.parse(line.slice(5).trim());
+            const content = event.delta?.text ?? event.delta?.thinking ?? event.delta?.partial_json;
+            if ((typeof content === 'string' && content.trim()) || (event.type === 'content_block_start' && event.content_block?.type === 'tool_use')) idle?.progress();
+          } catch { /* Preserve native bytes; malformed payloads are reported by the SDK. */ }
+        }
+      };
+      const stream = new ReadableStream<Uint8Array>({
+        async pull(target) {
+          try {
+            requestSignal.throwIfAborted();
+            const next = await upstream.read();
+            if (next.done) { cleanup(); target.close(); }
+            else { progress(next.value); target.enqueue(next.value); }
+          } catch (error) { cleanup(); target.error(error); }
+        },
+        async cancel(reason) { try { controller.abort(reason); await upstream.cancel(reason); } finally { cleanup(); } },
+      });
+      return new Response(stream, { status: response.status, statusText: response.statusText, headers: response.headers });
+    } catch (error) {
+      cleanup(); input.signal.throwIfAborted();
+      if (nativeSignal?.aborted) throw nativeSignal.reason;
+      if (controller.signal.aborted) throw controller.signal.reason;
+      throw error;
+    }
+  }
   private async chatOnConnection(input: ChatInput): Promise<ChatResult> {
     const { base, key, limit } = this.requestCapacity(input.profile);
     const finish = this.scheduler.requestStarted(input.agentLease, key);
@@ -348,8 +432,8 @@ export class LocalProviders implements ModelProvider {
     if (input.signal.aborted) abort();
     const tools = input.tools?.length ? { tools: input.tools } : {};
     const body = isOllama
-      ? { model: input.profile.model, messages: localImageMessages(input.messages, true), ...tools, stream: true, ...(input.disableThinking ? { think: /gpt-oss/i.test(input.profile.model) ? 'low' : false } : {}), options: { num_ctx: input.profile.contextLimit } }
-      : { model: input.profile.model, messages: localImageMessages(input.messages, false), ...tools, stream: true };
+      ? { model: input.profile.model, messages: localImageMessages(input.messages, true), ...tools, stream: true, ...(input.disableThinking ? { think: /gpt-oss/i.test(input.profile.model) ? 'low' : false } : {}), options: { num_ctx: input.profile.contextLimit, ...(input.maxOutputTokens ? { num_predict: input.maxOutputTokens } : {}) } }
+      : { model: input.profile.model, messages: localImageMessages(input.messages, false), ...tools, stream: true, ...(input.maxOutputTokens ? { max_tokens: input.maxOutputTokens } : {}), ...(input.toolChoice ? { tool_choice: input.toolChoice.type === 'tool' ? { type: 'function', function: { name: input.toolChoice.name } } : input.toolChoice.type === 'any' ? 'required' : input.toolChoice.type, ...(input.toolChoice.disable_parallel_tool_use !== undefined ? { parallel_tool_calls: !input.toolChoice.disable_parallel_tool_use } : {}) } : {}) };
     try {
       const response = await fetch(isOllama ? `${base}/api/chat` : `${base}/v1/chat/completions`, {
         method: 'POST', headers: { 'content-type': 'application/json', ...this.headers(input.profile.connectionId) }, body: JSON.stringify(body), signal: controller.signal, redirect: 'error',

@@ -128,7 +128,8 @@ function SettingsPanel({ settings, onClose, onSave, run }: { settings: Settings;
       return <RoleModels key={key} label={label} description={description} value={draft[key]} extras={extrasKey ? draft[extrasKey] : []} models={models} connections={draft.connections} onOther={() => setOther(true)} optional={key !== 'mainModel'} onChange={(profile, extras) => setDraft(current => ({ ...current, [key]: profile, ...(extrasKey ? { [extrasKey]: extras } : {}) }))} />;
     })}</div></section>}
     <p className="hint">Context defaults to the reported or published model maximum. You can lower it manually.</p>
-    <p className="hint">Unset Planner and Subagent models use Main. Subagents return read-only findings; Main handles changes. Project chats start directly with Main and inherit project permissions.</p>
+    <label className="field"><span>Concurrent project workers</span><input aria-label="Concurrent project workers" type="number" min={1} max={8} value={draft.projectWorkerConcurrency ?? 3} onChange={event => setDraft(current => ({ ...current, projectWorkerConcurrency: Math.max(1, Math.min(8, Number(event.target.value) || 3)) }))} /></label>
+    <p className="hint">Unset Planner and Subagent models use Main. Project workers can implement scoped assignments in isolated worktrees; Main reviews and integrates their changes. Ordinary-chat Subagents remain read-only.</p>
     <footer><button className="primary" disabled={connecting} onClick={() => run(async () => { setBusyMessage('Saving settings…'); setConnecting(true); try { await onSave(draft); onClose(); } finally { setConnecting(false); } })}>Save settings</button></footer>
   </div></section>{busy && <ConnectionProgress message={connecting ? busyMessage : 'Refreshing models…'} browserSignIn={signingIn || codexSignIn} onCancel={cancelSignIn} />}</div>;
 }

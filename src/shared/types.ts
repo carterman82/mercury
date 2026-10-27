@@ -17,6 +17,7 @@ export interface ModelProfile {
   toolVerified?: boolean;
 }
 export interface Settings {
+  projectWorkerConcurrency?: number;
   connections: ModelConnection[];
   mainModel: ModelProfile | null;
   plannerModel: ModelProfile | null;
@@ -55,8 +56,16 @@ export interface ChatFile { id: string; name: string; size: number; kind: 'uploa
 export interface FilePreview { kind: 'image' | 'pdf' | 'text'; text?: string; image?: string; page?: number; pages?: number; note?: string; }
 export interface BrowserPreview { url: string; image?: string; }
 export interface ChatMessage { id: string; role: 'user' | 'assistant'; content: string; files?: ChatFile[]; sourceEvidence?: SourceEvidence[]; model?: string; reasoning?: string; notice?: string; queued?: boolean; toolActivity?: { name: string; label?: string; status: 'running' | 'succeeded' | 'failed'; at: number; result?: string }[]; startedAt?: number; thinkingEndedAt?: number; completedAt?: number; }
-export interface ChatThread { id: string; title: string; profile: ModelProfile; usesMainPool?: boolean; projectId?: string; workspacePath?: string; messages: ChatMessage[]; status: 'idle' | 'streaming' | 'stopped' | 'failed' | 'interrupted'; error?: string; updatedAt: number; }
+export interface ProjectAgentSession { runtime: 'claude-agent-sdk'; version: string; identity: string; sessionId?: string; status: 'running' | 'completed' | 'interrupted'; }
+export interface ProjectAssignment {
+  id: string; kind: 'investigation' | 'implementation' | 'testing' | 'review'; task: string; context: string; ownedPaths: string[]; checks: string[];
+  status: 'queued' | 'running' | 'completed' | 'failed' | 'interrupted' | 'accepted'; profile: ModelProfile; createdAt: number; updatedAt: number;
+  workspaceId?: string; workspacePath?: string; session?: ProjectAgentSession; findings?: string; error?: string;
+  activity?: { name: string; status: 'running' | 'succeeded' | 'failed'; at: number; result?: string }[];
+}
+export interface ChatThread { id: string; title: string; profile: ModelProfile; usesMainPool?: boolean; projectId?: string; workspacePath?: string; executionSupport?: { available: boolean; reason?: string; version: string }; projectRuntime?: ProjectAgentSession; projectAssignments?: ProjectAssignment[]; messages: ChatMessage[]; status: 'idle' | 'streaming' | 'stopped' | 'failed' | 'interrupted'; error?: string; updatedAt: number; }
 export interface ChatApproval { id: string; chatId: string; title: string; details: string; at: number; projectId?: string; policyRevision?: number; kind?: 'read' | 'write' | 'command' | 'plugin' | 'integrate'; agentId?: string; paths?: string[]; }
+export interface ProjectMapSummary { available: boolean; fresh: boolean; persisted?: boolean; sourceFiles: number; languages: string[]; unresolvedReferences: number; diagrams: string[]; diagramLabels?: Record<string, string>; diagnostics: { file?: string; message: string }[]; }
 export interface Snapshot { projects: Project[]; sessions: Session[]; chats: ChatThread[]; settings: Settings; activeRole: AgentRole | null; activeChatId: string | null; activeChatIds?: string[]; modelRequests?: ModelRequestCount[]; chatApprovals?: ChatApproval[]; }
 export interface ToolRequest { id: string; name: string; arguments: unknown; }
 
@@ -65,6 +74,9 @@ export interface DesktopApi {
   onUpdate(callback: (snapshot: Snapshot) => void): () => void;
   openProject(): Promise<Project | null>;
   updateProjectPermissions(projectId: string, mode: ProjectPermissionMode): Promise<void>;
+  projectMapStatus(chatId: string): Promise<ProjectMapSummary>;
+  refreshProjectMaps(chatId: string): Promise<ProjectMapSummary>;
+  readProjectDiagram(chatId: string, path: string): Promise<{ path: string; content: string }>;
   createSession(projectId: string, objective: string): Promise<Session>;
   updateSettings(settings: Settings): Promise<void>;
   connectChatGPT(id?: string): Promise<void>;

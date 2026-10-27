@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { ChatBrowser } from './chat-browser';
 import { ChatPlugins } from './chat-plugins';
 import { WebSearch, webInstructions, webSchemas, webTools } from './web-search';
+import type { ProjectPluginPolicy } from './project-plugin-policy';
 
 const tool = (name: string, description: string, schema: z.ZodType) => {
   const { $schema, ...parameters } = z.toJSONSchema(schema);
@@ -54,7 +55,7 @@ export class ChatCapabilities {
   constructor(private browser: ChatBrowser, private plugins: ChatPlugins, private web = new WebSearch()) {}
   beginTurn(chatId: string): void { this.plugins.beginTurn(chatId); }
   handles(name: string): boolean { return Object.hasOwn(schemas, name); }
-  async execute(chatId: string, name: string, raw: unknown, signal: AbortSignal): Promise<unknown> {
+  async execute(chatId: string, name: string, raw: unknown, signal: AbortSignal, project?: ProjectPluginPolicy): Promise<unknown> {
     if (!this.handles(name)) throw new Error('Unknown chat capability.');
     if ((JSON.stringify(raw) ?? '').length > 100_000) throw new Error('Tool arguments exceed 100,000 characters.');
     const args: any = schemas[name as keyof typeof schemas].parse(raw);
@@ -72,8 +73,8 @@ export class ChatCapabilities {
     else if (name === 'browser_wait') result = await this.browser.wait(chatId, args.milliseconds, signal);
     else if (name === 'browser_pointer') result = await this.browser.pointer(chatId, args.x, args.y, signal);
     else if (name === 'discover_plugins') result = await this.plugins.discover(chatId, args.query, signal);
-    else if (name === 'install_plugin') result = await this.plugins.install(chatId, args.candidateId, signal);
-    else result = await this.plugins.call(chatId, args.pluginId, name === 'plugin_list_tools' ? null : args.tool, name === 'plugin_list_tools' ? { toolName: args.toolName } : args.arguments ?? {}, signal);
+    else if (name === 'install_plugin') result = await this.plugins.install(chatId, args.candidateId, signal, project);
+    else result = await this.plugins.call(chatId, args.pluginId, name === 'plugin_list_tools' ? null : args.tool, name === 'plugin_list_tools' ? { toolName: args.toolName } : args.arguments ?? {}, signal, project);
     const text = JSON.stringify(result);
     if (text.length <= 50_000) return result;
     const value = result as any;

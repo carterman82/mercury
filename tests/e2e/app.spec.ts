@@ -179,6 +179,7 @@ test('starts project chats with Main, reviews isolated changes, switches permiss
   const { mkdirSync } = await import('node:fs');
   mkdirSync(project);
   writeFileSync(path.join(project, 'note.txt'), 'old');
+  for (const [name, content] of Object.entries({ 'a.ts': 'export function helper() { return 1; }\nexport function main() { return helper(); }', 'b.py': 'def helper():\n    return 1\ndef main():\n    return helper()', 'c.java': 'class A { int helper() { return 1; } int main() { return helper(); } }', 'd.cs': 'class B { int Helper() { return 1; } int Main() { return Helper(); } }', 'e.go': 'package main\nfunc helper() int { return 1 }\nfunc main() { helper() }', 'f.rs': 'fn helper() {}\nfn main() { helper(); }', 'g.c': 'int helper() { return 1; }\nint main() { return helper(); }', 'h.cpp': 'int helper() { return 1; }\nint main() { return helper(); }' })) writeFileSync(path.join(project, name), content);
   const expectedHash = createHash('sha256').update('old').digest('hex');
   const { execFileSync } = await import('node:child_process');
   const git = (...args: string[]) => execFileSync('git', ['-C', project, ...args], { windowsHide: true });
@@ -196,18 +197,38 @@ test('starts project chats with Main, reviews isolated changes, switches permiss
     let message: any = { role: 'assistant', content: '' };
     if (input.tools?.some((tool: any) => tool.function?.name === 'probe')) {
       message.tool_calls = [{ function: { name: 'probe', arguments: { value: 'ready' } } }];
-    } else if (system.includes('PROJECT CODING CONTEXT')) {
+    } else if ((system.includes('PROJECT CODING CONTEXT') || system.includes('isolated Mercury'))) {
       codingRequests.push(input);
-      const latestUser = input.messages.findLastIndex((item: any) => item.role === 'user');
-      const task = input.messages[latestUser].content;
+      const latestUser = input.messages.findLastIndex((item: any) => item.role === 'user' && /Update note|Check command|Another task|Two workers/.test(String(item.content)));
+      const content = String(input.messages[latestUser]?.content);
+      const current = content.split('CURRENT USER REQUEST:\n').at(-1) ?? content;
+      const task = current.includes('Two workers') ? 'Two workers' : current.includes('Check command') ? 'Check command' : current.includes('Update note') ? 'Update note' : 'Another task';
       const results = input.messages.slice(latestUser + 1).filter((item: any) => item.role === 'tool');
-      const call = (name: string, args: unknown) => { message.tool_calls = [{ function: { name, arguments: args } }]; };
-      if (task === 'Update note') {
+      const call = (name: string, args: unknown) => { message.tool_calls = [{ function: { name: input.tools.find((tool: any) => tool.function.name === name || tool.function.name.endsWith('__' + name))?.function.name ?? name, arguments: args } }]; };
+      const hasWorkers = input.tools?.some((tool: any) => tool.function.name.endsWith('__start_project_task'));
+      const assignment = input.messages.find((item: any) => item.role === 'user' && String(item.content).includes('Assignment: write '));
+      if (!hasWorkers && assignment) {
+        const file = String(assignment.content).includes('write alpha') ? 'alpha.ts' : 'beta.ts';
+        if (!input.messages.some((item: any) => item.role === 'tool')) call('edit_project_file', { path: file, expectedHash: null, content: 'export const value = 1;\n' });
+        else message.content = 'Worker created ' + file + '. Checks not run.';
+      } else if (task === 'Two workers') {
+        const outputs = results.map((item: any) => JSON.parse(item.content));
+        if (!results.length) call('start_project_task', { kind: 'implementation', task: 'write alpha', context: '', ownedPaths: ['alpha.ts'], checks: [] });
+        else if (results.length === 1) call('start_project_task', { kind: 'implementation', task: 'write beta', context: '', ownedPaths: ['beta.ts'], checks: [] });
+        else if (results.length === 2) call('wait_project_tasks', { ids: [outputs[0].id, outputs[1].id] });
+        else if (results.length === 3) call('review_project_task', { id: outputs[0].id });
+        else if (results.length === 4) call('accept_project_task', { id: outputs[0].id, reviewToken: outputs[3].token });
+        else if (results.length === 5) call('review_project_task', { id: outputs[1].id });
+        else if (results.length === 6) call('accept_project_task', { id: outputs[1].id, reviewToken: outputs[5].token });
+        else if (results.length === 7) call('review_project_changes', {});
+        else if (results.length === 8) call('integrate_project_changes', { reviewToken: outputs[7].token });
+        else message.content = 'Two workers complete and integrated.';
+      } else if (task === 'Update note') {
         if (!results.length) call('edit_project_file', { path: 'note.txt', expectedHash, content: 'new' });
-        else if (results.length === 1) call('run_project_command', { command: 'echo verified' });
+        else if (results.length === 1) call('run_project_command', { command: 'echo Mercury execution probe' });
         else if (results.length === 2) call('review_project_changes', {});
         else if (results.length === 3) call('integrate_project_changes', { reviewToken: JSON.parse(results.at(-1).content).token });
-        else message.content = 'Updated note after review. Command checks were blocked in restricted mode.';
+        else message.content = 'Updated note after review. Native command completed.';
       } else if (task === 'Check command' && !results.length) call('run_project_command', { command: 'echo verified' });
       else message.content = task === 'Check command' ? 'Command completed: verified.' : 'Another project conversation.';
     } else message.content = 'Ordinary chat conversation.';
@@ -243,6 +264,17 @@ test('starts project chats with Main, reviews isolated changes, switches permiss
     await expect(page.locator('.chat-assistant')).toContainText('Updated note after review');
     expect(readFileSync(path.join(project, 'note.txt'), 'utf8')).toBe('new');
     const originalChat = (await page.evaluate(() => window.desktop.snapshot())).chats[0];
+    await page.getByRole('button', { name: 'Dependency maps' }).click();
+    await expect(page.getByLabel('Project dependency maps', {exact: true})).toBeVisible();
+    const maps = await page.evaluate(id => window.desktop.projectMapStatus(id), originalChat.id);
+    expect(maps.languages).toEqual(expect.arrayContaining(['typescript', 'python', 'java', 'csharp', 'go', 'rust', 'c', 'cpp']));
+    expect(maps.diagnostics.filter(item => item.message.includes('Parser unavailable'))).toHaveLength(0);
+    for (const diagram of maps.diagrams) {
+      await page.getByLabel('Dependency diagram', {exact: true}).selectOption(diagram);
+      await expect(page.locator('.project-map-canvas svg')).toBeVisible();
+      await expect(page.locator('.project-maps-panel [role=alert]')).toHaveCount(0);
+    }
+    await page.getByRole('button', { name: 'Close maps' }).click();
     expect(originalChat.projectId).toBeTruthy(); expect(originalChat.workspacePath).not.toBe(project);
     expect(codingRequests.every(input => input.model === 'fake-local')).toBe(true);
     expect(codingRequests.every(input => !input.tools.some((tool: any) => tool.function.name === 'submit_plan'))).toBe(true);
@@ -251,6 +283,14 @@ test('starts project chats with Main, reviews isolated changes, switches permiss
     await page.getByLabel('Message', { exact: true }).fill('Check command');
     await page.getByRole('button', { name: 'Send ↑' }).click();
     await expect(page.locator('.chat-assistant').last()).toContainText('Command completed: verified.');
+    await page.getByLabel('Message', { exact: true }).fill('Two workers');
+    await page.getByRole('button', { name: 'Send ↑' }).click();
+    await expect(page.locator('.chat-assistant').last()).toContainText('Two workers complete and integrated.', { timeout: 60000 });
+    const completed = (await page.evaluate(() => window.desktop.snapshot())).chats.find(chat => chat.id === originalChat.id)!;
+    expect(completed.projectAssignments?.map(item => item.status)).toEqual(['accepted', 'accepted']);
+    expect(completed.projectAssignments?.every(item => item.session?.runtime === 'claude-agent-sdk')).toBe(true);
+    expect(readFileSync(path.join(project, 'alpha.ts'), 'utf8')).toContain('export const');
+    expect(readFileSync(path.join(project, 'beta.ts'), 'utf8')).toContain('export const');
     await page.locator('.project-new-chat').click();
     await page.getByLabel('Message', { exact: true }).fill('Another task');
     await page.getByRole('button', { name: 'Send ↑' }).click();
@@ -267,7 +307,7 @@ test('starts project chats with Main, reviews isolated changes, switches permiss
     await page.getByRole('button', { name: 'Projects', exact: true }).click();
     await page.getByRole('button', { name: 'Update note', exact: true }).click();
     await expect(page.getByLabel('Project permission mode')).toHaveValue('3');
-    await expect(page.locator('.chat-assistant').last()).toContainText('Command completed: verified.');
+    await expect(page.locator('.chat-assistant').last()).toContainText('Two workers complete and integrated.');
     expect((await page.evaluate(() => window.desktop.snapshot())).chats.filter(chat => chat.projectId)).toHaveLength(2);
   } finally {
     await app.close();

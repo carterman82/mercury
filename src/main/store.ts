@@ -39,7 +39,11 @@ export class Store {
       this.db.prepare("INSERT OR REPLACE INTO meta (key,value) VALUES ('version','4')").run();
     }
     for (const chat of this.chats()) {
-      if (chat.status === 'streaming') { chat.status = 'interrupted'; this.saveChat(chat); }
+      let changed = false;
+      if (chat.status === 'streaming') { chat.status = 'interrupted'; changed = true; }
+      if (chat.projectRuntime?.status === 'running') { chat.projectRuntime.status = 'interrupted'; changed = true; }
+      for (const assignment of chat.projectAssignments ?? []) if (assignment.status === 'running' || assignment.status === 'queued') { assignment.status = 'interrupted'; if (assignment.session) assignment.session.status = 'interrupted'; changed = true; }
+      if (changed) this.saveChat(chat);
     }
     for (const session of this.sessions()) {
       if (['planning', 'implementing', 'awaiting_command'].includes(session.status)) {
@@ -91,7 +95,7 @@ export class Store {
     const connections = (Array.isArray(saved.connections) ? saved.connections : defaults.connections.map(item => ({ ...item, url: saved.endpoints?.[item.provider] ?? item.url })))
       .map((item: any) => ({ ...item, hasToken: Boolean(this.secret(item.id)), apiToken: undefined }));
     const migrateProfile = (profile: any) => profile ? { ...profile, connectionId: profile.connectionId ?? `local-${profile.provider}` } : profile;
-    return { connections,
+    return { connections, projectWorkerConcurrency: saved.projectWorkerConcurrency ?? 3,
       mainModel: migrateProfile('mainModel' in saved ? saved.mainModel : saved.defaultModel ?? saved.overrides?.coder) ?? null,
       plannerModel: migrateProfile('plannerModel' in saved ? saved.plannerModel : saved.overrides?.planner) ?? null,
       subagentModel: migrateProfile(saved.subagentModel) ?? null,

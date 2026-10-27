@@ -26,6 +26,10 @@ import { WebSearch } from './web-search';
 import { MAX_CHAT_ATTACHMENTS } from '../shared/chat-files';
 import { ProjectTools } from './project-tools';
 import { ProjectWorktreeService } from './project-worktrees';
+import { ClaudeProjectRuntime } from './project-agent-runtime';
+import { ProjectExecutionAdapter } from './project-execution';
+import { ProjectMaps } from './project-maps';
+import { ProjectWorkers } from './project-workers';
 
 declare const MAIN_WINDOW_VITE_DEV_SERVER_URL: string | undefined;
 declare const MAIN_WINDOW_VITE_NAME: string;
@@ -35,6 +39,7 @@ const connectionSchema = z.object({ id: z.string().min(1).max(100), provider: pr
 const profileSchema = z.object({ provider: providerSchema, connectionId: z.string().optional(), endpoint: z.string().url().optional(), model: z.string().min(1), contextLimit: z.number().int().min(2048).max(Number.MAX_SAFE_INTEGER), contextMode: z.enum(['auto', 'manual']).optional(), toolVerified: z.boolean().optional() });
 const localPoolProfileSchema = profileSchema.refine(profile => profile.provider === 'lmstudio' || profile.provider === 'ollama', 'Additional pool models must use a local model server.');
 const settingsSchema = z.object({
+  projectWorkerConcurrency: z.number().int().min(1).max(8).optional(),
   connections: z.array(connectionSchema).max(50),
   mainModel: profileSchema.nullable(),
   plannerModel: profileSchema.nullable(),
@@ -100,10 +105,20 @@ app.whenReady().then(async () => {
   const browser = new ChatBrowser(app.isPackaged ? path.join(process.resourcesPath, 'browser-tools', 'node_modules') : path.join(app.getAppPath(), 'node_modules'), app.isPackaged ? path.join(process.resourcesPath, 'browser-runtime') : path.join(app.getAppPath(), '.build-resources', 'browser-runtime'), policy, approvals);
   const plugins = new ChatPlugins(path.join(app.getPath('userData'), 'plugins'), app.isPackaged ? path.join(process.resourcesPath, 'file-runtime') : app.getAppPath(), policy, approvals, process.env.LOCAL_PLAN_AGENT_USER_DATA ? process.env.MERCURY_TEST_PLUGIN_REGISTRY : undefined);
   const capabilities = new ChatCapabilities(browser, plugins, web);
-  const projectTools = new ProjectTools(store, approvals, new ProjectWorktreeService(path.join(app.getPath('userData'), 'project-workspaces')));
-  chats = new ChatService(store, providers, notify, () => runner.running, chatFiles, capabilities, projectTools);
+  const execution = new ProjectExecutionAdapter(app.isPackaged ? path.join(process.resourcesPath, 'mxc-runtime') : path.join(app.getAppPath(), '.build-resources', 'mxc-runtime'), path.join(app.getPath('userData'), 'execution'), {
+    runtimeReadRoots: [path.dirname(process.execPath)],
+  });
+  const projectMaps = new ProjectMaps(app.isPackaged ? { runtimeRoot: path.join(process.resourcesPath, 'map-runtime'), grammarRoot: path.join(process.resourcesPath, 'map-runtime', 'grammars') } : {});
+  const projectTools = new ProjectTools(store, approvals, new ProjectWorktreeService(path.join(app.getPath('userData'), 'project-workspaces')), undefined, { execution, maps: projectMaps });
+  const agentModules = app.isPackaged ? path.join(process.resourcesPath, 'agent-runtime', 'node_modules') : path.join(app.getAppPath(), 'node_modules');
+  const projectRuntime = new ClaudeProjectRuntime(providers, path.join(app.getPath('userData'), 'agent-sessions'), {
+    sdkModulePath: path.join(agentModules, '@anthropic-ai', 'claude-agent-sdk', 'sdk.mjs'),
+    executablePath: path.join(agentModules, '@anthropic-ai', 'claude-agent-sdk-win32-x64', 'claude.exe'),
+  });
+  const projectWorkers = new ProjectWorkers(store, providers, projectRuntime, projectTools, new ProjectWorktreeService(path.join(app.getPath('userData'), 'worker-workspaces')), notify);
+  chats = new ChatService(store, providers, notify, () => runner.running, chatFiles, capabilities, projectTools, projectRuntime, projectWorkers);
   let quitting = false;
-  app.on('before-quit', event => { if (quitting) return; event.preventDefault(); quitting = true; codex.dispose(); void capabilities.dispose().finally(() => app.quit()); });
+  app.on('before-quit', event => { if (quitting) return; event.preventDefault(); quitting = true; codex.dispose(); void Promise.allSettled([capabilities.dispose(), projectRuntime.shutdown(), execution.shutdown()]).finally(() => app.quit()); });
   discovery = new DiscoveryCache(settings => autoDiscover(settings, providers), store.discoveryCache(), value => store.saveDiscoveryCache(value));
 
   window = new BrowserWindow({
@@ -186,6 +201,9 @@ app.whenReady().then(async () => {
     for (const chat of store.chats()) if (chat.projectId === project.id) approvals.cancelChat(chat.id);
     notify();
   });
+  handle('projectMapStatus', (_event, id: string) => projectTools.mapStatus(store.chat(z.string().uuid().parse(id))));
+  handle('refreshProjectMaps', (_event, id: string) => projectTools.mapStatus(store.chat(z.string().uuid().parse(id)), true));
+  handle('readProjectDiagram', (_event, id: string, relative: string) => projectTools.readDiagram(store.chat(z.string().uuid().parse(id)), z.string().min(1).max(2000).parse(relative)));
   handle('createSession', (_event, projectId: string, objective: string) => {
     if (!store.projects().some(project => project.id === projectId)) throw new Error('Project not found.');
     const text = z.string().trim().min(1).max(10_000).parse(objective);

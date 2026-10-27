@@ -1,14 +1,15 @@
 import { afterEach, expect, it } from 'vitest';
 import { createServer, type Server } from 'node:http';
 import { once } from 'node:events';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, rmSync, mkdirSync, writeFileSync } from 'node:fs';
+import { ProjectExecutionAdapter } from './project-execution';
 import path from 'node:path';
 import os from 'node:os';
 import { ChatApprovals } from './chat-approvals';
 import { ChatPlugins } from './chat-plugins';
 import { WebPolicy } from './web-policy';
 let server: Server, root: string;
-afterEach(async () => { server?.closeAllConnections(); if (server) await new Promise<void>(resolve => server.close(() => resolve())); if (root) rmSync(root, { recursive: true, force: true }); });
+afterEach(async () => { server?.closeAllConnections(); if (server) await new Promise<void>(resolve => server.close(() => resolve())); if (root) rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
 
 async function fixture() {
   root = mkdtempSync(path.join(os.tmpdir(), 'mercury-plugins-')); let base = ''; let calls = 0, initializations = 0, offline = false;
@@ -71,3 +72,28 @@ it('installs after approval, initializes real MCP, persists across restarts, and
   for (let count = 0; count < 100 && !f.approvals.snapshot().length; count++) await new Promise(resolve => setTimeout(resolve, 10));
   controller.abort(new Error('Stopped')); await stopCheck; expect(f.calls()).toBe(1); expect(f.approvals.snapshot()).toEqual([]);
 });
+
+it('routes remote project actions through the project broker before connection', async () => {
+  const f = await fixture(); const signal = new AbortController().signal;
+  const found: any = await f.plugins.discover('chat', 'calculator', signal);
+  const requests: string[] = [];
+  const project = { mode: 2 as const, workspaceRoot: root, authorize: async (details: string) => { requests.push(details); throw new Error('project denied'); } };
+  await expect(f.plugins.install('chat', found.matches[0].candidateId, signal, project)).rejects.toThrow('project denied');
+  expect(requests).toHaveLength(1); expect(f.initialized()).toBe(0); expect(f.approvals.snapshot()).toHaveLength(0);
+});
+
+it.runIf(process.env.MERCURY_LIVE_MXC === '1')('starts a real local MCP plugin through native containment and denies package/outside writes', async () => {
+  const f = await fixture(); const id = 'a'.repeat(32); const directory = path.join(root, id);
+  const packageRoot = path.join(directory, 'node_modules', 'fixture-plugin'); mkdirSync(packageRoot, { recursive: true });
+  const workspace = path.join(root, 'workspace'); mkdirSync(workspace);
+  writeFileSync(path.join(packageRoot, 'package.json'), JSON.stringify({ bin: 'index.js' }));
+  const outside = path.join(root, 'forbidden.txt');
+  writeFileSync(path.join(packageRoot, 'index.js'), `const fs=require('fs'); const rl=require('readline').createInterface({input:process.stdin}); rl.on('line',line=>{const m=JSON.parse(line); if(m.id===undefined)return; let result; if(m.method==='initialize')result={protocolVersion:m.params.protocolVersion,capabilities:{tools:{}},serverInfo:{name:'fixture',version:'1'}}; else {let blocked=0;for(const p of [${JSON.stringify(outside)},__filename])try{fs.writeFileSync(p,'forbidden')}catch{blocked++}result={tools:[{name:'blocked_'+blocked,inputSchema:{type:'object'}}]}} process.stdout.write(JSON.stringify({jsonrpc:'2.0',id:m.id,result})+'\\n');});`);
+  writeFileSync(path.join(directory, 'plugin.json'), JSON.stringify({ id, name: 'Fixture', description: 'Test', version: '1.0.0', source: 'https://example.com', plan: { kind: 'npm', identifier: 'fixture-plugin', version: '1.0.0' } }));
+  const adapter = new ProjectExecutionAdapter(path.resolve('.build-resources/mxc-runtime'), path.join(root, 'scratch'), { runtimeReadRoots: [path.dirname(process.execPath)] });
+  let authorized = 0;
+  const project = { mode: 2 as const, workspaceRoot: workspace, execution: adapter, authorize: async () => { authorized++; } };
+  const result: any = await f.plugins.call('chat', id, null, {}, new AbortController().signal, project);
+  expect(result.tools[0].name).toBe('blocked_2'); expect(authorized).toBe(1);
+  await adapter.shutdown();
+}, 30000);

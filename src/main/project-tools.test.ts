@@ -13,9 +13,16 @@ import { ChatService } from './chat';
 import { hash } from './workspace';
 import type { ChatInput, ModelProvider } from './providers';
 import type { ChatThread } from '../shared/types';
+import { projectTestRuntime } from './project-test-runtime';
+import { ProjectWorkers } from './project-workers';
 
 const cleanups: (() => Promise<void>)[] = [];
 const profile = { provider: 'ollama' as const, connectionId: 'fixture', model: 'main', contextLimit: 16000 };
+function service(store: Store, provider: ModelProvider, projects: ProjectTools) {
+  const runtime = projectTestRuntime(provider);
+  const workers = new ProjectWorkers(store, provider, runtime, projects, new ProjectWorktreeService(path.join(path.dirname(store.projects()[0].path), 'worker-fixtures')), () => {});
+  return new ChatService(store, provider, () => {}, () => false, undefined, undefined, projects, runtime, workers);
+}
 afterEach(async () => { for (const cleanup of cleanups.splice(0).reverse()) await cleanup(); });
 async function fixture(mode: 1 | 2 | 3 = 2, repository = false) {
   const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'mercury-project-tools-'));
@@ -105,38 +112,17 @@ it('runs a full-access command and includes its actual verification result', asy
   expect(output).toMatchObject({ exitCode: 0, output: 'verified' });
 });
 
-it('shows the exact isolated diff for approval before applying it to the source project', async () => {
-  const { projects, chat, root, approvals, controller } = await fixture(2, true);
-  await projects.execute(chat, 'edit_project_file', { path: 'note.txt', expectedHash: hash('old'), content: 'reviewed' }, controller.signal);
-  const review = await projects.execute(chat, 'review_project_changes', {}, controller.signal) as { token: string };
-  const pending = projects.execute(chat, 'integrate_project_changes', { reviewToken: review.token }, controller.signal);
-  await expect.poll(() => approvals.snapshot().length).toBe(1);
-  expect(approvals.snapshot()[0].details).toContain('reviewed');
-  expect(await fs.readFile(path.join(root, 'note.txt'), 'utf8')).toBe('old');
-  approvals.answer(approvals.snapshot()[0].id, true); await pending;
-  expect(await fs.readFile(path.join(root, 'note.txt'), 'utf8')).toBe('reviewed');
-});
-
-it('rejects changes made after the integration approval was presented', async () => {
-  const { projects, chat, root, approvals, controller } = await fixture(2, true);
-  await projects.execute(chat, 'edit_project_file', { path: 'note.txt', expectedHash: hash('old'), content: 'presented' }, controller.signal);
-  const review = await projects.execute(chat, 'review_project_changes', {}, controller.signal) as { token: string };
-  const pending = projects.execute(chat, 'integrate_project_changes', { reviewToken: review.token }, controller.signal);
-  await expect.poll(() => approvals.snapshot().length).toBe(1);
-  await fs.writeFile(path.join(chat.workspacePath!, 'note.txt'), 'not presented');
-  approvals.answer(approvals.snapshot()[0].id, true);
-  await expect(pending).rejects.toThrow(/changed after review/);
-  expect(await fs.readFile(path.join(root, 'note.txt'), 'utf8')).toBe('old');
-});
-
-it('bounds model-facing diffs and refuses restricted integration when a full text review is unavailable', async () => {
-  const { projects, chat, root, approvals, controller } = await fixture(2, true);
-  await projects.execute(chat, 'edit_project_file', { path: 'note.txt', expectedHash: hash('old'), content: 'x'.repeat(120000) }, controller.signal);
-  const review = await projects.execute(chat, 'review_project_changes', {}, controller.signal) as { token: string; previewTruncated: boolean };
-  expect(JSON.stringify(review).length).toBeLessThan(5000); expect(review.previewTruncated).toBe(true);
-  await expect(projects.execute(chat, 'integrate_project_changes', { reviewToken: review.token }, controller.signal)).rejects.toThrow(/complete text review/);
-  expect(approvals.snapshot()).toEqual([]);
-  expect(await fs.readFile(path.join(root, 'note.txt'), 'utf8')).toBe('old');
+it('creates a Git safety commit after a successful project response', async () => {
+  const { store, project, root, projects } = await fixture(3, true);
+  let calls = 0;
+  const provider = { chat: async () => {
+    if (++calls === 1) return { text: '', tools: [{ id: 'edit', name: 'edit_project_file', arguments: { path: 'note.txt', expectedHash: hash('old'), content: 'saved by response' } }] };
+    return { text: 'Saved safely.', tools: [] };
+  } } as unknown as ModelProvider;
+  await service(store, provider, projects).send(null, profile, 'Update the note', [], undefined, project.id);
+  const git = (...args: string[]) => promisify(execFile)('git', ['-C', root, ...args], { windowsHide: true });
+  expect((await git('log', '-1', '--format=%s')).stdout).toMatch(/^Mercury: save response for /);
+  expect(await fs.readFile(path.join(root, 'note.txt'), 'utf8')).toBe('saved by response');
 });
 
 it('starts project conversations directly with Main, offers project reads to Subagent, and persists ownership', async () => {
@@ -156,11 +142,11 @@ it('starts project conversations directly with Main, offers project reads to Sub
     }
     return { text: 'Ready to work on the project.', tools: [] };
   } } as unknown as ModelProvider;
-  const service = new ChatService(store, provider, () => {}, () => false, undefined, undefined, projects);
-  const id = await service.send(null, profile, 'Inspect the project', [], undefined, project.id);
+  const chats = service(store, provider, projects);
+  const id = await chats.send(null, profile, 'Inspect the project', [], undefined, project.id);
   expect(store.chat(id)).toMatchObject({ projectId: project.id, status: 'idle', workspacePath: project.path });
   expect(calls).toBe(3);
-  await expect(service.send(id, profile, 'Move ownership', [], undefined, randomUUID())).rejects.toThrow(/different project/);
+  await expect(chats.send(id, profile, 'Move ownership', [], undefined, randomUUID())).rejects.toThrow(/different project/);
 });
 
 it('keeps project tools unavailable to ordinary chats even if a model invents their names', async () => {
@@ -196,7 +182,7 @@ it('runs independent project analyses three at once and associates results in re
     expect(results.map(item => item.tool_call_id)).toEqual(['delegate-0', 'delegate-1', 'delegate-2', 'delegate-3']);
     return { text: 'All four independent reviews are complete.', tools: [] };
   } } as unknown as ModelProvider;
-  const pending = new ChatService(store, provider, () => {}, () => false, undefined, undefined, projects).send(null, profile, 'Review independent areas', [], undefined, project.id);
+  const pending = service(store, provider, projects).send(null, profile, 'Review independent areas', [], undefined, project.id);
   await expect.poll(() => waiting.length).toBe(3);
   waiting[1](); await expect.poll(() => waiting.length).toBe(4);
   waiting[3](); waiting[2](); waiting[0]();
@@ -211,10 +197,10 @@ it('cancels a project response when permission settings change', async () => {
     await new Promise<void>((_resolve, reject) => input.signal!.addEventListener('abort', () => reject(input.signal!.reason), { once: true }));
     return { text: 'Must never finish.', tools: [] };
   } } as unknown as ModelProvider;
-  const service = new ChatService(store, provider, () => {}, () => false, undefined, undefined, projects);
-  const pending = service.send(null, profile, 'Start work', [], undefined, project.id);
+  const chats = service(store, provider, projects);
+  const pending = chats.send(null, profile, 'Start work', [], undefined, project.id);
   await expect.poll(() => entered).toBe(true);
-  store.saveProject({ ...project, permissionMode: 1, policyRevision: 2 }); service.projectPolicyChanged(project.id);
+  store.saveProject({ ...project, permissionMode: 1, policyRevision: 2 }); chats.projectPolicyChanged(project.id);
   const id = await pending;
   expect(store.chat(id).status).toBe('stopped'); expect(store.chat(id).error).toContain('permissions changed');
 });

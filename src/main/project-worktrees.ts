@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process';
-import { createHash, randomUUID } from 'node:crypto';
+import { createHash } from 'node:crypto';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 
@@ -8,9 +8,10 @@ export interface ProjectWorkspace {
   chatId: string;
   projectRoot: string;
   root: string;
-  kind: 'git-worktree' | 'direct';
-  /** Direct folders must have one writer; worktrees may run independently. */
-  serialized: boolean;
+  /** Projects use their real checkout; this name remains for saved-chat compatibility. */
+  kind: 'direct';
+  /** One checkout has one writer at a time. */
+  serialized: true;
 }
 export interface ProjectWorkspaceChange {
   path: string;
@@ -27,60 +28,33 @@ export interface ProjectWorkspaceReview {
   token: string;
   changes: ProjectWorkspaceChange[];
 }
-interface Manifest {
-  version: 1;
-  workspace: ProjectWorkspace;
-  revision: number;
-  baseline: Record<string, string>;
-  baselineModes: Record<string, number>;
-}
+
 const excludedDirectories = new Set(['.git', 'node_modules', 'dist', 'build', 'out', '.vite', '.next', 'coverage', '.cache', '__pycache__']);
 const digest = (data: Buffer | string) => createHash('sha256').update(data).digest('hex');
-const fileMode = async (root: string, relative: string) => (await fs.stat(await safePath(root, relative))).mode & 0o777;
-const maxFileBytes = 64 * 1024 * 1024;
-const maxSnapshotBytes = 256 * 1024 * 1024;
 
 function eligible(relative: string): boolean {
   const parts = relative.split(/[\\/]/);
+  const mapPath = parts.join('/');
+  if (/^\.mercury\/architecture\/(?:generated\/|(?:graph\.json|manifest\.json|index\.md)$)/.test(mapPath)) return false;
   return !parts.some(part => excludedDirectories.has(part.toLowerCase()))
     && !parts.some(part => /^(?:\.env(?:\..*)?|id_(?:rsa|dsa|ecdsa|ed25519)|credentials(?:\..*)?|secrets?(?:\..*)?)$/i.test(part))
     && !/\.(?:pem|p12|pfx|key)$/i.test(relative);
-}
-function within(root: string, target: string): boolean {
-  const relative = path.relative(root, target);
-  return relative === '' || (!path.isAbsolute(relative) && relative !== '..' && !relative.startsWith(`..${path.sep}`));
 }
 function aborted(signal?: AbortSignal): void { signal?.throwIfAborted(); }
 async function git(root: string, args: string[], signal?: AbortSignal): Promise<string> {
   aborted(signal);
   return new Promise((resolve, reject) => {
-    execFile('git', ['-c', 'core.hooksPath=', '-c', 'core.fsmonitor=false', '-c', 'submodule.recurse=false', '-C', root, ...args], { signal, windowsHide: true, maxBuffer: 32 * 1024 * 1024 }, (error, stdout) => error ? reject(error) : resolve(stdout));
+    execFile('git', ['-c', 'core.hooksPath=', '-c', 'core.fsmonitor=false', '-c', 'submodule.recurse=false', '-C', root, ...args], { signal, windowsHide: true, maxBuffer: 32 * 1024 * 1024 }, (error, stdout, stderr) => error ? reject(Object.assign(error, { stderr })) : resolve(stdout));
   });
 }
-async function safePath(root: string, relative: string): Promise<string> {
-  if (!relative || path.isAbsolute(relative) || relative.split(/[\\/]/).some(part => part === '..' || part.toLowerCase() === '.git')) throw new Error('Invalid workspace path.');
-  const target = path.resolve(root, relative);
-  if (!within(root, target)) throw new Error('Path escapes workspace.');
-  let current = root;
-  for (const part of path.relative(root, target).split(path.sep)) {
-    current = path.join(current, part);
-    const stat = await fs.lstat(current).catch((error: NodeJS.ErrnoException) => { if (error.code === 'ENOENT') return null; throw error; });
-    if (stat?.isSymbolicLink()) throw new Error(`Linked paths are unsupported: ${relative}`);
-    if (stat && !within(root, await fs.realpath(current))) throw new Error('Path follows a link outside workspace.');
-  }
-  return target;
-}
-async function readFile(root: string, relative: string): Promise<Buffer | null> {
-  const target = await safePath(root, relative);
-  const stat = await fs.stat(target).catch((error: NodeJS.ErrnoException) => { if (error.code === 'ENOENT') return null; throw error; });
-  if (!stat) return null;
-  if (!stat.isFile() || stat.size > maxFileBytes) throw new Error(`Unsupported or oversized workspace file: ${relative}`);
-  return fs.readFile(target);
+async function succeeds(root: string, args: string[], signal?: AbortSignal): Promise<boolean> {
+  try { await git(root, args, signal); return true; } catch { return false; }
 }
 
-/** Storage belongs in application data, outside every source project. Never deletes worktrees. */
+/** A Git safety net that uses the selected checkout instead of copying projects. */
 export class ProjectWorktreeService {
   private readonly pending = new Map<string, Promise<unknown>>();
+  private readonly baselines = new Map<string, Map<string, string>>();
   constructor(readonly storageRoot: string) {}
 
   private async exclusive<T>(key: string, operation: () => Promise<T>): Promise<T> {
@@ -89,164 +63,76 @@ export class ProjectWorktreeService {
     this.pending.set(key, next);
     try { return await next; } finally { if (this.pending.get(key) === next) this.pending.delete(key); }
   }
-  private directory(id: string): string {
-    if (!/^[a-f0-9]{64}$/.test(id)) throw new Error('Invalid workspace identity.');
-    return path.join(this.storageRoot, id);
+  private id(projectRoot: string, chatId: string): string {
+    const identity = process.platform === 'win32' ? projectRoot.toLowerCase() : projectRoot;
+    return digest(`${identity}\0${chatId}`);
   }
-  private async persist(manifest: Manifest): Promise<void> {
-    const target = path.join(this.directory(manifest.workspace.id), 'workspace.json');
-    const temporary = `${target}.${randomUUID()}.tmp`;
-    await fs.writeFile(temporary, JSON.stringify(manifest), { flag: 'wx' });
-    await fs.rename(temporary, target);
+  private async eligiblePaths(root: string, signal?: AbortSignal): Promise<string[]> {
+    const names = (await git(root, ['ls-files', '-z', '--cached', '--others', '--exclude-standard'], signal)).split('\0');
+    return [...new Set(names)].filter(name => name && eligible(name)).sort();
   }
-  private async manifest(id: string): Promise<Manifest> {
-    const value: Manifest = JSON.parse(await fs.readFile(path.join(this.directory(id), 'workspace.json'), 'utf8'));
-    if (value.version !== 1 || value.workspace.id !== id || !value.baseline || !Number.isInteger(value.revision)) throw new Error('Invalid workspace metadata.');
-    const expectedRoot = value.workspace.kind === 'direct' ? value.workspace.projectRoot : path.join(this.directory(id), 'checkout');
-    if (value.workspace.root !== expectedRoot) throw new Error('Invalid workspace ownership.');
-    if (await fs.realpath(value.workspace.projectRoot) !== value.workspace.projectRoot) throw new Error('Project folder identity changed.');
-    return value;
+  private async stageEligible(root: string, signal?: AbortSignal): Promise<void> {
+    const paths = await this.eligiblePaths(root, signal);
+    if (paths.length) await git(root, ['add', '-A', '--', ...paths], signal);
   }
-  async load(id: string): Promise<ProjectWorkspace> { return (await this.manifest(id)).workspace; }
+  private async snapshotEligible(root: string, signal?: AbortSignal): Promise<Map<string, string>> {
+    const snapshot = new Map<string, string>();
+    for (const relative of await this.eligiblePaths(root, signal)) {
+      aborted(signal);
+      const content = await fs.readFile(path.join(root, relative)).catch((error: NodeJS.ErrnoException) => error.code === 'ENOENT' ? null : Promise.reject(error));
+      if (content) snapshot.set(relative, digest(content));
+    }
+    return snapshot;
+  }
+  private async configureIdentity(root: string, signal?: AbortSignal): Promise<void> {
+    if (!(await succeeds(root, ['config', 'user.name'], signal))) await git(root, ['config', 'user.name', 'Mercury Safety Net'], signal);
+    if (!(await succeeds(root, ['config', 'user.email'], signal))) await git(root, ['config', 'user.email', 'safety-net@mercury.local'], signal);
+  }
+  private async ensureRepository(root: string, signal?: AbortSignal): Promise<void> {
+    if (await succeeds(root, ['rev-parse', '--is-inside-work-tree'], signal)) {
+      const top = await fs.realpath((await git(root, ['rev-parse', '--show-toplevel'], signal)).trim());
+      if (top !== root) throw new Error('Choose the repository root, not a nested folder.');
+      return;
+    }
+    await git(root, ['init'], signal);
+    await this.configureIdentity(root, signal);
+    await this.stageEligible(root, signal);
+    if (!(await succeeds(root, ['diff', '--cached', '--quiet'], signal))) await git(root, ['commit', '--no-verify', '-m', 'Mercury safety baseline'], signal);
+  }
 
   async prepare(input: { projectRoot: string; chatId: string; signal?: AbortSignal }): Promise<ProjectWorkspace> {
     if (!input.chatId.trim()) throw new Error('Chat identity is required.');
     const projectRoot = await fs.realpath(input.projectRoot);
     if (!(await fs.stat(projectRoot)).isDirectory()) throw new Error('Project must be a directory.');
-    await fs.mkdir(this.storageRoot, { recursive: true });
-    const storage = await fs.realpath(this.storageRoot);
-    if (within(projectRoot, storage) || within(storage, projectRoot)) throw new Error('Workspace storage must be separate from the project.');
-    const identityRoot = process.platform === 'win32' ? projectRoot.toLowerCase() : projectRoot;
-    const id = digest(`${identityRoot}\0${input.chatId}`);
-    return this.exclusive(id, async () => {
+    return this.exclusive(projectRoot, async () => {
       aborted(input.signal);
-      try { return await this.load(id); } catch (error: any) { if (error.code !== 'ENOENT') throw error; }
-      let repository = false;
-      try {
-        const top = await fs.realpath((await git(projectRoot, ['rev-parse', '--show-toplevel'], input.signal)).trim());
-        if (top !== projectRoot) throw new Error('Choose the repository root, not a nested folder.');
-        repository = true;
-      } catch (error: any) {
-        aborted(input.signal);
-        if (!String(error.stderr ?? error.message).includes('not a git repository')) throw error;
-      }
-      const directory = this.directory(id);
-      await fs.mkdir(directory, { recursive: true });
-      const workspace: ProjectWorkspace = { id, chatId: input.chatId, projectRoot, root: repository ? path.join(directory, 'checkout') : projectRoot, kind: repository ? 'git-worktree' : 'direct', serialized: !repository };
-      const manifest: Manifest = { version: 1, workspace, revision: 0, baseline: {}, baselineModes: {} };
-      if (repository) {
-        // A cancelled/failed preparation preserves its checkout for recovery rather than deleting files.
-        if (await fs.stat(workspace.root).then(() => true, () => false)) throw new Error('Incomplete workspace preparation found; recover its files before retrying.');
-        const source = await this.snapshot(projectRoot, input.signal);
-        await git(projectRoot, ['worktree', 'add', '--detach', '--no-checkout', workspace.root, 'HEAD'], input.signal);
-        await git(workspace.root, ['read-tree', 'HEAD'], input.signal);
-        await fs.mkdir(path.join(directory, 'blobs'), { recursive: true });
-        for (const [relative, content] of source) {
-          aborted(input.signal);
-          const mode = await fileMode(projectRoot, relative);
-          await this.write(workspace.root, relative, content, mode);
-          const hash = digest(content);
-          await fs.writeFile(path.join(directory, 'blobs', hash), content);
-          manifest.baseline[relative] = hash;
-          manifest.baselineModes[relative] = mode;
-        }
-      }
-      aborted(input.signal);
-      await this.persist(manifest);
+      await this.ensureRepository(projectRoot, input.signal);
+      const workspace = { id: this.id(projectRoot, input.chatId), chatId: input.chatId, projectRoot, root: projectRoot, kind: 'direct' as const, serialized: true as const };
+      this.baselines.set(workspace.id, await this.snapshotEligible(projectRoot, input.signal));
       return workspace;
     });
   }
 
-  private async snapshot(root: string, signal?: AbortSignal): Promise<Map<string, Buffer>> {
-    const names = (await git(root, ['ls-files', '-z', '--cached', '--others', '--exclude-standard'], signal)).split('\0');
-    const result = new Map<string, Buffer>();
-    let bytes = 0;
-    for (const relative of [...new Set(names)].filter(name => name && eligible(name)).sort()) {
-      aborted(signal);
-      const content = await readFile(root, relative);
-      if (!content) continue;
-      bytes += content.length;
-      if (bytes > maxSnapshotBytes) throw new Error('Workspace baseline exceeds the 256 MB capture limit.');
-      result.set(relative, content);
-    }
-    return result;
-  }
-  private async reviewManifest(manifest: Manifest): Promise<{ review: ProjectWorkspaceReview; snapshot: Map<string, Buffer> }> {
-    if (manifest.workspace.kind !== 'git-worktree') throw new Error('Direct folders use serialized edits, not worktree integration.');
-    const snapshot = await this.snapshot(manifest.workspace.root);
-    const changes: ProjectWorkspaceChange[] = [];
-    for (const relative of [...new Set([...Object.keys(manifest.baseline), ...snapshot.keys()])].sort()) {
-      const beforeHash = manifest.baseline[relative] ?? null;
-      const content = snapshot.get(relative) ?? null;
-      const afterHash = content ? digest(content) : null;
-      const beforeMode = manifest.baselineModes[relative] ?? null;
-      const afterMode = content ? await fileMode(manifest.workspace.root, relative) : null;
-      if (beforeHash === afterHash && beforeMode === afterMode) continue;
-      const before = beforeHash ? await fs.readFile(path.join(this.directory(manifest.workspace.id), 'blobs', beforeHash)) : null;
-      const binary = Boolean(before?.includes(0) || content?.includes(0));
-      const preview = (buffer: Buffer | null) => buffer && !binary ? buffer.toString('utf8').slice(0, 100_000) : null;
-      changes.push({ path: relative, beforeHash, afterHash, beforeMode, afterMode, before: preview(before), after: preview(content), binary });
-    }
-    const token = digest(JSON.stringify([manifest.workspace.id, manifest.revision, changes.map(change => [change.path, change.beforeHash, change.afterHash, change.beforeMode, change.afterMode])]));
-    return { review: { workspace: manifest.workspace, token, changes }, snapshot };
-  }
-  async review(id: string): Promise<ProjectWorkspaceReview> { return (await this.reviewManifest(await this.manifest(id))).review; }
+  async load(_id: string): Promise<ProjectWorkspace> { throw new Error('Project workspaces are no longer persisted; reopen the project chat.'); }
 
-  /** Caller authorizes this exact token. Source modifications on touched files always stop integration. */
-  async integrate(id: string, token: string, signal?: AbortSignal): Promise<ProjectWorkspaceReview> {
-    const initial = await this.manifest(id);
-    return this.exclusive(initial.workspace.projectRoot, () => this.exclusive(id, async () => {
-      const manifest = await this.manifest(id);
-      const { review, snapshot } = await this.reviewManifest(manifest);
-      if (token !== review.token) throw new Error('Worktree changed after review. Review again.');
-      const originals = new Map<string, Buffer | null>();
-      for (const change of review.changes) {
-        aborted(signal);
-        const original = await readFile(manifest.workspace.projectRoot, change.path);
-        if ((original ? digest(original) : null) !== change.beforeHash || (original ? await fileMode(manifest.workspace.projectRoot, change.path) : null) !== change.beforeMode) throw new Error(`Project changed since baseline: ${change.path}`);
-        originals.set(change.path, original);
-      }
-      const applied: string[] = [];
-      try {
-        for (const change of review.changes) {
-          aborted(signal);
-          // Recheck just before replacement, including links introduced after review.
-          const original = await readFile(manifest.workspace.projectRoot, change.path);
-          if ((original ? digest(original) : null) !== change.beforeHash || (original ? await fileMode(manifest.workspace.projectRoot, change.path) : null) !== change.beforeMode) throw new Error(`Project changed during integration: ${change.path}`);
-          await this.write(manifest.workspace.projectRoot, change.path, snapshot.get(change.path) ?? null, change.afterMode ?? undefined);
-          applied.push(change.path);
-        }
-      } catch (error) {
-        for (const relative of applied.reverse()) {
-          const current = await readFile(manifest.workspace.projectRoot, relative);
-          const intended = snapshot.get(relative) ?? null;
-          if ((current ? digest(current) : null) === (intended ? digest(intended) : null)) await this.write(manifest.workspace.projectRoot, relative, originals.get(relative) ?? null, manifest.baselineModes[relative]);
-        }
-        throw error;
-      }
-      for (const change of review.changes) {
-        const content = snapshot.get(change.path);
-        if (content) {
-          manifest.baseline[change.path] = digest(content);
-          manifest.baselineModes[change.path] = change.afterMode!;
-          await fs.writeFile(path.join(this.directory(id), 'blobs', digest(content)), content);
-        } else { delete manifest.baseline[change.path]; delete manifest.baselineModes[change.path]; }
-      }
-      manifest.revision += 1;
-      await this.persist(manifest);
-      return review;
-    }));
+  /** Commit only safe project files. A clean checkout produces no commit. */
+  async commitResponse(workspace: ProjectWorkspace, signal?: AbortSignal): Promise<{ committed: boolean; revision?: string }> {
+    return this.exclusive(workspace.projectRoot, async () => {
+      aborted(signal);
+      await this.ensureRepository(workspace.projectRoot, signal);
+      await this.configureIdentity(workspace.projectRoot, signal);
+      const baseline = this.baselines.get(workspace.id) ?? new Map<string, string>();
+      const current = await this.snapshotEligible(workspace.projectRoot, signal);
+      const changed = [...new Set([...baseline.keys(), ...current.keys()])].filter(relative => baseline.get(relative) !== current.get(relative)).sort();
+      if (!changed.length) return { committed: false };
+      await git(workspace.projectRoot, ['add', '-A', '--', ...changed], signal);
+      if (await succeeds(workspace.projectRoot, ['diff', '--cached', '--quiet', '--', ...changed], signal)) return { committed: false };
+      await git(workspace.projectRoot, ['commit', '--no-verify', '--only', '-m', `Mercury: save response for ${workspace.chatId.slice(0, 8)}`, '--', ...changed], signal);
+      return { committed: true, revision: (await git(workspace.projectRoot, ['rev-parse', '--short', 'HEAD'], signal)).trim() };
+    });
   }
-  private async write(root: string, relative: string, content: Buffer | null, mode?: number): Promise<void> {
-    const target = await safePath(root, relative);
-    if (content === null) { await fs.unlink(target); return; }
-    await fs.mkdir(path.dirname(target), { recursive: true });
-    const temporary = `${target}.${randomUUID()}.mercury-tmp`;
-    try {
-      await fs.writeFile(temporary, content, { flag: 'wx' });
-      if (mode !== undefined) await fs.chmod(temporary, mode);
-      await safePath(root, relative);
-      await fs.rename(temporary, target);
-    } finally { await fs.unlink(temporary).catch(() => {}); }
-  }
+
+  /** Compatibility methods for older saved chats. Git history is now the recovery mechanism. */
+  async review(id: string): Promise<ProjectWorkspaceReview> { throw new Error(`Workspace review is unavailable for ${id}; changes are saved automatically at the end of a successful response.`); }
+  async integrate(id: string, _token: string, _signal?: AbortSignal): Promise<ProjectWorkspaceReview> { throw new Error(`Workspace integration is unavailable for ${id}; edits already apply to the project checkout.`); }
 }

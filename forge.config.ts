@@ -5,7 +5,7 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { createRequire, isBuiltin } from 'node:module';
 
-async function copyRuntimePackages(target: string): Promise<void> {
+async function copyRuntimePackages(target: string, dependencies = ['docx', 'exceljs', 'pptxgenjs', 'tesseract.js', '@tesseract.js-data/eng', '@modelcontextprotocol/sdk', 'npm']): Promise<void> {
   const modules = path.resolve('node_modules');
   const copied = new Set<string>();
   const copy = async (name: string, from = process.cwd()): Promise<void> => {
@@ -27,14 +27,14 @@ async function copyRuntimePackages(target: string): Promise<void> {
     }
     throw new Error(`Could not locate runtime package ${name}.`);
   };
-  for (const dependency of ['docx', 'exceljs', 'pptxgenjs', 'tesseract.js', '@tesseract.js-data/eng', '@modelcontextprotocol/sdk', 'npm']) await copy(dependency);
+  for (const dependency of dependencies) await copy(dependency);
 }
 
 const config: ForgeConfig = {
   buildIdentifier: () => process.env.LOCAL_PLAN_AGENT_BUILD_ID ?? '',
   // Playwright is a built-in capability rather than an import in the UI bundle,
   // so copy its runtime explicitly into every packaged app.
-  packagerConfig: { asar: true, name: 'Mercury', extraResource: ['.build-resources/browser-tools', '.build-resources/pdf-runtime', '.build-resources/file-runtime', '.build-resources/browser-runtime'] },
+  packagerConfig: { asar: true, name: 'Mercury', extraResource: ['.build-resources/browser-tools', '.build-resources/pdf-runtime', '.build-resources/file-runtime', '.build-resources/browser-runtime', '.build-resources/agent-runtime', '.build-resources/map-runtime', '.build-resources/mxc-runtime'] },
   hooks: { generateAssets: async () => {
     const browserEntries = await fs.readdir(path.join('.build-resources', 'browser-runtime')).catch(() => []);
     if (!browserEntries.some(name => name.startsWith('chromium_headless_shell-'))) throw new Error('Install the bundled Chromium runtime: set PLAYWRIGHT_BROWSERS_PATH=.build-resources/browser-runtime and run npx playwright install chromium --only-shell.');
@@ -43,6 +43,12 @@ const config: ForgeConfig = {
     await fs.mkdir(target, { recursive: true });
     for (const dependency of ['pdfjs-dist', '@napi-rs']) await fs.cp(path.join('node_modules', dependency), path.join(target, dependency), { recursive: true });
     await copyRuntimePackages(path.join('.build-resources', 'file-runtime', 'node_modules'));
+    await copyRuntimePackages(path.join('.build-resources', 'agent-runtime', 'node_modules'), ['@anthropic-ai/claude-agent-sdk', '@anthropic-ai/sdk', '@modelcontextprotocol/sdk', 'zod']);
+    const maps = path.join('.build-resources', 'map-runtime'); await fs.mkdir(maps, { recursive: true });
+    await fs.copyFile(path.join('node_modules', 'web-tree-sitter', 'web-tree-sitter.wasm'), path.join(maps, 'web-tree-sitter.wasm'));
+    await fs.cp(path.join('node_modules', '@repomix', 'tree-sitter-wasms', 'out'), path.join(maps, 'grammars'), { recursive: true });
+    const manifest = JSON.parse(await fs.readFile(path.join('.build-resources', 'mxc-runtime', 'runtime.json'), 'utf8').catch(() => { throw new Error('Run npm run prepare:mxc to install the pinned verified Windows executor.'); }));
+    if (manifest.version !== '1.0.1') throw new Error('The packaged MXC version does not match the supported runtime.');
   } },
   makers: [new MakerSquirrel({})],
   plugins: [new VitePlugin({

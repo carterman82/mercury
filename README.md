@@ -1,6 +1,6 @@
 # Mercury
 
-A Windows-first desktop assistant with an orange-and-black interface for chatting with local and cloud models and working on software projects. **Chat** lets you select an individual model, stream replies, switch models, stop generation, and reopen saved conversations. **Projects** groups persistent chats under local folders and starts directly with Main. Git project edits use isolated chat worktrees and reviewed integration; ordinary folders use serialized, hash-checked edits. Main can delegate bounded research to read-only Subagents. Saved sessions from the older Planner workflow remain available as read-only legacy history.
+A Windows-first desktop assistant with an orange-and-black interface for chatting with local and cloud models and working on software projects. **Chat** lets you select an individual model, stream replies, switch models, stop generation, and reopen saved conversations. **Projects** groups persistent chats under local folders and starts directly with Main. Git project edits use isolated chat worktrees and reviewed integration; ordinary folders use serialized, hash-checked edits. Project Main and coding workers use the pinned Claude Agent SDK through Mercury’s selected-model gateway. Saved sessions from the older Planner workflow remain available as read-only legacy history.
 
 ## Requirements
 
@@ -13,6 +13,7 @@ A Windows-first desktop assistant with an orange-and-black interface for chattin
 npm install --offline=false
 $env:PLAYWRIGHT_BROWSERS_PATH = Join-Path (Get-Location) '.build-resources/browser-runtime'
 npx playwright install chromium --only-shell
+npm run prepare:mxc
 npm start
 ```
 
@@ -70,7 +71,15 @@ For coding, select **Projects**, open a folder, and start a chat. Each project h
 
 New projects default to **2 · Ask before risky actions**. Change the setting using the persistent **Permissions** selector in the chat header. Level 1 requires approval for outside-workspace reads and writes; level 2 allows device-wide reads but requires approval for outside writes; level 3 allows supported file operations and commands with your OS account rights. Levels 1 and 2 require review before integrating Git worktree changes; level 3 integrates without an additional prompt. Changing permissions stops active project responses and invalidates pending approvals. It does not undo completed actions or grant administrator rights.
 
-**Current implementation boundary:** there is no verified Windows command-confinement adapter yet, so commands and plugin execution in levels 1 and 2 are blocked, including commands that appear harmless. Full-access projects can execute commands; ordinary chat plugin approvals retain their existing behavior. This prevents unrestricted shell/plugin execution from bypassing restricted file permissions. Coding subagents, the Windows confinement adapter, broad-language dependency-map generation, project relocation/removal controls, and the future Planner/Plan mode remain unfinished roadmap items in [PLAN.md](PLAN.md). Project research delegation now runs independent tasks in batches of at most three, with existing provider capacity controls and cancellation.
+**Project runtime and permissions:** all Project models use Claude Agent SDK 0.3.310 with Mercury-owned custom tools. The authenticated loopback gateway keeps provider secrets in Mercury and preserves exact model selection; SDK filesystem, shell, external plugins and recursive delegation are disabled. Claude/local compatible Messages endpoints are forwarded natively; other routes use existing adapters. Non-Claude compatibility is maintained by Mercury and is not supported by Anthropic. Optional unsupported features fail explicitly; real provider/account parity and context-pressure checks remain release gates.
+
+Restricted commands use pinned Microsoft MXC 1.0.1 native containment on supported Windows 11 hosts. Each request probes actual enforcement; unsupported hosts and weaker fallback stay blocked. Level 1 asks before every command; level 2 automatically permits only fixed inspection operations, asking for scripts, unknown effects, outside writes or networking. Network is denied by default. Node/.NET tools can request reviewed Win32 initialization while clipboard/injection remain disabled. Local Project plugins use the same execution boundary with read-only package code, explicit writable storage and disabled installation scripts. Ordinary-chat plugins retain their existing approval policy.
+
+Main can start investigation, implementation, testing and review assignments. Worker concurrency defaults to three (1–8 in Model settings), retaining model/server limits. Coding workers have separate Git worktrees and enforced owned paths, including when Main has full access. Main reviews exact revisions and actual checks before acceptance; final original-folder integration remains a separate approval in levels 1/2. Non-Git parallel workers stay read-only. Interrupted assignments and sessions are retained without automatic command replay.
+
+**Dependency maps** in the project header opens a strict read-only Mermaid viewer with freshness, language coverage and unresolved references. Refresh/query tools generate linked system/subsystem/file/method maps and graph JSON under `.mercury/architecture/`. JS/TS uses the TypeScript compiler; Python, Java, C#, Go, Rust and C/C++ use pinned Tree-sitter WASM grammars and conservative symbol linking. Dynamic/ambiguous relationships remain uncertain. Maps aid navigation and never replace source inspection. Source limits and parser failures are reported.
+
+Broader provider parity, host/tool compatibility, project relocation/removal controls and Planner/Plan mode remain tracked in [PLAN.md](PLAN.md).
 
 ## Built-in capabilities and plugins
 
@@ -88,11 +97,11 @@ Browser navigation observes document/script/stylesheet transfer progress and use
 
 Chat's built-in MCP plugin finder uses the [official public MCP Registry](https://registry.modelcontextprotocol.io/) through `discover_plugins`. It returns relevant registry entries, immutable short-lived candidate IDs, transport details, limitations, and installed plugins. `install_plugin` asks for in-chat human approval before downloading/starting third-party code or connecting to a new service. It supports no-configuration Streamable HTTP servers and exact-version public npm Node.js MCP packages, with lifecycle scripts disabled. Required keys/OAuth, arbitrary arguments, Python/Docker, legacy SSE, and other transports require additional setup and are not silently guessed or installed. A registry listing is not a security endorsement.
 
-Approved installation validates MCP initialization and discovers the real tool schemas before saving an active plugin manifest under the app's `plugins` data directory. Installed plugins are available to other chats and survive restarts. Use `plugin_list_tools` to inspect an installed plugin and `plugin_call_tool` to invoke it. Each third-party startup/inspection or invocation asks separately for approval showing the endpoint/package and arguments. Denial blocks further third-party approval attempts until a new user message. Stop, errors, stale/fabricated/cross-chat candidates, and failed installation never grant permission. npm servers run with the user's OS permissions: they are NOT sandboxed and can access files/network; approve only trusted code. Remote servers receive approved arguments. Mercury does not forward model credentials to plugins.
+Approved installation validates MCP initialization and discovers the real tool schemas before saving an active plugin manifest under the app's `plugins` data directory. Installed plugins are available to other chats and survive restarts. Use `plugin_list_tools` to inspect an installed plugin and `plugin_call_tool` to invoke it. Each third-party startup/inspection or invocation asks separately for approval showing the endpoint/package and arguments. Denial blocks further third-party approval attempts until a new user message. Stop, errors, stale/fabricated/cross-chat candidates, and failed installation never grant permission. Ordinary-chat and full-access Main npm servers run with the user’s OS permissions; restricted Project npm servers use the native confinement described above. Remote servers receive approved arguments. Mercury does not forward model credentials to plugins.
 
 Tool actions have explicit safety limits of 256 per response and 128 model/tool rounds, not timeouts. Only the latest four browser screenshots remain in model context, while saved file cards persist. Plugin HTTP responses are bounded to 2 MB and model-facing results to 50,000 characters. Browser page text is paged and bounded. Pending approvals time out after five minutes and never occupy model inference slots. These tools are included for every provider, but the chosen model must support tool calling and may still choose tools incorrectly. See [Playwright browser requirements](https://playwright.dev/docs/browsers) and [MCP local-server security guidance](https://modelcontextprotocol.io/docs/develop/connect-local-servers).
 
-Project agents retain their separate informational `discover_plugins` capability. It searches the built-in capability registry and declarative project-local manifests in `.mercury/plugins/*/plugin.json`, matching names, descriptions, and optional `keywords`. Those project manifests are descriptions, not executable MCP installations. A minimal project manifest looks like:
+Legacy project sessions retain their separate informational `discover_plugins` capability; new Project chats use the shared MCP plugin service. It searches the built-in capability registry and declarative project-local manifests in `.mercury/plugins/*/plugin.json`, matching names, descriptions, and optional `keywords`. Those project manifests are descriptions, not executable MCP installations. A minimal project manifest looks like:
 
 ```json
 {
@@ -103,13 +112,24 @@ Project agents retain their separate informational `discover_plugins` capability
 }
 ```
 
+## SDK Projects validation (October 26, 2026)
+
+TypeScript and the scoped Project lint/format gates passed. The complete suite passed **451 tests with one optional live test skipped** using `npm test -- --testTimeout=20000` and `MERCURY_LIVE_MXC=1`. This includes actual pinned SDK multi-step tool sessions and cancellation, two coding workers with separate checkouts and stale-review rejection, real native outside-write/junction/registry/network/descendant checks, full-access worker scope enforcement and a confined Node MCP plugin that cannot overwrite its package or outside files. Lint checks all Project modules; formatting checks the new runtime/map modules without rewriting legacy application files. The longer test timeout accommodates real document/runtime startup; the spreadsheet regression also passed after packaging finished.
+
+Seven focused packaged-desktop checks passed; two opt-in live service/model checks were skipped. Desktop coverage includes a two-worker coding request through Main acceptance and final integration, level-2 integration approval, permission switching, all selected parser languages and Mermaid previews, history restart, ordinary chat/model switching, files/PDFs, remote plugins, concurrent chats and image fallback. Controlled model endpoints drive these scenarios through real SDK/executable/runtime assets. This is not proof of universal real-model or commercial-account parity.
+
+Remaining acceptance includes real selected-provider/account parity and context-pressure/compaction checks, broader host and third-party tool compatibility, independent final review. Additional review agents could not run because the workspace agent spend cap was exhausted. Planner/Plan mode remains deferred. See [PLAN.md](PLAN.md) for delivery gates.
+
 ## Build and checks
 
 ```powershell
 npm run typecheck
+npm run lint
+npm run format:check
 npm test
 $env:PLAYWRIGHT_BROWSERS_PATH = Join-Path (Get-Location) '.build-resources/browser-runtime'
 npx playwright install chromium --only-shell
+npm run prepare:mxc
 npm run package
 npm run make
 ```
@@ -156,7 +176,7 @@ The preceding Mercury release passed all four packaged desktop tests. The shared
 
 If browser sign-in shows `3p_delegated_access_policy_denied`, the error indicates a delegated-access policy rejection; the exact account, workspace, or integration cause is not established by this code alone. Mercury cannot override OpenAI eligibility restrictions. Use **Cancel sign-in**, then **Use an OpenAI API key (separate billing)** to explicitly configure API billing. Browser-only failures may not reach the local callback, so cancellation is available while waiting. The updated build is `out/mercury-auth-fix/Mercury-win32-x64/Mercury.exe`; 36 unit tests and TypeScript pass.
 
-Main can call `delegate_task` with explicit context to use Subagent in a separate conversation. Subagents can read project files or authorized conversation files, return at most 20,000 characters in eight turns, and cannot edit files, create artifacts, run commands, invoke plugins, or delegate again. Stop cancels delegation along with its parent response. Existing chats retain their selected model; new chats default to Main. Project model assignments are pinned when planning begins.
+Ordinary-chat Main can call `delegate_task` for bounded read-only research. Project Main also has explicit coding/testing/review assignments through SDK workers as described above. Ordinary-chat Subagents cannot edit files, run commands, invoke plugins or delegate again. Stop cancels delegation along with its parent response. Existing chats retain their selected model; new chats default to Main. Project model assignments are pinned when planning begins.
 
 Successful Subagent findings, initial attachment excerpts, file read results, and webpage/search text are saved as source evidence with their source arguments, retrieval time, and extraction/pagination limitations. Follow-ups and resumed project agents receive a bounded preview automatically, including when reopening the app or switching models. `recall_context` searches and pages the full saved evidence locally without rereading files or crawling websites; later Subagents can also reuse those findings. Older successful Subagent activity is recovered for existing conversations. Failed results, private reasoning, screenshot pixels, plugin outputs, and approvals are not added to source memory. Evidence stays scoped to its conversation or project session. Saved evidence is historical, untrusted source data; models should reuse it unless the user requests fresh information, a source changes, or the saved material leaves a gap. This is retained evidence, not an unlimited model context or a guarantee that a model will never choose to verify a source again.
 
