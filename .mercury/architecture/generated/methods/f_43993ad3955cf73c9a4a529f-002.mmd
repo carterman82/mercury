@@ -1,0 +1,74 @@
+flowchart LR
+  f_43993ad3955cf73c9a4a529f["src/main/project-policy.test.ts"]
+  u_e_8b1b1f05508229bc9a19c6c2["Unresolved: expect(assessProjectAction({ ...context, mode: 3 }, command).status).toBe"]
+  s_434b5124f189fce3883debff["src/main/project-policy.ts: OneShotProjectGrants.issue"]
+  u_e_8ea9122964874316323deb04["Unresolved: expect(grants.consume(id, changedContext, changedAction)).toBe"]
+  u_e_8eab661be17efc1d3b82dece["Unresolved: expect"]
+  u_e_8eb3c207f9f8133f98b2e992["Unresolved: expect(assessProjectAction(context, { kind: 'unsupported' as 'read' }).status).toBe"]
+  u_e_8ef8637752c5d816e4f377c3["Unresolved: expect(grants.consume(id, context, command)).toBe"]
+  s_e2d23644676d3f99a2a33f68["src/main/project-policy.ts: assessProjectAction"]
+  s_420a6667f9d16798afc6a039["src/main/project-policy.ts: OneShotProjectGrants.constructor"]
+  u_e_906a3f50111a160fe1929e6b["Unresolved: expect(grants.consume(first, context, read)).toBe"]
+  u_e_91834647b006868a942f366f["Unresolved: it"]
+  u_e_9288956c24d77ebe3cd943e5["Unresolved: expect"]
+  u_e_92c6340b583e609711fe092d["Unresolved: expect"]
+  u_e_95bdc6e198ea079099dcbab3["Unresolved: expect"]
+  u_e_960ae6559bef564093a25367["Unresolved: expect(new OneShotProjectGrants().consume(restarted, context, read)).toBe"]
+  u_e_9a1e58cda58e94f17ef301fa["Unresolved: expect"]
+  u_e_9b39137895f341e4738d4de4["Unresolved: expect(assessProjectAction(context, { kind: 'write', paths: [inside, outside] }).status).toBe"]
+  u_e_a07d93b437bda64148c20253["Unresolved: it.each"]
+  u_e_a193dbaa1a2955a7e1bb9442["Unresolved: expect"]
+  u_e_a220e9d3f8b98ace9891d282["Unresolved: expect"]
+  s_9c46ec0b4f332abee614e07a["src/main/project-policy.ts: OneShotProjectGrants.invalidateProject"]
+  u_e_aa147b8ceb7a8f4811eaa0c3["Unresolved: expect(assessProjectAction({ ...context, mode: 9 as 1 }, read).status).toBe"]
+  u_e_acb96fe68a598b9516403a81["Unresolved: path.join"]
+  u_e_b528bdd6e7a7546bdc11c2ee["Unresolved: expect"]
+  u_e_b8973a079015b88cb9e9502f["Unresolved: it"]
+  u_e_b9c16251cdb0406ac7ddf2f9["Unresolved: expect(assessProjectAction({ ...context, mode }, { kind: 'plugin' }).status).toBe"]
+  s_baa6cf57ae4a7200bc72a010["src/main/project-policy.ts: OneShotProjectGrants.consume"]
+  u_e_c2ebae5461cbc7167944650d["Unresolved: expect"]
+  u_e_c359c2e6ba312117b1de98d1["Unresolved: expect(grants.consume(cancelled, context, read, AbortSignal.abort())).toBe"]
+  u_e_c4949f62acf0f9f5b74e9712["Unresolved: expect"]
+  u_e_c663feee8cfec206b7294275["Unresolved: expect(grants.consume(other, otherContext, read)).toBe"]
+  u_e_c6f130c6126a26e701f5c042["Unresolved: expect"]
+  u_e_c817a9aea2dd25e79216e426["Unresolved: expect(grants.consume(expired, context, read)).toBe"]
+  f_43993ad3955cf73c9a4a529f --> u_e_8b1b1f05508229bc9a19c6c2
+  f_43993ad3955cf73c9a4a529f -.-> s_434b5124f189fce3883debff
+  f_43993ad3955cf73c9a4a529f --> u_e_8ea9122964874316323deb04
+  f_43993ad3955cf73c9a4a529f --> u_e_8eab661be17efc1d3b82dece
+  f_43993ad3955cf73c9a4a529f --> u_e_8eb3c207f9f8133f98b2e992
+  f_43993ad3955cf73c9a4a529f --> u_e_8ef8637752c5d816e4f377c3
+  f_43993ad3955cf73c9a4a529f --> s_e2d23644676d3f99a2a33f68
+  f_43993ad3955cf73c9a4a529f -.-> s_420a6667f9d16798afc6a039
+  f_43993ad3955cf73c9a4a529f --> u_e_906a3f50111a160fe1929e6b
+  f_43993ad3955cf73c9a4a529f --> u_e_91834647b006868a942f366f
+  f_43993ad3955cf73c9a4a529f --> u_e_9288956c24d77ebe3cd943e5
+  f_43993ad3955cf73c9a4a529f --> u_e_92c6340b583e609711fe092d
+  f_43993ad3955cf73c9a4a529f --> u_e_95bdc6e198ea079099dcbab3
+  f_43993ad3955cf73c9a4a529f --> u_e_960ae6559bef564093a25367
+  f_43993ad3955cf73c9a4a529f --> u_e_9a1e58cda58e94f17ef301fa
+  f_43993ad3955cf73c9a4a529f --> u_e_9b39137895f341e4738d4de4
+  f_43993ad3955cf73c9a4a529f --> u_e_a07d93b437bda64148c20253
+  f_43993ad3955cf73c9a4a529f --> u_e_a193dbaa1a2955a7e1bb9442
+  f_43993ad3955cf73c9a4a529f --> u_e_a220e9d3f8b98ace9891d282
+  f_43993ad3955cf73c9a4a529f --> s_e2d23644676d3f99a2a33f68
+  f_43993ad3955cf73c9a4a529f -.-> s_9c46ec0b4f332abee614e07a
+  f_43993ad3955cf73c9a4a529f --> u_e_aa147b8ceb7a8f4811eaa0c3
+  f_43993ad3955cf73c9a4a529f --> u_e_acb96fe68a598b9516403a81
+  f_43993ad3955cf73c9a4a529f --> s_e2d23644676d3f99a2a33f68
+  f_43993ad3955cf73c9a4a529f -.-> s_434b5124f189fce3883debff
+  f_43993ad3955cf73c9a4a529f --> s_e2d23644676d3f99a2a33f68
+  f_43993ad3955cf73c9a4a529f --> u_e_b528bdd6e7a7546bdc11c2ee
+  f_43993ad3955cf73c9a4a529f --> u_e_b8973a079015b88cb9e9502f
+  f_43993ad3955cf73c9a4a529f -.-> s_420a6667f9d16798afc6a039
+  f_43993ad3955cf73c9a4a529f --> u_e_b9c16251cdb0406ac7ddf2f9
+  f_43993ad3955cf73c9a4a529f -.-> s_baa6cf57ae4a7200bc72a010
+  f_43993ad3955cf73c9a4a529f --> u_e_c2ebae5461cbc7167944650d
+  f_43993ad3955cf73c9a4a529f --> u_e_c359c2e6ba312117b1de98d1
+  f_43993ad3955cf73c9a4a529f --> u_e_c4949f62acf0f9f5b74e9712
+  f_43993ad3955cf73c9a4a529f -.-> s_baa6cf57ae4a7200bc72a010
+  f_43993ad3955cf73c9a4a529f --> s_e2d23644676d3f99a2a33f68
+  f_43993ad3955cf73c9a4a529f --> u_e_c663feee8cfec206b7294275
+  f_43993ad3955cf73c9a4a529f --> u_e_c6f130c6126a26e701f5c042
+  f_43993ad3955cf73c9a4a529f --> u_e_c817a9aea2dd25e79216e426
+  f_43993ad3955cf73c9a4a529f --> s_e2d23644676d3f99a2a33f68

@@ -1,0 +1,55 @@
+flowchart LR
+  s_19088dc301adb7ae3c49f114["ProjectTools.reportDiagrams · 110"]
+  s_60c896f3250fe893ef6ec761["src/main/store.ts: Store.project"]
+  s_a26c220bf37ee317ae6ace1e["ProjectTools.execute · 200"]
+  s_ee8e18f5b4896cb05d314cb3["ProjectTools.toolsForWorker · 147"]
+  f_648573674bad009d008b25d9["src/main/project-tools.ts"]
+  u_e_f44a86ea3cda925e11222f71["Unresolved: z.string().regex"]
+  u_e_f4acf02a11703260af4ea2d9["Unresolved: z.string().trim"]
+  u_e_f59fb928228ade4149d017f4["Unresolved: z.boolean"]
+  s_ad55cf63ee0360023c4f7c0f["ProjectTools.mapStatus · 100"]
+  s_fecfabfb552f421a10a78b87["ProjectTools.ensureWorkspace · 95"]
+  u_e_f69f3eae34e371db5bd4e38a["Unresolved: Error"]
+  s_6aa60aeb10ffaed53f6b83ab["src/main/workspace.ts: hash"]
+  u_e_f7bd47815ff662bd8f804442["Unresolved: z.array(filename).max(20).optional"]
+  s_6a832b2be24b4daba416b3a6["ProjectTools.serial · 193"]
+  u_e_f7fb2bb9a69adcfdde8134eb["Unresolved: previous.catch(() =&gt; {}).then"]
+  s_96a56210be25ff9c6e2f096c["ProjectTools.prepare · 78"]
+  s_3d4087379f83b49a58693ba1["src/main/project-worktrees.ts: ProjectWorktreeService.prepare"]
+  u_e_fa5170ea2aaa6cdd94220da0["Unresolved: (args.writePaths ?? []).map"]
+  u_e_fa7f9228d352d1ab1150c8a0["Unresolved: worker.ownedPaths.map"]
+  s_f27f8fdef451d7bb05c5048b["ProjectTools.authorize · 161"]
+  u_e_fb76c165600eca10f1a03b3a["Unresolved: signal.throwIfAborted"]
+  u_e_fca1242acfae7d0237832e35["Unresolved: this.workers.has"]
+  u_e_fcf2ca35156ab3a283429706["Unresolved: Error"]
+  s_1b86a4837dbf11d0ad688ef1["ProjectTools.checkWorkerWrite · 150"]
+  u_e_fd3aba35dece92fe02ee9d89["Unresolved: path.relative(this.workspace(chat).root, target).replaceAll"]
+  s_14d3f9cf1cd18c784f7de11b["ProjectTools.withWorkspaceWrite · 137"]
+  s_69f8583bf37b29bb18fcda99["ProjectTools.getWorkspace · 118"]
+  s_2b1f9bd16affc873dfbfa64d["ProjectTools.prepareWorker · 124"]
+  u_e_fe863f53346d82e9f326c53e["Unresolved: Error"]
+  s_465e98f8ae25af889dd15f68["ProjectTools.checkWorkerWrite.normalize · 154"]
+  u_e_feee943402b264fb16cc56c3["Unresolved: value.toLowerCase"]
+  s_00397ee249dc7b66d90b9007["src/main/project-context.ts: ProjectNotes.update"]
+  s_19088dc301adb7ae3c49f114 -.-> s_60c896f3250fe893ef6ec761
+  s_a26c220bf37ee317ae6ace1e -.-> s_ee8e18f5b4896cb05d314cb3
+  f_648573674bad009d008b25d9 --> u_e_f44a86ea3cda925e11222f71
+  f_648573674bad009d008b25d9 --> u_e_f4acf02a11703260af4ea2d9
+  f_648573674bad009d008b25d9 --> u_e_f59fb928228ade4149d017f4
+  s_ad55cf63ee0360023c4f7c0f -.-> s_fecfabfb552f421a10a78b87
+  s_fecfabfb552f421a10a78b87 --> u_e_f69f3eae34e371db5bd4e38a
+  s_a26c220bf37ee317ae6ace1e --> s_6aa60aeb10ffaed53f6b83ab
+  f_648573674bad009d008b25d9 --> u_e_f7bd47815ff662bd8f804442
+  s_6a832b2be24b4daba416b3a6 --> u_e_f7fb2bb9a69adcfdde8134eb
+  s_96a56210be25ff9c6e2f096c -.-> s_3d4087379f83b49a58693ba1
+  s_a26c220bf37ee317ae6ace1e --> u_e_fa5170ea2aaa6cdd94220da0
+  s_a26c220bf37ee317ae6ace1e --> u_e_fa7f9228d352d1ab1150c8a0
+  s_f27f8fdef451d7bb05c5048b --> u_e_fb76c165600eca10f1a03b3a
+  s_f27f8fdef451d7bb05c5048b --> u_e_fca1242acfae7d0237832e35
+  s_ad55cf63ee0360023c4f7c0f --> u_e_fcf2ca35156ab3a283429706
+  s_1b86a4837dbf11d0ad688ef1 --> u_e_fd3aba35dece92fe02ee9d89
+  s_14d3f9cf1cd18c784f7de11b -.-> s_69f8583bf37b29bb18fcda99
+  s_2b1f9bd16affc873dfbfa64d --> u_e_fe863f53346d82e9f326c53e
+  s_465e98f8ae25af889dd15f68 --> u_e_feee943402b264fb16cc56c3
+  s_a26c220bf37ee317ae6ace1e -.-> s_00397ee249dc7b66d90b9007
+  s_a26c220bf37ee317ae6ace1e --> s_6aa60aeb10ffaed53f6b83ab

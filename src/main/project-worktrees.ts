@@ -35,7 +35,7 @@ const digest = (data: Buffer | string) => createHash('sha256').update(data).dige
 function eligible(relative: string): boolean {
   const parts = relative.split(/[\\/]/);
   const mapPath = parts.join('/');
-  if (/^\.mercury\/architecture\/(?:generated\/|(?:graph\.json|manifest\.json|index\.md)$)/.test(mapPath)) return false;
+  if (mapPath.startsWith('.mercury/architecture/') && !mapPath.endsWith('.mmd')) return false;
   return !parts.some(part => excludedDirectories.has(part.toLowerCase()))
     && !parts.some(part => /^(?:\.env(?:\..*)?|id_(?:rsa|dsa|ecdsa|ed25519)|credentials(?:\..*)?|secrets?(?:\..*)?)$/i.test(part))
     && !/\.(?:pem|p12|pfx|key)$/i.test(relative);
@@ -44,7 +44,8 @@ function aborted(signal?: AbortSignal): void { signal?.throwIfAborted(); }
 async function git(root: string, args: string[], signal?: AbortSignal): Promise<string> {
   aborted(signal);
   return new Promise((resolve, reject) => {
-    execFile('git', ['-c', 'core.hooksPath=', '-c', 'core.fsmonitor=false', '-c', 'submodule.recurse=false', '-C', root, ...args], { signal, windowsHide: true, maxBuffer: 32 * 1024 * 1024 }, (error, stdout, stderr) => error ? reject(Object.assign(error, { stderr })) : resolve(stdout));
+    const env = args[0] === 'commit' ? { ...process.env, GIT_AUTHOR_NAME: 'Mercury AI', GIT_AUTHOR_EMAIL: 'ai@mercury.local', GIT_COMMITTER_NAME: 'Mercury AI', GIT_COMMITTER_EMAIL: 'ai@mercury.local' } : process.env;
+    execFile('git', ['-c', 'core.hooksPath=', '-c', 'core.fsmonitor=false', '-c', 'submodule.recurse=false', '-c', 'commit.gpgSign=false', '-C', root, ...args], { signal, env, windowsHide: true, maxBuffer: 32 * 1024 * 1024 }, (error, stdout, stderr) => error ? reject(Object.assign(error, { stderr })) : resolve(stdout));
   });
 }
 async function succeeds(root: string, args: string[], signal?: AbortSignal): Promise<boolean> {
@@ -55,6 +56,7 @@ async function succeeds(root: string, args: string[], signal?: AbortSignal): Pro
 export class ProjectWorktreeService {
   private readonly pending = new Map<string, Promise<unknown>>();
   private readonly baselines = new Map<string, Map<string, string>>();
+  private readonly repositories = new Set<string>();
   constructor(readonly storageRoot: string) {}
 
   private async exclusive<T>(key: string, operation: () => Promise<T>): Promise<T> {
@@ -77,27 +79,36 @@ export class ProjectWorktreeService {
   }
   private async snapshotEligible(root: string, signal?: AbortSignal): Promise<Map<string, string>> {
     const snapshot = new Map<string, string>();
-    for (const relative of await this.eligiblePaths(root, signal)) {
+    const records = (await git(root, ['status', '--porcelain=v1', '-z', '--untracked-files=all'], signal)).split('\0');
+    const dirty = new Set<string>();
+    for (let index = 0; index < records.length; index++) {
+      const record = records[index];
+      if (!record) continue;
+      const status = record.slice(0, 2);
+      dirty.add(record.slice(3));
+      if (/[RC]/.test(status) && records[index + 1]) dirty.add(records[++index]);
+    }
+    for (const relative of [...dirty].filter(eligible)) {
       aborted(signal);
+      const stat = await fs.lstat(path.join(root, relative)).catch((error: NodeJS.ErrnoException) => error.code === 'ENOENT' ? null : Promise.reject(error));
+      if (stat && !stat.isFile()) continue;
       const content = await fs.readFile(path.join(root, relative)).catch((error: NodeJS.ErrnoException) => error.code === 'ENOENT' ? null : Promise.reject(error));
-      if (content) snapshot.set(relative, digest(content));
+      snapshot.set(relative, content ? digest(content) : 'deleted');
     }
     return snapshot;
   }
-  private async configureIdentity(root: string, signal?: AbortSignal): Promise<void> {
-    if (!(await succeeds(root, ['config', 'user.name'], signal))) await git(root, ['config', 'user.name', 'Mercury Safety Net'], signal);
-    if (!(await succeeds(root, ['config', 'user.email'], signal))) await git(root, ['config', 'user.email', 'safety-net@mercury.local'], signal);
-  }
   private async ensureRepository(root: string, signal?: AbortSignal): Promise<void> {
+    if (this.repositories.has(root)) return;
     if (await succeeds(root, ['rev-parse', '--is-inside-work-tree'], signal)) {
       const top = await fs.realpath((await git(root, ['rev-parse', '--show-toplevel'], signal)).trim());
       if (top !== root) throw new Error('Choose the repository root, not a nested folder.');
+      this.repositories.add(root);
       return;
     }
     await git(root, ['init'], signal);
-    await this.configureIdentity(root, signal);
     await this.stageEligible(root, signal);
     if (!(await succeeds(root, ['diff', '--cached', '--quiet'], signal))) await git(root, ['commit', '--no-verify', '-m', 'Mercury safety baseline'], signal);
+    this.repositories.add(root);
   }
 
   async prepare(input: { projectRoot: string; chatId: string; signal?: AbortSignal }): Promise<ProjectWorkspace> {
@@ -115,12 +126,17 @@ export class ProjectWorktreeService {
 
   async load(_id: string): Promise<ProjectWorkspace> { throw new Error('Project workspaces are no longer persisted; reopen the project chat.'); }
 
+  async changedPaths(workspace: ProjectWorkspace, signal?: AbortSignal): Promise<string[]> {
+    const baseline = this.baselines.get(workspace.id) ?? new Map<string, string>();
+    const current = await this.snapshotEligible(workspace.root, signal);
+    return [...new Set([...baseline.keys(), ...current.keys()])].filter(relative => baseline.get(relative) !== current.get(relative)).sort();
+  }
+
   /** Commit only safe project files. A clean checkout produces no commit. */
   async commitResponse(workspace: ProjectWorkspace, signal?: AbortSignal): Promise<{ committed: boolean; revision?: string }> {
     return this.exclusive(workspace.projectRoot, async () => {
       aborted(signal);
       await this.ensureRepository(workspace.projectRoot, signal);
-      await this.configureIdentity(workspace.projectRoot, signal);
       const baseline = this.baselines.get(workspace.id) ?? new Map<string, string>();
       const current = await this.snapshotEligible(workspace.projectRoot, signal);
       const changed = [...new Set([...baseline.keys(), ...current.keys()])].filter(relative => baseline.get(relative) !== current.get(relative)).sort();

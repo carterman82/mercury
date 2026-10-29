@@ -1,0 +1,73 @@
+flowchart LR
+  f_c7bdd2256f4d10102bf8622b["src/main/native-files.test.ts"]
+  u_e_79fe1bbe48b8c5ea283caea7["Unresolved: it"]
+  u_e_7b3209f0c0acfe67096bec9d["Unresolved: expect"]
+  s_e2ebebf2497febd7d6df5f0a["src/main/cloud-providers.ts: claudeInput"]
+  s_a9bd77f265ffd35e649e6aea["src/main/native-files.ts: nativeFileMime"]
+  u_e_7ed0b777b2341aa726290bfc["Unresolved: expect(result[0].content).toContainEqual"]
+  u_e_846f162f0d94ce292bcc89cc["Unresolved: expect"]
+  u_e_8767302c9f542a6c8911e809["Unresolved: Buffer.from"]
+  u_e_87839b358b1e72a7d3bdd224["Unresolved: expect(result[2].content).toContainEqual"]
+  u_e_89a84442d836a2903b636847["Unresolved: expect"]
+  u_e_8e587561bb407bc5936b5e75["Unresolved: Buffer.from"]
+  u_e_8f79745dcbf1474f78c42724["Unresolved: expect(result[0].content).toContainEqual"]
+  u_e_9155747da87bc0ae31f5f36c["Unresolved: expect(nativeFileMime('openai', 'report.csv', Buffer.from('name,value\na,1'))).toBe"]
+  u_e_94fb6d3e97962cf85c9ce9bf["Unresolved: expect(nativeFileMime('openai', 'unknown.blob', Buffer.from('text'))).toBeNull"]
+  u_e_9811699b72e6529698d71146["Unresolved: expect"]
+  u_e_9e098682a146a59bc1232378["Unresolved: expect(nativeFileMime('claude', 'fake.pdf', Buffer.from('not a PDF'))).toBeNull"]
+  u_e_a03b3d98af76cb0f7a1663e4["Unresolved: expect(nativeFileMime('openai', 'report.docx', Buffer.from('invalid content'))).toBeNull"]
+  u_e_a8b9a61a27adc86565bcbec0["Unresolved: Buffer.from(text).toString"]
+  u_e_abfcdfa42596325a847c973f["Unresolved: expect(result[0].content).toContainEqual"]
+  u_e_afc39eb1c4d503fb46aada1c["Unresolved: expect(result[0].content[0].text).toContain"]
+  u_e_b241b7ef2ad79d28029f9fbd["Unresolved: expect"]
+  u_e_b4374c50d218822a8fa250be["Unresolved: expect"]
+  u_e_b677fab53b245c9563c55a6c["Unresolved: expect"]
+  u_e_b8b6b05e3425a0a80a44799b["Unresolved: expect"]
+  u_e_c2e8e7e83aa7bec941f8f40b["Unresolved: expect(nativeFileMime('openai', 'archive.zip', zip)).toBeNull"]
+  u_e_c41b3d1801285b4a4cad3441["Unresolved: Buffer.from"]
+  u_e_c81c2d6f4641d38ebac5788b["Unresolved: expect(nativeFileMime('openai', 'image.txt', Buffer.from([0x89, 0x50, 0x4e, 0x47, 0, 0xff]))).toBeNull"]
+  u_e_c98665e5963dd20ae2dd28e8["Unresolved: expect"]
+  u_e_c9b17c40c8836ff2a6855cf1["Unresolved: expect"]
+  u_e_d1379bfdf3f082aff481b6ff["Unresolved: it"]
+  u_e_d551c488bbd2b09ee93c2021["Unresolved: pdf.toString"]
+  u_e_d64a4a657300b6559fb3089a["Unresolved: expect(nativeFileMime('claude', 'notes.md', Buffer.from('text'))).toBeNull"]
+  f_c7bdd2256f4d10102bf8622b --> u_e_79fe1bbe48b8c5ea283caea7
+  f_c7bdd2256f4d10102bf8622b --> u_e_7b3209f0c0acfe67096bec9d
+  f_c7bdd2256f4d10102bf8622b --> s_e2ebebf2497febd7d6df5f0a
+  f_c7bdd2256f4d10102bf8622b --> s_a9bd77f265ffd35e649e6aea
+  f_c7bdd2256f4d10102bf8622b --> u_e_7ed0b777b2341aa726290bfc
+  f_c7bdd2256f4d10102bf8622b --> s_a9bd77f265ffd35e649e6aea
+  f_c7bdd2256f4d10102bf8622b --> u_e_846f162f0d94ce292bcc89cc
+  f_c7bdd2256f4d10102bf8622b --> u_e_8767302c9f542a6c8911e809
+  f_c7bdd2256f4d10102bf8622b --> s_e2ebebf2497febd7d6df5f0a
+  f_c7bdd2256f4d10102bf8622b --> u_e_87839b358b1e72a7d3bdd224
+  f_c7bdd2256f4d10102bf8622b --> u_e_89a84442d836a2903b636847
+  f_c7bdd2256f4d10102bf8622b --> u_e_8e587561bb407bc5936b5e75
+  f_c7bdd2256f4d10102bf8622b --> u_e_8f79745dcbf1474f78c42724
+  f_c7bdd2256f4d10102bf8622b --> u_e_9155747da87bc0ae31f5f36c
+  f_c7bdd2256f4d10102bf8622b --> u_e_94fb6d3e97962cf85c9ce9bf
+  f_c7bdd2256f4d10102bf8622b --> u_e_9811699b72e6529698d71146
+  f_c7bdd2256f4d10102bf8622b --> u_e_9e098682a146a59bc1232378
+  f_c7bdd2256f4d10102bf8622b --> u_e_a03b3d98af76cb0f7a1663e4
+  f_c7bdd2256f4d10102bf8622b --> s_a9bd77f265ffd35e649e6aea
+  f_c7bdd2256f4d10102bf8622b --> s_e2ebebf2497febd7d6df5f0a
+  f_c7bdd2256f4d10102bf8622b --> s_a9bd77f265ffd35e649e6aea
+  f_c7bdd2256f4d10102bf8622b --> u_e_a8b9a61a27adc86565bcbec0
+  f_c7bdd2256f4d10102bf8622b --> u_e_abfcdfa42596325a847c973f
+  f_c7bdd2256f4d10102bf8622b --> s_a9bd77f265ffd35e649e6aea
+  f_c7bdd2256f4d10102bf8622b --> u_e_afc39eb1c4d503fb46aada1c
+  f_c7bdd2256f4d10102bf8622b --> u_e_b241b7ef2ad79d28029f9fbd
+  f_c7bdd2256f4d10102bf8622b --> u_e_b4374c50d218822a8fa250be
+  f_c7bdd2256f4d10102bf8622b --> u_e_b677fab53b245c9563c55a6c
+  f_c7bdd2256f4d10102bf8622b --> s_a9bd77f265ffd35e649e6aea
+  f_c7bdd2256f4d10102bf8622b --> u_e_b8b6b05e3425a0a80a44799b
+  f_c7bdd2256f4d10102bf8622b --> u_e_c2e8e7e83aa7bec941f8f40b
+  f_c7bdd2256f4d10102bf8622b --> s_a9bd77f265ffd35e649e6aea
+  f_c7bdd2256f4d10102bf8622b --> u_e_c41b3d1801285b4a4cad3441
+  f_c7bdd2256f4d10102bf8622b --> s_a9bd77f265ffd35e649e6aea
+  f_c7bdd2256f4d10102bf8622b --> u_e_c81c2d6f4641d38ebac5788b
+  f_c7bdd2256f4d10102bf8622b --> u_e_c98665e5963dd20ae2dd28e8
+  f_c7bdd2256f4d10102bf8622b --> u_e_c9b17c40c8836ff2a6855cf1
+  f_c7bdd2256f4d10102bf8622b --> u_e_d1379bfdf3f082aff481b6ff
+  f_c7bdd2256f4d10102bf8622b --> u_e_d551c488bbd2b09ee93c2021
+  f_c7bdd2256f4d10102bf8622b --> u_e_d64a4a657300b6559fb3089a

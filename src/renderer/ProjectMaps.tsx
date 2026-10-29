@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import type { ProjectMapSummary } from '../shared/types';
+import { Markdown } from './Markdown';
+import type { ProjectReport } from '../shared/types';
 
 export function validateProjectDiagram(source: string): void {
   if (source.length > 256000) throw new Error('This diagram exceeds the preview limit.');
@@ -29,32 +30,47 @@ function sanitizeSvg(svg: string): string {
 }
 
 export function ProjectMapsPanel({ chatId, onClose }: { chatId: string; onClose(): void }) {
-  const [status, setStatus] = useState<ProjectMapSummary | null>(null);
+  const [report, setReport] = useState('');
+  const [sources, setSources] = useState(0);
   const [selected, setSelected] = useState('');
   const [source, setSource] = useState('');
   const [svg, setSvg] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [progress, setProgress] = useState('Starting report…');
+  const [metadata, setMetadata] = useState<ProjectReport | null>(null);
   const version = useRef(0);
-  const load = async (refresh: boolean) => {
+  const show = (result: ProjectReport) => {
+    setReport(result.content.replace(/```mermaid\s*\n[\s\S]*?```/i, ''));
+    setSources(result.sources);
+    setSelected(result.diagram);
+    setMetadata(result);
+  };
+  const load = async (regenerate = false) => {
     const revision = ++version.current;
     setBusy(true);
     setError('');
+    setProgress('Checking changed diagrams or rejoining the current report…');
     try {
-      const next = await (refresh
-        ? window.desktop.refreshProjectMaps(chatId)
-        : window.desktop.projectMapStatus(chatId));
+      if (!regenerate) {
+        const cached = await window.desktop.cachedProjectReport(chatId);
+        if (revision !== version.current) return;
+        if (cached) show(cached);
+      }
+      const result = await window.desktop.generateProjectReport(chatId, regenerate);
       if (revision !== version.current) return;
-      setStatus(next);
-      setSelected((current) => (next.diagrams.includes(current) ? current : (next.diagrams[0] ?? '')));
+      show(result);
     } catch (error) {
       if (revision === version.current) setError(error instanceof Error ? error.message : String(error));
     } finally {
       if (revision === version.current) setBusy(false);
     }
   };
+  useEffect(() => window.desktop.onProjectReportProgress((id, message) => {
+    if (id === chatId) setProgress(message);
+  }), [chatId]);
   useEffect(() => {
-    void load(false);
+    void load();
     return () => {
       version.current++;
     };
@@ -66,16 +82,17 @@ export function ProjectMapsPanel({ chatId, onClose }: { chatId: string; onClose(
     if (!selected) return;
     void (async () => {
       try {
-        const diagram = await window.desktop.readProjectDiagram(chatId, selected);
+        const diagram = { content: selected };
         validateProjectDiagram(diagram.content);
         const { default: mermaid } = await import('mermaid');
         mermaid.initialize({
           startOnLoad: false,
           securityLevel: 'strict',
+          htmlLabels: false,
           theme: 'dark',
           maxTextSize: 256000,
           suppressErrorRendering: true,
-          secure: ['secure', 'securityLevel', 'startOnLoad', 'maxTextSize'],
+          secure: ['secure', 'securityLevel', 'startOnLoad', 'maxTextSize', 'htmlLabels'],
           flowchart: { htmlLabels: false },
         });
         await mermaid.parse(diagram.content);
@@ -95,48 +112,27 @@ export function ProjectMapsPanel({ chatId, onClose }: { chatId: string; onClose(
     return () => {
       cancelled = true;
     };
-  }, [chatId, selected, status?.fresh]);
+  }, [chatId, selected]);
   return (
     <div className="modal-backdrop">
-      <section className="modal project-maps-panel" aria-label="Project dependency maps">
+      <section className="modal project-maps-panel" aria-label="Project architecture report">
         <header>
           <div>
             <small>PROJECT ARCHITECTURE</small>
-            <h2>Dependency maps</h2>
+            <h2>Architecture report</h2>
           </div>
-          <button onClick={onClose}>Close maps</button>
+          <button onClick={onClose}>Close report</button>
         </header>
         <div className="project-map-controls">
-          <button disabled={busy} onClick={() => void load(true)}>
-            {busy ? 'Updating maps…' : 'Refresh maps'}
+          <button disabled={busy} onClick={() => void load()}>
+            {busy ? 'Checking report…' : source ? 'Update Report' : 'Generate Report'}
           </button>
-          {status && (
-            <span role="status">
-              {status.fresh ? 'Up to date' : 'Refresh needed'} · {status.sourceFiles} source files ·{' '}
-              {status.unresolvedReferences} unresolved references
-            </span>
-          )}
+          <button disabled={busy} onClick={() => void load(true)} title="Ignore saved report and analysis; analyze every diagram again">Start from scratch</button>
+          {source && <button onClick={() => void window.desktop.saveProjectReport(chatId).catch(error => setError(String(error)))}>Save .mmd</button>}
         </div>
-        {status && (
-          <p className="hint">
-            Languages: {status.languages.join(', ') || 'No supported source detected'}. Solid lines are confirmed
-            relationships; dashed lines are inferred. Dynamic behavior may remain unresolved.
-          </p>
-        )}
-        <label className="field">
-          <span>Diagram</span>
-          <select
-            aria-label="Dependency diagram"
-            value={selected}
-            onChange={(event) => setSelected(event.target.value)}
-          >
-            {(status?.diagrams ?? []).map((value) => (
-              <option key={value} value={value}>
-                {value === 'system.mmd' ? 'System interactions' : (status?.diagramLabels?.[value] ?? value)}
-              </option>
-            ))}
-          </select>
-        </label>
+        {busy && <p role="status">{progress} You can close this window and reopen it to view the same report.</p>}
+        {sources > 0 && <p className="hint">Subagents analyzed {sources} existing architecture diagrams; Main synthesized this overview. Diagrams were not rebuilt and may reflect an earlier project state. Nodes group scripts by responsibility; dashed arrows show inferred relationships.</p>}
+        {metadata?.generatedAt && <p className="hint">Saved {new Date(metadata.generatedAt).toLocaleString()} · Source commit: {metadata.lastCommit?.slice(0, 12) ?? 'No Git commit'} · Changes are checked against saved diagram contents, including uncommitted edits.</p>}
         {error && (
           <p role="alert" className="hint danger">
             {error}
@@ -147,21 +143,11 @@ export function ProjectMapsPanel({ chatId, onClose }: { chatId: string; onClose(
           aria-label="Dependency diagram preview"
           dangerouslySetInnerHTML={{ __html: svg }}
         />
+        {report && <Markdown content={report} />}
         {source && (
           <details>
             <summary>Diagram source</summary>
             <pre>{source}</pre>
-          </details>
-        )}
-        {Boolean(status?.diagnostics.length) && (
-          <details>
-            <summary>Coverage and limitations</summary>
-            {status!.diagnostics.slice(0, 50).map((item, index) => (
-              <p key={index}>
-                {item.file ? item.file + ': ' : ''}
-                {item.message}
-              </p>
-            ))}
           </details>
         )}
       </section>

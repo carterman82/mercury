@@ -1,0 +1,88 @@
+flowchart LR
+  s_b70fc9f324519456a80b5f7c["ChatPlugins.discover · 32"]
+  u_e_2acc7830c4d5dd5e887362bf["Unresolved: URL"]
+  s_7821644e3ea97ee20f7e289e["ChatPlugins.install · 91"]
+  u_e_2ad1acb0a88fdc2729faab1c["Unresolved: fs.mkdir"]
+  s_92bb86967ca03ba9d3b2f524["ChatPlugins.withClient.fetch · 142"]
+  u_e_2b69c79594f90df3c948ff69["Unresolved: AbortSignal.any"]
+  s_819161220d1da89def8a268c["ChatPlugins.withClient · 134"]
+  s_5ca312ebf76ad25b6a1330f5["ChatPlugins.filename · 23"]
+  u_e_2be9648039cc6c5e56870a50["Unresolved: StdioClientTransport"]
+  u_e_2d92d68811e84ff88b2748f0["Unresolved: tools.tools.slice"]
+  s_d66cc2e5b6e3f7f153922299["ChatPlugins.installNpm · 112"]
+  u_e_2e0d7402ec19c4907ac9087d["Unresolved: [this.node, cli, 'install', '--prefix', directory, '--ignore-scripts', '--omit=dev', '--no-audit', '--no-fund', '--registry=https://registry.npmjs.org', '--save-exact', `${plan.identifier}@${plan.version}`].map(quoteCommandArgument).join"]
+  u_e_2e4b14cc4ec12b197fb240a5["Unresolved: createHash('sha256').update(JSON.stringify([candidate.name, candidate.version, candidate.plan])).digest"]
+  s_cd65ef8be6a9544634c93c5b["src/main/chat-plugins.test.ts: fixture"]
+  s_b7e12021b0454984bee5926a["ChatPlugins.constructor · 22"]
+  f_ea7f86133db0b51ad3653e7d["src/main/chat-plugins.ts"]
+  u_e_301bf8f79009d6269f82f2c2["Unresolved: z.string().min(1).max"]
+  u_e_30d93face1d47cde18301f61["Unresolved: Error"]
+  u_e_3241f6cebebe25227f8dfc64["Unresolved: this.candidates.delete"]
+  u_e_32d45cab6870638bb43b4be8["Unresolved: z.string().regex"]
+  s_ad93d649bde6b05c600f49ed["ChatPlugins.installed · 25"]
+  u_e_35ea3b681db54fd654944873["Unresolved: path.join"]
+  u_e_378b19501bc34ec36bfb1a76["Unresolved: fs.readFile"]
+  u_e_3855471b55440013e7603f99["Unresolved: path.join"]
+  u_e_385d939e11398fe091fff2a8["Unresolved: Error"]
+  u_e_3876bc4a4a94b54509b5adf4["Unresolved: this.candidates.get"]
+  s_f76d9d7468789b9acd6b7bfe["ChatPlugins.call · 182"]
+  u_e_38b67b75f7da902aca7ae6cf["Unresolved: Object.entries(env).filter"]
+  u_e_3a15a973321bfbcfc7fc56ee["Unresolved: encodeURIComponent"]
+  u_e_3a2c27b03d98ac3c31e97fe7["Unresolved: path.join"]
+  u_e_3af2dd70f871fc8e1722dd79["Unresolved: contained.stderr?.on"]
+  u_e_3b3ac2ae19d0cdd6a3624525["Unresolved: plans.push"]
+  u_e_3d58abe2cb0aa4b14939706e["Unresolved: z.string"]
+  s_cf968ce7d4cc1795fed19306["src/main/chat-capabilities.ts: ChatCapabilities.execute"]
+  u_e_42bbde74d746518cd19affdd["Unresolved: z.object"]
+  u_e_434c38ec413aa72285171a63["Unresolved: path.dirname"]
+  u_e_43fe2b1135b850211a55e8a4["Unresolved: (pkg.environmentVariables ?? []).some"]
+  u_e_454b86da283d27a97893971b["Unresolved: a.server.name.localeCompare"]
+  u_e_461fe4d2a82cfaf7bac95b58["Unresolved: server.version.slice"]
+  u_e_467532db6c4b2d14dda41076["Unresolved: transport.close().catch"]
+  s_baca5772759c828ba25ffd1d["ChatPlugins.withClient.stop · 163"]
+  u_e_467a1dbef00a4ee67d89da33["Unresolved: (async () =&gt; {               if (contained.pid &amp;&amp; process.platform === 'win32') await new Promise&lt;void&gt;(resolve =&gt; execFile(path.join(process.env.SystemRoot!, 'System32', 'taskkill.exe'), ['/PID', String(contained.pid), '/T', '/F'], { windowsHide: true }, () =&gt; resolve()));               await clien"]
+  u_e_489d9717880ca039a1cef54b["Unresolved: [this.node, cli, 'install', '--prefix', directory, '--ignore-scripts', '--omit=dev', '--no-audit', '--no-fund', '--registry=https://registry.npmjs.org', '--save-exact', `${plan.identifier}@${plan.version}`].map"]
+  u_e_4a3ba59dfb8f166c0a3d32c2["Unresolved: result.tools.filter"]
+  s_4bb12334a62de443944e279d["src/main/project-execution.ts: ProjectExecutionAdapter.withInvocation"]
+  s_875c6cfa12c48a333e0b857e["src/main/web-policy.ts: WebPolicy.check"]
+  u_e_4c2397b981a37f6fd7b80c0d["Unresolved: String"]
+  s_b70fc9f324519456a80b5f7c --> u_e_2acc7830c4d5dd5e887362bf
+  s_7821644e3ea97ee20f7e289e --> u_e_2ad1acb0a88fdc2729faab1c
+  s_92bb86967ca03ba9d3b2f524 --> u_e_2b69c79594f90df3c948ff69
+  s_819161220d1da89def8a268c -.-> s_5ca312ebf76ad25b6a1330f5
+  s_819161220d1da89def8a268c --> u_e_2be9648039cc6c5e56870a50
+  s_7821644e3ea97ee20f7e289e --> u_e_2d92d68811e84ff88b2748f0
+  s_d66cc2e5b6e3f7f153922299 --> u_e_2e0d7402ec19c4907ac9087d
+  s_7821644e3ea97ee20f7e289e --> u_e_2e4b14cc4ec12b197fb240a5
+  s_cd65ef8be6a9544634c93c5b -.-> s_b7e12021b0454984bee5926a
+  f_ea7f86133db0b51ad3653e7d --> u_e_301bf8f79009d6269f82f2c2
+  s_819161220d1da89def8a268c --> u_e_30d93face1d47cde18301f61
+  s_7821644e3ea97ee20f7e289e --> u_e_3241f6cebebe25227f8dfc64
+  f_ea7f86133db0b51ad3653e7d --> u_e_32d45cab6870638bb43b4be8
+  s_b70fc9f324519456a80b5f7c -.-> s_ad93d649bde6b05c600f49ed
+  s_819161220d1da89def8a268c --> u_e_35ea3b681db54fd654944873
+  s_819161220d1da89def8a268c --> u_e_378b19501bc34ec36bfb1a76
+  s_819161220d1da89def8a268c --> u_e_3855471b55440013e7603f99
+  s_819161220d1da89def8a268c --> u_e_385d939e11398fe091fff2a8
+  s_7821644e3ea97ee20f7e289e --> u_e_3876bc4a4a94b54509b5adf4
+  s_f76d9d7468789b9acd6b7bfe -.-> s_819161220d1da89def8a268c
+  s_d66cc2e5b6e3f7f153922299 --> u_e_38b67b75f7da902aca7ae6cf
+  s_b70fc9f324519456a80b5f7c --> u_e_3a15a973321bfbcfc7fc56ee
+  s_7821644e3ea97ee20f7e289e --> u_e_3a2c27b03d98ac3c31e97fe7
+  s_819161220d1da89def8a268c --> u_e_3af2dd70f871fc8e1722dd79
+  s_b70fc9f324519456a80b5f7c --> u_e_3b3ac2ae19d0cdd6a3624525
+  f_ea7f86133db0b51ad3653e7d --> u_e_3d58abe2cb0aa4b14939706e
+  s_cf968ce7d4cc1795fed19306 -.-> s_7821644e3ea97ee20f7e289e
+  f_ea7f86133db0b51ad3653e7d --> u_e_42bbde74d746518cd19affdd
+  s_d66cc2e5b6e3f7f153922299 --> u_e_434c38ec413aa72285171a63
+  s_b70fc9f324519456a80b5f7c --> u_e_43fe2b1135b850211a55e8a4
+  s_7821644e3ea97ee20f7e289e -.-> s_ad93d649bde6b05c600f49ed
+  s_b70fc9f324519456a80b5f7c --> u_e_454b86da283d27a97893971b
+  s_b70fc9f324519456a80b5f7c --> u_e_461fe4d2a82cfaf7bac95b58
+  s_819161220d1da89def8a268c --> u_e_467532db6c4b2d14dda41076
+  s_baca5772759c828ba25ffd1d --> u_e_467a1dbef00a4ee67d89da33
+  s_d66cc2e5b6e3f7f153922299 --> u_e_489d9717880ca039a1cef54b
+  s_f76d9d7468789b9acd6b7bfe --> u_e_4a3ba59dfb8f166c0a3d32c2
+  s_819161220d1da89def8a268c -.-> s_4bb12334a62de443944e279d
+  s_819161220d1da89def8a268c -.-> s_875c6cfa12c48a333e0b857e
+  s_d66cc2e5b6e3f7f153922299 --> u_e_4c2397b981a37f6fd7b80c0d

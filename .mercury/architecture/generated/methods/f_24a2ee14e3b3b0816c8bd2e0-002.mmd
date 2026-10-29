@@ -1,0 +1,92 @@
+flowchart LR
+  f_24a2ee14e3b3b0816c8bd2e0["src/main/project-workers.ts"]
+  u_e_7ef42322b6db961dd4000f88["Unresolved: z.string"]
+  s_32a5813d88937ce3eb46d2aa["src/main/chat.ts: ChatService.send"]
+  s_412443c4a0fec2515174ceac["ProjectWorkers.hasPending · 308"]
+  s_9adb7c3f23dbe5168184b8dd["ProjectWorkers.handles · 87"]
+  u_e_84708753b11280ab0ea77207["Unresolved: Object.hasOwn"]
+  u_e_8566fc7070c72b7b20bb9a1e["Unresolved: z.string().min(1).max"]
+  u_e_86ac301ec3ecec7e4baa1cc1["Unresolved: z.enum"]
+  s_2c53b9b639490e0afd406230["ProjectWorkers.accept · 279"]
+  u_e_8710d459ea9fb9e78be63595["Unresolved: Error"]
+  s_774743cf30be211635853d0f["ProjectWorkers.run.execute · 217"]
+  u_e_88e11484c617210b087efaed["Unresolved: Date.now"]
+  s_6b05f49df43b740161fd76a2["ProjectWorkers.start · 99"]
+  u_e_89c1fb551e9104197f329aa6["Unresolved: parent.projectAssignments?.filter"]
+  s_dde8512336ff9fdf98c86728["ProjectWorkers.run · 161"]
+  u_e_8a04abf174357f996b5648f9["Unresolved: Date.now"]
+  u_e_8b117a416fa1ebc32c6ba017["Unresolved: this.jobs.set"]
+  u_e_8fb8ddd692ba8ce114964885["Unresolved: z.array(z.string().max(1000)).max"]
+  s_c6b55268d259fb0bd6bbb7b6["ProjectWorkers.drain · 143"]
+  s_2ec68a3f4e507b649f608d09["src/main/store.ts: Store.settings"]
+  s_1bc16026f3d796f1536aab53["src/main/chat.ts: ChatService.send.executeCall"]
+  s_471c5e1ae885725cc71dd1ff["ProjectWorkers.wait · 255"]
+  s_4ebb88803cfbede31b2a5056["projectOwnedPaths · 47"]
+  u_e_9cd1bbf7c485d58fdef80ea7["Unresolved: relative.split('/').some"]
+  u_e_9e3fd5b85ab5b840edb02635["Unresolved: String"]
+  s_cc4b26bd57c2a0850dc65318["ProjectWorkers.review · 262"]
+  u_e_a0d0e2f0f4c183bc25a9e7d5["Unresolved: Map"]
+  u_e_a2560186d11b423ca91a9f5f["Unresolved: JSON.stringify"]
+  u_e_a657bf0df09d7f60380467d6["Unresolved: lease?.release"]
+  u_e_a6585ee42de75408ad6ee9ec["Unresolved: this.run(job)         .catch((error) =&gt; {           job.assignment.status = 'failed';           job.assignment.error = String(error);         })         .finally"]
+  u_e_a951e5b005a46887d7004d07["Unresolved: Date.now"]
+  s_06e5ec1538fc49866655f06d["ProjectWorkers.execute · 293"]
+  u_e_ab9a650c8a2540f267b3a042["Unresolved: z.array(z.string().max(1000)).max(30).optional"]
+  u_e_abad7121269f505c75772f04["Unresolved: z.array(z.string().min(1).max(1000)).max"]
+  s_21afce609bf39066dbd6a7e5["src/main/project-tools.test.ts: service"]
+  s_d7aeeb9a6ad44c97bd7fdec9["ProjectWorkers.constructor · 79"]
+  u_e_b0fd11f1e8c472a9dcaa8cc6["Unresolved: String"]
+  u_e_b1e3a6af203e33aa25c29dba["Unresolved: z.array"]
+  u_e_b8041dd5789840614fd0bde5["Unresolved: randomUUID"]
+  u_e_b83a2cd2b92e47374a7e9fa9["Unresolved: z.array"]
+  s_3442ddd4429ff3c6587f6516["ProjectWorkers.save · 90"]
+  u_e_c23188377f5b86dd7c60847c["Unresolved: this.changed"]
+  u_e_c2e779c4ca3aaf63f2e756c9["Unresolved: Error"]
+  s_3b3ccc17e2f2ac910c1cc7e7["ProjectWorkers.start.finish · 135"]
+  u_e_c3459203dff782d11463241c["Unresolved: finish"]
+  s_a26c220bf37ee317ae6ace1e["src/main/project-tools.ts: ProjectTools.execute"]
+  s_387dba90328ba3ef979d2769["src/main/delegation.ts: resolveCandidates"]
+  u_e_c70ebb7c1a815442d09c04a9["Unresolved: z.array(z.string().uuid()).max(100).optional"]
+  u_e_c865caa6bd8a5557639c27ac["Unresolved: JSON.stringify"]
+  u_e_cb8b84d4ec8bf80048d3f02e["Unresolved: z.string().uuid"]
+  u_e_ce2d5eded343cc4810fd55c3["Unresolved: part.toLowerCase"]
+  f_24a2ee14e3b3b0816c8bd2e0 --> u_e_7ef42322b6db961dd4000f88
+  s_32a5813d88937ce3eb46d2aa -.-> s_412443c4a0fec2515174ceac
+  s_9adb7c3f23dbe5168184b8dd --> u_e_84708753b11280ab0ea77207
+  f_24a2ee14e3b3b0816c8bd2e0 --> u_e_8566fc7070c72b7b20bb9a1e
+  f_24a2ee14e3b3b0816c8bd2e0 --> u_e_86ac301ec3ecec7e4baa1cc1
+  s_2c53b9b639490e0afd406230 --> u_e_8710d459ea9fb9e78be63595
+  s_774743cf30be211635853d0f --> u_e_88e11484c617210b087efaed
+  s_6b05f49df43b740161fd76a2 --> u_e_89c1fb551e9104197f329aa6
+  s_dde8512336ff9fdf98c86728 --> u_e_8a04abf174357f996b5648f9
+  s_6b05f49df43b740161fd76a2 --> u_e_8b117a416fa1ebc32c6ba017
+  f_24a2ee14e3b3b0816c8bd2e0 --> u_e_8fb8ddd692ba8ce114964885
+  s_c6b55268d259fb0bd6bbb7b6 -.-> s_2ec68a3f4e507b649f608d09
+  s_32a5813d88937ce3eb46d2aa -.-> s_412443c4a0fec2515174ceac
+  s_1bc16026f3d796f1536aab53 -.-> s_471c5e1ae885725cc71dd1ff
+  s_4ebb88803cfbede31b2a5056 --> u_e_9cd1bbf7c485d58fdef80ea7
+  s_dde8512336ff9fdf98c86728 --> u_e_9e3fd5b85ab5b840edb02635
+  s_2c53b9b639490e0afd406230 -.-> s_cc4b26bd57c2a0850dc65318
+  f_24a2ee14e3b3b0816c8bd2e0 --> u_e_a0d0e2f0f4c183bc25a9e7d5
+  s_dde8512336ff9fdf98c86728 --> u_e_a2560186d11b423ca91a9f5f
+  s_dde8512336ff9fdf98c86728 --> u_e_a657bf0df09d7f60380467d6
+  s_c6b55268d259fb0bd6bbb7b6 --> u_e_a6585ee42de75408ad6ee9ec
+  s_6b05f49df43b740161fd76a2 --> u_e_a951e5b005a46887d7004d07
+  s_06e5ec1538fc49866655f06d -.-> s_6b05f49df43b740161fd76a2
+  f_24a2ee14e3b3b0816c8bd2e0 --> u_e_ab9a650c8a2540f267b3a042
+  f_24a2ee14e3b3b0816c8bd2e0 --> u_e_abad7121269f505c75772f04
+  s_21afce609bf39066dbd6a7e5 -.-> s_d7aeeb9a6ad44c97bd7fdec9
+  s_c6b55268d259fb0bd6bbb7b6 --> u_e_b0fd11f1e8c472a9dcaa8cc6
+  f_24a2ee14e3b3b0816c8bd2e0 --> u_e_b1e3a6af203e33aa25c29dba
+  s_6b05f49df43b740161fd76a2 --> u_e_b8041dd5789840614fd0bde5
+  f_24a2ee14e3b3b0816c8bd2e0 --> u_e_b83a2cd2b92e47374a7e9fa9
+  s_3442ddd4429ff3c6587f6516 --> u_e_c23188377f5b86dd7c60847c
+  s_6b05f49df43b740161fd76a2 --> u_e_c2e779c4ca3aaf63f2e756c9
+  s_3b3ccc17e2f2ac910c1cc7e7 --> u_e_c3459203dff782d11463241c
+  s_774743cf30be211635853d0f -.-> s_a26c220bf37ee317ae6ace1e
+  s_6b05f49df43b740161fd76a2 --> s_387dba90328ba3ef979d2769
+  f_24a2ee14e3b3b0816c8bd2e0 --> u_e_c70ebb7c1a815442d09c04a9
+  s_c6b55268d259fb0bd6bbb7b6 -.-> s_dde8512336ff9fdf98c86728
+  s_774743cf30be211635853d0f --> u_e_c865caa6bd8a5557639c27ac
+  f_24a2ee14e3b3b0816c8bd2e0 --> u_e_cb8b84d4ec8bf80048d3f02e
+  s_4ebb88803cfbede31b2a5056 --> u_e_ce2d5eded343cc4810fd55c3

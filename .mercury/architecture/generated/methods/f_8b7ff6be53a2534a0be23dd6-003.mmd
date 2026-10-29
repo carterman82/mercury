@@ -1,0 +1,80 @@
+flowchart LR
+  s_b43a53e17cc07cfe2192034d["fixture.launch · 12"]
+  s_7ae2d760090982839c3e376e["fixture.launch.reply · 19"]
+  s_1cd90293ce49f7a686e490a6["fixture.launch.notify · 20"]
+  u_e_b3ef719b1bafb1c4976a22ed["Unresolved: JSON.stringify"]
+  f_8b7ff6be53a2534a0be23dd6["src/main/codex.test.ts"]
+  u_e_b434b08bbd27b75eca9d57e6["Unresolved: expect(models[0]).toMatchObject"]
+  u_e_b6305be76da6eef77050d68d["Unresolved: expect"]
+  s_a387591332662f85ace23601["src/main/codex.ts: CodexService.chat"]
+  s_75528ad08ea819424c22cce3["input · 40"]
+  s_b606f8d0567d60afb4c31c0d["src/main/codex.ts: CodexService.discover"]
+  u_e_bd42a4f4ebb36dcbbc782682["Unresolved: PassThrough"]
+  u_e_be4eb6614a72a57f31ad3bce["Unresolved: expect"]
+  u_e_c067c8e7c2eda194a2b8fbbd["Unresolved: children.push"]
+  u_e_c11e3cb6d5d29e09b083f482["Unresolved: expect.objectContaining"]
+  u_e_c22ed4391a3f00b6fd53e1e1["Unresolved: JSON.parse"]
+  u_e_c57b13711ae44c7b29d8a1d6["Unresolved: notify"]
+  u_e_c69bf877a917b89cf2da72a4["Unresolved: expect(service.discover(connection)).rejects.toThrow"]
+  u_e_ca03e33cc37c306aae732680["Unresolved: expect"]
+  s_8a2ccc74b8cc83f7e6362c5c["src/main/codex.ts: CodexService.disconnect"]
+  s_e310a919014e61ee9a938559["src/main/codex.ts: CodexRpc.close"]
+  u_e_dac6e27bf15333a996de468d["Unresolved: JSON.stringify"]
+  u_e_db548b7e99bbe1e04fa9ea7c["Unresolved: expect(f.requests.some(item =&gt; item.method === 'account/logout')).toBe"]
+  u_e_dbb80914e1d11b487dbba8ff["Unresolved: it"]
+  s_ee7413f7dc507653a172ceb6["fixture · 9"]
+  u_e_dd483b56a27426688c36b3aa["Unresolved: expect"]
+  u_e_e1982eeec6c2026a2f479d53["Unresolved: child.stdout.write"]
+  u_e_e216d95f76bbb2ea1832297d["Unresolved: it"]
+  u_e_e24ef28398367989a40d57aa["Unresolved: expect"]
+  u_e_e2f66b0f388e6f1bdc0196dc["Unresolved: f.requests.find"]
+  s_c179b2e8d7342b9106c336c7["src/main/codex.ts: CodexService.signIn"]
+  u_e_e393571db9d0484289267998["Unresolved: EventEmitter"]
+  u_e_e5d56e75fbf69c4d66b0e37c["Unresolved: Promise"]
+  s_1ab8ee924402b155716dc65a["src/main/codex.ts: CodexService.constructor"]
+  u_e_e7b8c9589585d16a896246ba["Unresolved: expect((await service.chat(request)).tools[0]).toMatchObject"]
+  u_e_e8ca6873d3fcb44c70266337["Unresolved: expect(f.requests.some(item =&gt; item.method === 'account/login/cancel')).toBe"]
+  u_e_ea4868c687a3ae143fd1e26a["Unresolved: it"]
+  u_e_eedc482df6e406c45534a9e5["Unresolved: it.each(['failed', 'interrupted'])"]
+  u_e_ef08111e6001ee06fc7823f0["Unresolved: expect(open).not.toHaveBeenCalled"]
+  u_e_eff8d376e385be3bbe53c919["Unresolved: notify"]
+  s_b43a53e17cc07cfe2192034d --> s_7ae2d760090982839c3e376e
+  s_1cd90293ce49f7a686e490a6 --> u_e_b3ef719b1bafb1c4976a22ed
+  f_8b7ff6be53a2534a0be23dd6 --> u_e_b434b08bbd27b75eca9d57e6
+  s_b43a53e17cc07cfe2192034d --> s_1cd90293ce49f7a686e490a6
+  f_8b7ff6be53a2534a0be23dd6 -.-> s_b43a53e17cc07cfe2192034d
+  f_8b7ff6be53a2534a0be23dd6 --> u_e_b6305be76da6eef77050d68d
+  s_b43a53e17cc07cfe2192034d --> s_7ae2d760090982839c3e376e
+  f_8b7ff6be53a2534a0be23dd6 -.-> s_a387591332662f85ace23601
+  f_8b7ff6be53a2534a0be23dd6 --> s_75528ad08ea819424c22cce3
+  f_8b7ff6be53a2534a0be23dd6 -.-> s_b606f8d0567d60afb4c31c0d
+  s_b43a53e17cc07cfe2192034d --> u_e_bd42a4f4ebb36dcbbc782682
+  f_8b7ff6be53a2534a0be23dd6 --> u_e_be4eb6614a72a57f31ad3bce
+  s_b43a53e17cc07cfe2192034d --> u_e_c067c8e7c2eda194a2b8fbbd
+  f_8b7ff6be53a2534a0be23dd6 --> u_e_c11e3cb6d5d29e09b083f482
+  s_b43a53e17cc07cfe2192034d --> u_e_c22ed4391a3f00b6fd53e1e1
+  f_8b7ff6be53a2534a0be23dd6 --> u_e_c57b13711ae44c7b29d8a1d6
+  f_8b7ff6be53a2534a0be23dd6 --> u_e_c69bf877a917b89cf2da72a4
+  f_8b7ff6be53a2534a0be23dd6 --> u_e_ca03e33cc37c306aae732680
+  f_8b7ff6be53a2534a0be23dd6 -.-> s_8a2ccc74b8cc83f7e6362c5c
+  f_8b7ff6be53a2534a0be23dd6 -.-> s_e310a919014e61ee9a938559
+  s_7ae2d760090982839c3e376e --> u_e_dac6e27bf15333a996de468d
+  f_8b7ff6be53a2534a0be23dd6 --> u_e_db548b7e99bbe1e04fa9ea7c
+  f_8b7ff6be53a2534a0be23dd6 --> u_e_dbb80914e1d11b487dbba8ff
+  f_8b7ff6be53a2534a0be23dd6 --> s_ee7413f7dc507653a172ceb6
+  f_8b7ff6be53a2534a0be23dd6 --> u_e_dd483b56a27426688c36b3aa
+  s_7ae2d760090982839c3e376e --> u_e_e1982eeec6c2026a2f479d53
+  f_8b7ff6be53a2534a0be23dd6 --> u_e_e216d95f76bbb2ea1832297d
+  f_8b7ff6be53a2534a0be23dd6 --> u_e_e24ef28398367989a40d57aa
+  f_8b7ff6be53a2534a0be23dd6 --> u_e_e2f66b0f388e6f1bdc0196dc
+  f_8b7ff6be53a2534a0be23dd6 --> s_ee7413f7dc507653a172ceb6
+  f_8b7ff6be53a2534a0be23dd6 -.-> s_c179b2e8d7342b9106c336c7
+  s_b43a53e17cc07cfe2192034d --> u_e_e393571db9d0484289267998
+  f_8b7ff6be53a2534a0be23dd6 --> u_e_e5d56e75fbf69c4d66b0e37c
+  f_8b7ff6be53a2534a0be23dd6 -.-> s_1ab8ee924402b155716dc65a
+  f_8b7ff6be53a2534a0be23dd6 --> u_e_e7b8c9589585d16a896246ba
+  f_8b7ff6be53a2534a0be23dd6 --> u_e_e8ca6873d3fcb44c70266337
+  f_8b7ff6be53a2534a0be23dd6 --> u_e_ea4868c687a3ae143fd1e26a
+  f_8b7ff6be53a2534a0be23dd6 --> u_e_eedc482df6e406c45534a9e5
+  f_8b7ff6be53a2534a0be23dd6 --> u_e_ef08111e6001ee06fc7823f0
+  f_8b7ff6be53a2534a0be23dd6 --> u_e_eff8d376e385be3bbe53c919

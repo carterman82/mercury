@@ -1,0 +1,73 @@
+flowchart LR
+  s_2d9b90a7ef5b072ae2a2076a["isIntentOnly · 6"]
+  u_e_0b0ad3b9efeaf9771d448e59["Unresolved: announcement.test"]
+  s_32a5813d88937ce3eb46d2aa["src/main/chat.ts: ChatService.send"]
+  s_0ae08e086a380f63dbfd30b5["AnswerCompletion.continue · 35"]
+  u_e_0eb8df19bcadff1c4c23d4c4["Unresolved: text.trim().replace(/[’]/g, &quot;'&quot;).replace(/^\*\*(.*)\*\*$/, '$1').replace"]
+  u_e_26f5634b34728b996a0f4291["Unresolved: /^I(?:'ll| will| would| plan to)\s+(?:use|run|test|compare|inspect|read|take|create|prepare)\b/i.test"]
+  s_fe8d6416406bc5c4386e636c["src/main/runner.ts: Runner.agent"]
+  u_e_380016ceddea03d401808f66["Unresolved: String"]
+  u_e_3a9e03c7ec63647795534a17["Unresolved: /[`&lt;&gt;]|https?:\/\/|[?]/.test"]
+  u_e_3bb4b2e2180c0100dac87145["Unresolved: acknowledgment.test"]
+  u_e_40d83a0d6d199e19dc46df0f["Unresolved: text.trim"]
+  u_e_4fe6fb028c4979687ee2278d["Unresolved: text.trim().replace"]
+  s_ee16044c443df2e620bb6769["src/main/delegation.ts: delegateTask"]
+  u_e_562d878f91e27ed79cc7629e["Unresolved: value.split(/(?&lt;=[.!])\s+|\n+/).map"]
+  u_e_5b4b68f08d6a86b8595ccf71["Unresolved: value.split"]
+  u_e_5ed9e6fae8e5413c328a7c87["Unresolved: verb.slice"]
+  u_e_6358aedd0c9406ef051cba88["Unresolved: RegExp"]
+  u_e_642acf144b18edfdc0900a09["Unresolved: /[:;]|\s[—–]\s|\b(?:here (?:is|are)|found|returned|results? (?:is|are)|the answer|you can|run this|because|means?|command is|syntax is|equals?)\b/i.test"]
+  u_e_6f39d2f965735078655f7d04["Unresolved: Error"]
+  u_e_70cfc0c81d530a9987954f45["Unresolved: verbs.flatMap(verb =&gt; [verb, verb === 'run' ? 'running' : verb === 'get' ? 'getting' : verb.endsWith('e') ? verb.slice(0, -1) + 'ing' : verb + 'ing']).join"]
+  u_e_7682822ba018e5b3011ab338["Unresolved: messages.find"]
+  u_e_7b97fd977790bf83eb5276d8["Unresolved: part.trim"]
+  u_e_86bebe719aff6d2acbf474d5["Unresolved: value.split(/(?&lt;=[.!])\s+|\n+/).map(part =&gt; part.trim()).filter"]
+  u_e_8c62a5d8937122ad3ae07461["Unresolved: text.trim"]
+  s_3b95ece5c654af5340d628d1["tests/e2e/answer-completion.spec.ts: send"]
+  s_14b177c3663edee8160bd241["AnswerCompletion.constructor · 34"]
+  u_e_9e5aadf71bfc98e864765e74["Unresolved: messages.push"]
+  u_e_ab3fdc2ddac7993944b3550b["Unresolved: text.trim().replace(/[’]/g, &quot;'&quot;).replace"]
+  u_e_b8953d8a2d7a92f3cd37cc1a["Unresolved: /^\s*(?:please\s+|(?:can|could|would) you\s+)?(?:say|repeat|translate|rewrite|rephrase|quote)\b|\b(?:reply|respond)\s+(?:with|only|exactly)|\b(?:write|draft)\s+(?:me\s+)?(?:(?:a|an|one|the following)\s+)?(?:message|sentence|dialogue|reply|line of (?:text|dialogue))\b/i.test"]
+  u_e_d0aafc552f6ec7911152fa92["Unresolved: verb.endsWith"]
+  u_e_d564fb3693bc5cb36c15f9af["Unresolved: String(system.content).includes"]
+  u_e_dcfd1278f732594cc6e8309f["Unresolved: /^\s*(?:how (?:will|would) you\b|(?:what|which)\b.{0,60}\b(?:will|would) you (?:use|do|run|choose)\b)/i.test"]
+  u_e_e90825b2ebeaeef1dddbd298["Unresolved: messages.push"]
+  u_e_f55883d460dcbb26838b15ab["Unresolved: text.trim"]
+  u_e_fce3d2fede33480c8e2f350b["Unresolved: verbs.flatMap"]
+  s_2d9b90a7ef5b072ae2a2076a --> u_e_0b0ad3b9efeaf9771d448e59
+  s_32a5813d88937ce3eb46d2aa -.-> s_0ae08e086a380f63dbfd30b5
+  s_2d9b90a7ef5b072ae2a2076a --> u_e_0eb8df19bcadff1c4c23d4c4
+  s_2d9b90a7ef5b072ae2a2076a --> u_e_26f5634b34728b996a0f4291
+  s_fe8d6416406bc5c4386e636c -.-> s_0ae08e086a380f63dbfd30b5
+  s_0ae08e086a380f63dbfd30b5 --> u_e_380016ceddea03d401808f66
+  s_2d9b90a7ef5b072ae2a2076a --> u_e_3a9e03c7ec63647795534a17
+  s_2d9b90a7ef5b072ae2a2076a --> u_e_3bb4b2e2180c0100dac87145
+  s_0ae08e086a380f63dbfd30b5 --> u_e_40d83a0d6d199e19dc46df0f
+  s_2d9b90a7ef5b072ae2a2076a --> u_e_4fe6fb028c4979687ee2278d
+  s_ee16044c443df2e620bb6769 -.-> s_0ae08e086a380f63dbfd30b5
+  s_2d9b90a7ef5b072ae2a2076a --> u_e_562d878f91e27ed79cc7629e
+  s_0ae08e086a380f63dbfd30b5 --> s_2d9b90a7ef5b072ae2a2076a
+  s_2d9b90a7ef5b072ae2a2076a --> u_e_5b4b68f08d6a86b8595ccf71
+  s_2d9b90a7ef5b072ae2a2076a --> u_e_5ed9e6fae8e5413c328a7c87
+  s_2d9b90a7ef5b072ae2a2076a --> u_e_6358aedd0c9406ef051cba88
+  s_2d9b90a7ef5b072ae2a2076a --> u_e_642acf144b18edfdc0900a09
+  s_0ae08e086a380f63dbfd30b5 --> u_e_6f39d2f965735078655f7d04
+  s_2d9b90a7ef5b072ae2a2076a --> u_e_70cfc0c81d530a9987954f45
+  s_0ae08e086a380f63dbfd30b5 --> u_e_7682822ba018e5b3011ab338
+  s_2d9b90a7ef5b072ae2a2076a --> u_e_7b97fd977790bf83eb5276d8
+  s_2d9b90a7ef5b072ae2a2076a --> u_e_86bebe719aff6d2acbf474d5
+  s_2d9b90a7ef5b072ae2a2076a --> u_e_8c62a5d8937122ad3ae07461
+  s_3b95ece5c654af5340d628d1 --> s_2d9b90a7ef5b072ae2a2076a
+  s_ee16044c443df2e620bb6769 -.-> s_14b177c3663edee8160bd241
+  s_0ae08e086a380f63dbfd30b5 --> u_e_9e5aadf71bfc98e864765e74
+  s_2d9b90a7ef5b072ae2a2076a --> u_e_ab3fdc2ddac7993944b3550b
+  s_2d9b90a7ef5b072ae2a2076a --> u_e_b8953d8a2d7a92f3cd37cc1a
+  s_32a5813d88937ce3eb46d2aa -.-> s_0ae08e086a380f63dbfd30b5
+  s_fe8d6416406bc5c4386e636c -.-> s_14b177c3663edee8160bd241
+  s_2d9b90a7ef5b072ae2a2076a --> u_e_d0aafc552f6ec7911152fa92
+  s_0ae08e086a380f63dbfd30b5 --> u_e_d564fb3693bc5cb36c15f9af
+  s_2d9b90a7ef5b072ae2a2076a --> u_e_dcfd1278f732594cc6e8309f
+  s_32a5813d88937ce3eb46d2aa -.-> s_14b177c3663edee8160bd241
+  s_0ae08e086a380f63dbfd30b5 --> u_e_e90825b2ebeaeef1dddbd298
+  s_0ae08e086a380f63dbfd30b5 --> u_e_f55883d460dcbb26838b15ab
+  s_2d9b90a7ef5b072ae2a2076a --> u_e_fce3d2fede33480c8e2f350b

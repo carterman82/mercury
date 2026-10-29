@@ -1,0 +1,93 @@
+flowchart LR
+  f_22cb000fc96e117144c24910["src/main/file-formats.ts"]
+  u_e_00034a65f645c291b369c5e7["Unresolved: z.array(z.string().max(180)).max(10).optional"]
+  s_026cda64760dc195a4c4e777["FileFormats.presentation · 198"]
+  u_e_0046198a8a9a58c15c19b9fa["Unresolved: slide.addText"]
+  s_aecb3fdd25443684fc19ed87["FileFormats.archive · 247"]
+  u_e_00880acfb60c542df2d81916["Unresolved: archiveSchema.parse"]
+  s_72bb12b4c5f88bad03f676c6["FileFormats.spreadsheet · 184"]
+  u_e_008f1cdb7512e629f4abe025["Unresolved: sheet.addRows"]
+  s_736e6a586bec09bab8e8cd59["src/main/chat-files.ts: ChatFiles.createStandard"]
+  s_176fecd913cca011d24867eb["FileFormats.graphic · 237"]
+  u_e_01f676a30050bbe2ec5b84c9["Unresolved: input.sheets.map"]
+  u_e_0246920b8138480cdc0db0ac["Unresolved: workbook.xlsx.writeBuffer"]
+  u_e_02d52fc7aff6bac8a434258d["Unresolved: z.number().finite"]
+  s_73df895b7739624f600cd829["FileFormats.document · 159"]
+  u_e_02e998bab757312b8dc67197["Unresolved: unified().use(remarkParse).use"]
+  u_e_0311b0094a1a47f2d1ae4c55["Unresolved: z.string"]
+  u_e_033fe348cbaab236a1ecfec2["Unresolved: z.number().int().min(16).max"]
+  u_e_03d7c272c16a380d6a8529ca["Unresolved: z.string().max"]
+  u_e_041fca5df3a9392e903a750c["Unresolved: Error"]
+  u_e_04687ccbe68823a0d8c8b983["Unresolved: Error"]
+  u_e_04da024aa376f28195738e9b["Unresolved: data.table.map"]
+  u_e_04f0475f77ccc4bea5bad4f4["Unresolved: graphicSchema.parse"]
+  s_ff0ef2dcd6aeb7fc03f073d7["FileFormats.inspect · 88"]
+  u_e_0528e3e62741508f6c628da4["Unresolved: createCanvas"]
+  u_e_06c02b5be924ead23d202437["Unresolved: all.map"]
+  s_746274e067bb5b24f71eba9e["FileFormats.inspectWorkbook · 137"]
+  u_e_0884921cb2e0a0794212b67b["Unresolved: cells.push"]
+  s_2320762902884e3cfbb90c04["FileFormats.constructor · 45"]
+  u_e_0958c1373b50c5f90502dcd9["Unresolved: createRequire"]
+  u_e_0c5e337f90d788454d95aab7["Unresolved: data.table.slice"]
+  u_e_0d75ae6a3a1f8dd8352a14a2["Unresolved: z.array"]
+  s_371facf82d181de91c1c28c3["FileFormats.document.blocks · 172"]
+  u_e_0de834814e207851d7280f87["Unresolved: (node.children ?? []).map"]
+  u_e_0e9b957fe5597da9c5063078["Unresolved: Paragraph"]
+  u_e_0ecde2c70e409caf7583075f["Unresolved: z.string"]
+  s_a381dd73a1af4933eaa18553["FileFormats.ocr · 66"]
+  u_e_0efcb1177eae9dca85c461a2["Unresolved: clearTimeout"]
+  u_e_0f7dff84014b9c26a1a35daf["Unresolved: Math.max"]
+  s_c7848f6706a9c2e4da3538bc["FileFormats.visionImage · 49"]
+  u_e_10c85ad15fedd16370821977["Unresolved: ['png', 'jpg', 'webp'].includes"]
+  s_c72976623e88ac0e25b6de49["FileFormats.presentation.rowHeight · 208"]
+  u_e_10e2fc645ee5d6148d97e7c1["Unresolved: Math.ceil"]
+  u_e_11154a8723118e218fa85b3a["Unresolved: z.string().max(4000).optional"]
+  u_e_116caa54dcb699828b46258f["Unresolved: z.string().uuid"]
+  u_e_1263d89547e712a43d369ff2["Unresolved: worker?.terminate"]
+  s_d6fbfb7b4116d97c27f32b80["src/main/file-inspection.ts: boundedInspection"]
+  u_e_12e319be40f5386b6baa49cc["Unresolved: z.array(z.object({ name: z.string().min(1).max(31), rows: z.array(z.array(scalar).max(100)).min(1).max(5000) })).min"]
+  u_e_135dad5cb4ff97518a6f2713["Unresolved: data.table.map"]
+  u_e_14af953c2dadac4c5239d699["Unresolved: z.number().min"]
+  u_e_14b9420b2e42caf9b43ccfa3["Unresolved: canvas.toBuffer"]
+  u_e_157ac8603396e1dc6391ac5d["Unresolved: color.optional"]
+  u_e_1613e71c6c6c335e85fdfefd["Unresolved: z.string"]
+  f_22cb000fc96e117144c24910 --> u_e_00034a65f645c291b369c5e7
+  s_026cda64760dc195a4c4e777 --> u_e_0046198a8a9a58c15c19b9fa
+  s_aecb3fdd25443684fc19ed87 --> u_e_00880acfb60c542df2d81916
+  s_72bb12b4c5f88bad03f676c6 --> u_e_008f1cdb7512e629f4abe025
+  s_736e6a586bec09bab8e8cd59 -.-> s_176fecd913cca011d24867eb
+  s_72bb12b4c5f88bad03f676c6 --> u_e_01f676a30050bbe2ec5b84c9
+  s_72bb12b4c5f88bad03f676c6 --> u_e_0246920b8138480cdc0db0ac
+  f_22cb000fc96e117144c24910 --> u_e_02d52fc7aff6bac8a434258d
+  s_73df895b7739624f600cd829 --> u_e_02e998bab757312b8dc67197
+  f_22cb000fc96e117144c24910 --> u_e_0311b0094a1a47f2d1ae4c55
+  f_22cb000fc96e117144c24910 --> u_e_033fe348cbaab236a1ecfec2
+  f_22cb000fc96e117144c24910 --> u_e_03d7c272c16a380d6a8529ca
+  s_026cda64760dc195a4c4e777 --> u_e_041fca5df3a9392e903a750c
+  s_aecb3fdd25443684fc19ed87 --> u_e_04687ccbe68823a0d8c8b983
+  s_026cda64760dc195a4c4e777 --> u_e_04da024aa376f28195738e9b
+  s_176fecd913cca011d24867eb --> u_e_04f0475f77ccc4bea5bad4f4
+  s_ff0ef2dcd6aeb7fc03f073d7 --> u_e_0528e3e62741508f6c628da4
+  s_ff0ef2dcd6aeb7fc03f073d7 --> u_e_06c02b5be924ead23d202437
+  s_746274e067bb5b24f71eba9e --> u_e_0884921cb2e0a0794212b67b
+  s_2320762902884e3cfbb90c04 --> u_e_0958c1373b50c5f90502dcd9
+  s_736e6a586bec09bab8e8cd59 -.-> s_73df895b7739624f600cd829
+  s_026cda64760dc195a4c4e777 --> u_e_0c5e337f90d788454d95aab7
+  f_22cb000fc96e117144c24910 --> u_e_0d75ae6a3a1f8dd8352a14a2
+  s_371facf82d181de91c1c28c3 --> u_e_0de834814e207851d7280f87
+  s_371facf82d181de91c1c28c3 --> u_e_0e9b957fe5597da9c5063078
+  f_22cb000fc96e117144c24910 --> u_e_0ecde2c70e409caf7583075f
+  s_a381dd73a1af4933eaa18553 --> u_e_0efcb1177eae9dca85c461a2
+  s_72bb12b4c5f88bad03f676c6 --> u_e_0f7dff84014b9c26a1a35daf
+  s_c7848f6706a9c2e4da3538bc --> u_e_10c85ad15fedd16370821977
+  s_c72976623e88ac0e25b6de49 --> u_e_10e2fc645ee5d6148d97e7c1
+  f_22cb000fc96e117144c24910 --> u_e_11154a8723118e218fa85b3a
+  f_22cb000fc96e117144c24910 --> u_e_116caa54dcb699828b46258f
+  s_a381dd73a1af4933eaa18553 --> u_e_1263d89547e712a43d369ff2
+  s_ff0ef2dcd6aeb7fc03f073d7 --> s_d6fbfb7b4116d97c27f32b80
+  f_22cb000fc96e117144c24910 --> u_e_12e319be40f5386b6baa49cc
+  s_026cda64760dc195a4c4e777 --> u_e_135dad5cb4ff97518a6f2713
+  f_22cb000fc96e117144c24910 --> u_e_14af953c2dadac4c5239d699
+  s_c7848f6706a9c2e4da3538bc --> u_e_14b9420b2e42caf9b43ccfa3
+  f_22cb000fc96e117144c24910 --> u_e_157ac8603396e1dc6391ac5d
+  f_22cb000fc96e117144c24910 --> u_e_1613e71c6c6c335e85fdfefd

@@ -1,0 +1,84 @@
+flowchart LR
+  s_d2856be78b391813998ee7e3["ChatPanel · 17"]
+  u_e_02a0718ba71ceb25dfc88b88["Unresolved: Boolean"]
+  u_e_0814cec58aee7e10961149ed["Unresolved: [...(chat?.messages.flatMap(item =&gt; item.files ?? []) ?? []), ...attachments].map"]
+  u_e_09aaea8bbd41584257550fef["Unresolved: String"]
+  s_cc6f8d9a9d5d7088897161ac["ChatPanel.attach · 77"]
+  u_e_0a7058c8aaf6617cd0989b54["Unresolved: setAttachments"]
+  u_e_0a71c42824d57df65885a814["Unresolved: chooser.current?.click"]
+  s_865d56f8f181d43cc84a0cf4["src/shared/model-context.ts: refreshModelContext"]
+  u_e_0d42fef2117102b1ffea9c20["Unresolved: attachments.map"]
+  u_e_0df54a08e3377cc93cd35b2b["Unresolved: useEffect"]
+  u_e_0f946e45d35b5c4ab095f32d["Unresolved: window.removeEventListener"]
+  u_e_12b7772c9393af52cb671357["Unresolved: [...(discovery?.models ?? [])].sort"]
+  u_e_137b6ede9c2acf63ccf4b489["Unresolved: useEffect"]
+  u_e_14c683482f745a6e360d835c["Unresolved: setPreviewFile"]
+  u_e_16598e4319e9eb864a73f2e4["Unresolved: ['What can you help me with?', 'Explain how local AI models work.', 'Write a small Python guessing game.'].map"]
+  s_f5dea72ab16f40d6fa18659e["ChatPanel.send · 59"]
+  u_e_166173f4f08e77f726883ee4["Unresolved: discovery?.connections.find"]
+  s_6efc62eaf5401df6cae55976["src/renderer/useDiscovery.ts: useDiscovery"]
+  u_e_196a0c6724d58ecbe4421a47["Unresolved: window.desktop.updateProjectPermissions(project.id, Number(event.target.value) as 1 | 2 | 3).catch"]
+  u_e_1b72476946fe596a6baef93b["Unresolved: Array.from"]
+  u_e_1cee9b6c0c634190f10e68e1["Unresolved: item.files!.map"]
+  u_e_1fca82de198b1a07697d8a33["Unresolved: setAttachments"]
+  u_e_224e8da23f3631c76cf9eaec["Unresolved: chat?.messages.at"]
+  u_e_2261f8e9832fd37224f81b99["Unresolved: useState"]
+  f_3504ba739f961389bda1b480["src/renderer/ChatPanel.tsx"]
+  u_e_22b3978b8e6443a4a1be6837["Unresolved: Object.assign"]
+  u_e_23792482be64e2861b6fed53["Unresolved: useRef"]
+  u_e_250c360f12199bf9a7a79893["Unresolved: useRef"]
+  u_e_25c8f1bb053ca211ca1c683d["Unresolved: useRef"]
+  u_e_2697a77669503c4be9e6c44e["Unresolved: item.content.trim"]
+  u_e_27c296a283874cbec360e676["Unresolved: window.addEventListener"]
+  u_e_28771e3d4512d9c54bde0753["Unresolved: window.desktop.answerChatApproval"]
+  s_3f9c1c5ee8e88ca5c4ac5ed8["ChatPanel.preventNavigation · 45"]
+  u_e_2896f5080d51fd3ae7fb2e62["Unresolved: event.dataTransfer?.types.includes"]
+  u_e_295126a59e61dd3ee7d5b957["Unresolved: useEffect"]
+  u_e_2989c95c45e5644b6cf443e3["Unresolved: event.dataTransfer.types.includes"]
+  u_e_29cbf76242a21509d6cedd20["Unresolved: window.desktop.answerChatApproval(request.id, false).catch"]
+  u_e_2b46efb73f82db308a4b5788["Unresolved: String"]
+  u_e_2cb19fd7249c140b68c8b4ab["Unresolved: setDragging"]
+  u_e_2e776bf8b3989e0c3088c6ca["Unresolved: useState"]
+  u_e_2fd9e2ff2952c7f573758b83["Unresolved: chat?.messages.some"]
+  u_e_2ff7b990657969a413d449a3["Unresolved: event.preventDefault"]
+  u_e_2fff365457952bddc81e6028["Unresolved: useState"]
+  s_d2856be78b391813998ee7e3 --> u_e_02a0718ba71ceb25dfc88b88
+  s_d2856be78b391813998ee7e3 --> u_e_0814cec58aee7e10961149ed
+  s_d2856be78b391813998ee7e3 --> u_e_09aaea8bbd41584257550fef
+  s_cc6f8d9a9d5d7088897161ac --> u_e_0a7058c8aaf6617cd0989b54
+  s_d2856be78b391813998ee7e3 --> u_e_0a71c42824d57df65885a814
+  s_d2856be78b391813998ee7e3 --> s_865d56f8f181d43cc84a0cf4
+  s_d2856be78b391813998ee7e3 --> u_e_0d42fef2117102b1ffea9c20
+  s_d2856be78b391813998ee7e3 --> u_e_0df54a08e3377cc93cd35b2b
+  s_d2856be78b391813998ee7e3 --> u_e_0f946e45d35b5c4ab095f32d
+  s_d2856be78b391813998ee7e3 --> u_e_12b7772c9393af52cb671357
+  s_d2856be78b391813998ee7e3 --> u_e_137b6ede9c2acf63ccf4b489
+  s_d2856be78b391813998ee7e3 --> u_e_14c683482f745a6e360d835c
+  s_d2856be78b391813998ee7e3 --> u_e_16598e4319e9eb864a73f2e4
+  s_f5dea72ab16f40d6fa18659e --> u_e_166173f4f08e77f726883ee4
+  s_d2856be78b391813998ee7e3 --> s_6efc62eaf5401df6cae55976
+  s_d2856be78b391813998ee7e3 --> u_e_196a0c6724d58ecbe4421a47
+  s_d2856be78b391813998ee7e3 --> u_e_1b72476946fe596a6baef93b
+  s_d2856be78b391813998ee7e3 --> u_e_1cee9b6c0c634190f10e68e1
+  s_d2856be78b391813998ee7e3 --> u_e_1fca82de198b1a07697d8a33
+  s_d2856be78b391813998ee7e3 --> u_e_224e8da23f3631c76cf9eaec
+  s_d2856be78b391813998ee7e3 --> u_e_2261f8e9832fd37224f81b99
+  f_3504ba739f961389bda1b480 --> u_e_22b3978b8e6443a4a1be6837
+  s_d2856be78b391813998ee7e3 --> u_e_23792482be64e2861b6fed53
+  s_d2856be78b391813998ee7e3 --> s_cc6f8d9a9d5d7088897161ac
+  s_d2856be78b391813998ee7e3 --> s_f5dea72ab16f40d6fa18659e
+  s_d2856be78b391813998ee7e3 --> u_e_250c360f12199bf9a7a79893
+  s_d2856be78b391813998ee7e3 --> u_e_25c8f1bb053ca211ca1c683d
+  s_d2856be78b391813998ee7e3 --> u_e_2697a77669503c4be9e6c44e
+  s_d2856be78b391813998ee7e3 --> u_e_27c296a283874cbec360e676
+  s_d2856be78b391813998ee7e3 --> u_e_28771e3d4512d9c54bde0753
+  s_3f9c1c5ee8e88ca5c4ac5ed8 --> u_e_2896f5080d51fd3ae7fb2e62
+  s_d2856be78b391813998ee7e3 --> u_e_295126a59e61dd3ee7d5b957
+  s_d2856be78b391813998ee7e3 --> u_e_2989c95c45e5644b6cf443e3
+  s_d2856be78b391813998ee7e3 --> u_e_29cbf76242a21509d6cedd20
+  s_cc6f8d9a9d5d7088897161ac --> u_e_2b46efb73f82db308a4b5788
+  s_d2856be78b391813998ee7e3 --> u_e_2cb19fd7249c140b68c8b4ab
+  s_d2856be78b391813998ee7e3 --> u_e_2e776bf8b3989e0c3088c6ca
+  s_d2856be78b391813998ee7e3 --> u_e_2fd9e2ff2952c7f573758b83
+  s_d2856be78b391813998ee7e3 --> u_e_2ff7b990657969a413d449a3
+  s_d2856be78b391813998ee7e3 --> u_e_2fff365457952bddc81e6028

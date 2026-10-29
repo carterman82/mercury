@@ -1,0 +1,88 @@
+flowchart LR
+  s_32a5813d88937ce3eb46d2aa["ChatService.send · 57"]
+  u_e_bdecf8e9a85bc12ff6e7ce8b["Unresolved: (await this.files!.text(file.id)).slice"]
+  u_e_bdf569b359cb597fa5fbc448["Unresolved: projectContext.slice"]
+  s_27d57e46c896b911ef85fa5e["ChatService.send.worker · 147"]
+  u_e_c0b2e3c3ed64002da934ebf2["Unresolved: Date.now"]
+  s_387dba90328ba3ef979d2769["src/main/delegation.ts: resolveCandidates"]
+  s_e69127e2f5e68b87dc94ec38["ChatService.send.onText · 347"]
+  u_e_c1fd59cdbad3655da9e41b16["Unresolved: Date.now"]
+  u_e_c2890b69b6ab9ddf7344ce11["Unresolved: Error"]
+  s_1bc16026f3d796f1536aab53["ChatService.send.executeCall · 219"]
+  s_5520d1a72f620b2fd4be7ff2["src/main/chat-files.ts: ChatFiles.browserImage"]
+  u_e_c3b446ff69278784cfb0cd80["Unresolved: workers.find"]
+  u_e_c3b5703ba4702f6a40b249f2["Unresolved: fileTools.filter"]
+  s_705e4c2a3a5a2ab12cc50b12["ChatService.send.addNotice · 100"]
+  u_e_c56c62cda90248fcf8b792dd["Unresolved: (response.content + delta).slice"]
+  s_b983f6d0298057eed6b20f0f["src/main/source-memory.ts: chatEvidence"]
+  s_0ae08e086a380f63dbfd30b5["src/main/answer-completion.ts: AnswerCompletion.continue"]
+  s_81f2741e78bc517e5800d6f1["src/main/project-tools.ts: ProjectTools.pluginPolicy"]
+  s_e5b6aa2534800ec5570c77e2["src/main/project-tools.ts: ProjectTools.handles"]
+  s_8b760097519ca3aa926c3a74["src/shared/agent-pools.ts: sameModel"]
+  u_e_c984f9955e2fd9386d4e7e73["Unresolved: (response.files ??= []).push"]
+  u_e_c9b59f56577af1512a6f4dc0["Unresolved: Error"]
+  u_e_ca08a3fa8a767d6d553fa852["Unresolved: visualResults.push"]
+  u_e_ca1262a529bf4f8fdf714201["Unresolved: Math.min"]
+  u_e_ca83cd1fb60f014a6a2e78cc["Unresolved: Error"]
+  s_5ac1d6d031fd6884d3e3f36f["ChatService.send.runProject.onText · 306"]
+  u_e_cc1686ba48ea6c731de6b37e["Unresolved: delta.trim"]
+  u_e_cc6660ccd8ab29d7ab850a26["Unresolved: Array.from"]
+  u_e_ccbe5cedf30a8ea14c028aa2["Unresolved: JSON.stringify"]
+  u_e_cdcf21b2576e4187b339ac84["Unresolved: captures.slice"]
+  u_e_ce4f5e9b297903496ef4cf5a["Unresolved: Promise.allSettled"]
+  f_b947c19795d7096a571ac57f["src/main/chat.ts"]
+  u_e_cedb0e98b23bdca4f5e991aa["Unresolved: z.number().int().min"]
+  s_6e27c048e152267e5b5b020c["ChatService.save · 47"]
+  s_069d2ce99c4178d00bbdd0e6["ChatService.send.progress · 141"]
+  u_e_cfa6ce79b08ec69506b8a697["Unresolved: candidates.map(item =&gt; item.model).filter((item, index, all) =&gt; all.indexOf(item) === index).join"]
+  u_e_cfcf0ce65888d6c638886971["Unresolved: controller.signal.throwIfAborted"]
+  s_1afc7ca6c5674db16242b7be["ChatService.send.readForSubagent · 123"]
+  u_e_d0417b55de0f9548180480d7["Unresolved: Error"]
+  u_e_d0828e22d82b56ab61825f7e["Unresolved: candidates.map(item =&gt; item.model).filter"]
+  u_e_d0fce886e0df763d0506ad7a["Unresolved: JSON.parse"]
+  u_e_d1f16d26582ef6c528621e10["Unresolved: sources.reverse"]
+  u_e_d203fe4f67f733e1d190a0eb["Unresolved: String"]
+  u_e_d4cb3accc005aa21913110b6["Unresolved: (response.sourceEvidence ??= []).push"]
+  u_e_d6c8d057a35819e9d054a367["Unresolved: z.string().min"]
+  s_a06b49c1f84bc34a6c704d06["schemaTool · 25"]
+  s_06e5ec1538fc49866655f06d["src/main/project-workers.ts: ProjectWorkers.execute"]
+  s_32a5813d88937ce3eb46d2aa --> u_e_bdecf8e9a85bc12ff6e7ce8b
+  s_32a5813d88937ce3eb46d2aa --> u_e_bdf569b359cb597fa5fbc448
+  s_27d57e46c896b911ef85fa5e --> u_e_c0b2e3c3ed64002da934ebf2
+  s_32a5813d88937ce3eb46d2aa --> s_387dba90328ba3ef979d2769
+  s_e69127e2f5e68b87dc94ec38 --> u_e_c1fd59cdbad3655da9e41b16
+  s_32a5813d88937ce3eb46d2aa --> u_e_c2890b69b6ab9ddf7344ce11
+  s_1bc16026f3d796f1536aab53 -.-> s_5520d1a72f620b2fd4be7ff2
+  s_32a5813d88937ce3eb46d2aa --> u_e_c3b446ff69278784cfb0cd80
+  s_1bc16026f3d796f1536aab53 --> u_e_c3b5703ba4702f6a40b249f2
+  s_1bc16026f3d796f1536aab53 --> s_705e4c2a3a5a2ab12cc50b12
+  s_e69127e2f5e68b87dc94ec38 --> u_e_c56c62cda90248fcf8b792dd
+  s_1bc16026f3d796f1536aab53 --> s_b983f6d0298057eed6b20f0f
+  s_32a5813d88937ce3eb46d2aa -.-> s_0ae08e086a380f63dbfd30b5
+  s_1bc16026f3d796f1536aab53 -.-> s_81f2741e78bc517e5800d6f1
+  s_1bc16026f3d796f1536aab53 -.-> s_e5b6aa2534800ec5570c77e2
+  s_32a5813d88937ce3eb46d2aa --> s_8b760097519ca3aa926c3a74
+  s_1bc16026f3d796f1536aab53 --> u_e_c984f9955e2fd9386d4e7e73
+  s_32a5813d88937ce3eb46d2aa --> u_e_c9b59f56577af1512a6f4dc0
+  s_1bc16026f3d796f1536aab53 --> u_e_ca08a3fa8a767d6d553fa852
+  s_32a5813d88937ce3eb46d2aa --> u_e_ca1262a529bf4f8fdf714201
+  s_32a5813d88937ce3eb46d2aa --> u_e_ca83cd1fb60f014a6a2e78cc
+  s_5ac1d6d031fd6884d3e3f36f --> u_e_cc1686ba48ea6c731de6b37e
+  s_32a5813d88937ce3eb46d2aa --> u_e_cc6660ccd8ab29d7ab850a26
+  s_1bc16026f3d796f1536aab53 --> u_e_ccbe5cedf30a8ea14c028aa2
+  s_32a5813d88937ce3eb46d2aa --> u_e_cdcf21b2576e4187b339ac84
+  s_32a5813d88937ce3eb46d2aa --> u_e_ce4f5e9b297903496ef4cf5a
+  f_b947c19795d7096a571ac57f --> u_e_cedb0e98b23bdca4f5e991aa
+  s_705e4c2a3a5a2ab12cc50b12 -.-> s_6e27c048e152267e5b5b020c
+  s_069d2ce99c4178d00bbdd0e6 --> u_e_cfa6ce79b08ec69506b8a697
+  s_27d57e46c896b911ef85fa5e --> u_e_cfcf0ce65888d6c638886971
+  s_1afc7ca6c5674db16242b7be --> u_e_d0417b55de0f9548180480d7
+  s_069d2ce99c4178d00bbdd0e6 --> u_e_d0828e22d82b56ab61825f7e
+  s_1bc16026f3d796f1536aab53 --> u_e_d0fce886e0df763d0506ad7a
+  s_32a5813d88937ce3eb46d2aa --> u_e_d1f16d26582ef6c528621e10
+  s_32a5813d88937ce3eb46d2aa --> u_e_d203fe4f67f733e1d190a0eb
+  s_1bc16026f3d796f1536aab53 -.-> s_6e27c048e152267e5b5b020c
+  s_1bc16026f3d796f1536aab53 --> u_e_d4cb3accc005aa21913110b6
+  f_b947c19795d7096a571ac57f --> u_e_d6c8d057a35819e9d054a367
+  f_b947c19795d7096a571ac57f --> s_a06b49c1f84bc34a6c704d06
+  s_1bc16026f3d796f1536aab53 -.-> s_06e5ec1538fc49866655f06d

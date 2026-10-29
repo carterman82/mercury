@@ -1,0 +1,64 @@
+flowchart LR
+  s_b25a2f7690b53191a6e995cf["AgentScheduler.reserve · 11"]
+  u_e_07e10d77dd968bd206ae4f4c["Unresolved: [...this.reservations.values()].some"]
+  u_e_0f1ded76c0e08aed48d209dd["Unresolved: this.capacity"]
+  u_e_17c4855516c2df130cf07de6["Unresolved: Number"]
+  u_e_23b2abffdba139421ecf6f44["Unresolved: Number"]
+  s_f5b8ded6b647957a53751694["src/main/providers.ts: LocalProviders.reserveAgent"]
+  u_e_37a190506c637b40ee7e7df5["Unresolved: this.reservations.get"]
+  s_12a827c91135732b15533e01["AgentScheduler.requestStarted · 37"]
+  u_e_3ca9e8bdbc4b274addd42aa0["Unresolved: this.reservations.get"]
+  u_e_3edfe5c1fbd62bb1f004837f["Unresolved: Symbol"]
+  s_f0b6dd6f8516b02b485f3e3e["AgentScheduler.reserve.release · 30"]
+  u_e_59281305b01ad53701317542["Unresolved: this.leases.delete"]
+  u_e_69fb93cc53a6b081085d39d3["Unresolved: this.reservations.values"]
+  u_e_6d56d5098d687f213c50f8e4["Unresolved: Number"]
+  u_e_6d99a82ebf86a6fbe916d381["Unresolved: Number"]
+  u_e_7721b611917b5174ef496816["Unresolved: this.capacity"]
+  f_c03e11c6bdf64bdc1ed3e187["src/main/agent-scheduler.ts"]
+  u_e_775d2dcdc7fbeca9a033331e["Unresolved: Map"]
+  u_e_840c18d52ce4ffa4edf27c1d["Unresolved: this.reservations.set"]
+  s_5f03aa0e9cf97c85b7b265bd["src/main/agent-scheduler.test.ts: scheduler"]
+  s_85f28c53354f3c9508db7890["AgentScheduler.constructor · 10"]
+  u_e_957c06bd2a5ede84a1ad2d12["Unresolved: this.leases.get"]
+  u_e_9aa3dfa13eea9ce02e7fdc0e["Unresolved: Number"]
+  u_e_a0d688bc0a3be6fc23aabe7d["Unresolved: profiles.map"]
+  u_e_b39d29acd347aa364457d3c6["Unresolved: this.leases.set"]
+  u_e_b70d3d067cf85b44c3948db0["Unresolved: Map"]
+  u_e_b8d84956ca52b9634dd398dc["Unresolved: this.reservations.get"]
+  u_e_bc2599e7a29ddafe275e3ba6["Unresolved: this.reservations.delete"]
+  u_e_c564dcc81e1a1a2f34a5003a["Unresolved: Number"]
+  s_ce19c24314f9ba71a6083a4e["src/main/providers.ts: LocalProviders.messages"]
+  u_e_cd2207b19696778505aa5ae4["Unresolved: Math.max"]
+  s_7687d4e62b81ada2f424f430["src/main/providers.ts: LocalProviders.chatOnConnection"]
+  u_e_f490a9358e5146a2294e31e0["Unresolved: candidates.sort"]
+  u_e_fb368c106875c0fea0aa8ac3["Unresolved: Error"]
+  s_b25a2f7690b53191a6e995cf --> u_e_07e10d77dd968bd206ae4f4c
+  s_b25a2f7690b53191a6e995cf --> u_e_0f1ded76c0e08aed48d209dd
+  s_b25a2f7690b53191a6e995cf --> u_e_17c4855516c2df130cf07de6
+  s_b25a2f7690b53191a6e995cf --> u_e_23b2abffdba139421ecf6f44
+  s_f5b8ded6b647957a53751694 -.-> s_b25a2f7690b53191a6e995cf
+  s_b25a2f7690b53191a6e995cf --> u_e_37a190506c637b40ee7e7df5
+  s_12a827c91135732b15533e01 --> u_e_3ca9e8bdbc4b274addd42aa0
+  s_b25a2f7690b53191a6e995cf --> u_e_3edfe5c1fbd62bb1f004837f
+  s_f0b6dd6f8516b02b485f3e3e --> u_e_59281305b01ad53701317542
+  s_b25a2f7690b53191a6e995cf --> u_e_69fb93cc53a6b081085d39d3
+  s_b25a2f7690b53191a6e995cf --> u_e_6d56d5098d687f213c50f8e4
+  s_b25a2f7690b53191a6e995cf --> u_e_6d99a82ebf86a6fbe916d381
+  s_b25a2f7690b53191a6e995cf --> u_e_7721b611917b5174ef496816
+  f_c03e11c6bdf64bdc1ed3e187 --> u_e_775d2dcdc7fbeca9a033331e
+  s_b25a2f7690b53191a6e995cf --> u_e_840c18d52ce4ffa4edf27c1d
+  s_5f03aa0e9cf97c85b7b265bd -.-> s_85f28c53354f3c9508db7890
+  s_12a827c91135732b15533e01 --> u_e_957c06bd2a5ede84a1ad2d12
+  s_b25a2f7690b53191a6e995cf --> u_e_9aa3dfa13eea9ce02e7fdc0e
+  s_b25a2f7690b53191a6e995cf --> u_e_a0d688bc0a3be6fc23aabe7d
+  s_b25a2f7690b53191a6e995cf --> u_e_b39d29acd347aa364457d3c6
+  f_c03e11c6bdf64bdc1ed3e187 --> u_e_b70d3d067cf85b44c3948db0
+  s_b25a2f7690b53191a6e995cf --> u_e_b8d84956ca52b9634dd398dc
+  s_f0b6dd6f8516b02b485f3e3e --> u_e_bc2599e7a29ddafe275e3ba6
+  s_b25a2f7690b53191a6e995cf --> u_e_c564dcc81e1a1a2f34a5003a
+  s_ce19c24314f9ba71a6083a4e -.-> s_12a827c91135732b15533e01
+  s_b25a2f7690b53191a6e995cf --> u_e_cd2207b19696778505aa5ae4
+  s_7687d4e62b81ada2f424f430 -.-> s_12a827c91135732b15533e01
+  s_b25a2f7690b53191a6e995cf --> u_e_f490a9358e5146a2294e31e0
+  s_b25a2f7690b53191a6e995cf --> u_e_fb368c106875c0fea0aa8ac3

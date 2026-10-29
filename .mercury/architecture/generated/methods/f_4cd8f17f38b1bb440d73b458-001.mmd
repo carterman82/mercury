@@ -1,0 +1,28 @@
+flowchart LR
+  s_f4dac826e963fc104b036776["ModelSelect · 6"]
+  s_197b18c8adf933e8bf3dfe17["ModelSelect.select · 19"]
+  s_9b0f60f36ec386913ebcb473["src/shared/openai-routing.ts: prioritizeSubscriptions"]
+  s_ac107e5ed4cf18f8b1fd020a["src/shared/types.ts: modelCategory"]
+  u_e_df221beeb0d8e43cd0b6e5b1["Unresolved: useState"]
+  u_e_ebf3d6ebaffa3ea907753af0["Unresolved: [true, false].map"]
+  u_e_eccecac6dedc895d2c3a56ac["Unresolved: (['local', 'openai', 'claude'] as const).filter(item =&gt; !hideUnavailable || models.some(model =&gt; modelCategory(model.provider) === item)).map"]
+  u_e_f23bf148b3e999964dcedfe8["Unresolved: models.some"]
+  u_e_f2e9c838e672dfe584b153d8["Unresolved: setHelpOpen"]
+  u_e_f38930c89c49f7615b46a6ce["Unresolved: filtered.map"]
+  u_e_f95808a3fec72b75f56bb6dd["Unresolved: filtered.some"]
+  s_7a5250400c5d7bd2277c6fee["src/shared/openai-routing.ts: isOpenAIAPI"]
+  u_e_ff1fa90f715b26007553e20b["Unresolved: setFocused"]
+  u_e_ff930f33376dec1635540bbb["Unresolved: setCategory"]
+  s_f4dac826e963fc104b036776 --> s_197b18c8adf933e8bf3dfe17
+  s_f4dac826e963fc104b036776 --> s_9b0f60f36ec386913ebcb473
+  s_f4dac826e963fc104b036776 --> s_ac107e5ed4cf18f8b1fd020a
+  s_f4dac826e963fc104b036776 --> u_e_df221beeb0d8e43cd0b6e5b1
+  s_f4dac826e963fc104b036776 --> u_e_ebf3d6ebaffa3ea907753af0
+  s_f4dac826e963fc104b036776 --> u_e_eccecac6dedc895d2c3a56ac
+  s_f4dac826e963fc104b036776 --> u_e_f23bf148b3e999964dcedfe8
+  s_f4dac826e963fc104b036776 --> u_e_f2e9c838e672dfe584b153d8
+  s_f4dac826e963fc104b036776 --> u_e_f38930c89c49f7615b46a6ce
+  s_f4dac826e963fc104b036776 --> u_e_f95808a3fec72b75f56bb6dd
+  s_f4dac826e963fc104b036776 --> s_7a5250400c5d7bd2277c6fee
+  s_f4dac826e963fc104b036776 --> u_e_ff1fa90f715b26007553e20b
+  s_f4dac826e963fc104b036776 --> u_e_ff930f33376dec1635540bbb

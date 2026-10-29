@@ -1,0 +1,80 @@
+flowchart LR
+  s_123276361c2faa57bfbded01["CommandGate.ask · 12"]
+  u_e_03e969dd27855e872060411a["Unresolved: this.remembered.has"]
+  s_be5a775221c107113d4cccea["runCommand · 34"]
+  u_e_0990a4c7d8283e4c442fa5e4["Unresolved: signal.addEventListener"]
+  s_c212b536d5a765688880ec38["CommandGate.answer · 24"]
+  u_e_0c649a170040abf3e92b5677["Unresolved: pending.resolve"]
+  s_e7792a63effd07c9b0fada65["CommandGate.key · 11"]
+  u_e_29568fb3b4624c8c719ebbe1["Unresolved: setTimeout"]
+  u_e_2b0818c292fd6b66e524e1f8["Unresolved: Error"]
+  u_e_2c0b1c56015cf644c839ac52["Unresolved: resolve"]
+  u_e_30df5e553f0d9c5a128a9823["Unresolved: child.on"]
+  s_a26c220bf37ee317ae6ace1e["src/main/project-tools.ts: ProjectTools.execute"]
+  u_e_44733903e4a5940a589ced7d["Unresolved: signal.addEventListener"]
+  u_e_52d3c49f8281fa134cc58d86["Unresolved: this.remembered.add"]
+  f_0e0db3767b4781adc3375a0d["src/main/commands.ts"]
+  u_e_53938484da46af55b32e277c["Unresolved: Set"]
+  u_e_5db5f3ef23c0111b690d78ad["Unresolved: child.stdout?.on"]
+  s_48342ad714a28af21f4a1505["src/main/runner.ts: Runner.begin"]
+  s_da676eeea9f83053f3bf1001["CommandGate.constructor · 10"]
+  s_c25aa1377644dd51787f1c0f["runCommand.stop · 41"]
+  u_e_6ab915e55df1dd6644e490b6["Unresolved: this.onPending"]
+  u_e_75a59cf53d0e96e4995a9766["Unresolved: child.on"]
+  u_e_792ba4e2a378a6a08b3e42b3["Unresolved: child.stderr?.on"]
+  u_e_7a44c2f5f63237e1189a8bac["Unresolved: spawn"]
+  u_e_7e00ce4ccf24e6d558cfd6d8["Unresolved: this.onPending"]
+  s_34a282209c59867aa49b99cc["runCommand.append · 38"]
+  u_e_9036f439438d0987bf693db0["Unresolved: chunk.toString"]
+  u_e_92ac71a70fbeed3c2a851bab["Unresolved: spawn"]
+  u_e_93e57cbc953042063ee77351["Unresolved: signal.removeEventListener"]
+  s_71fd89b480fab8b8c0a93b37["src/main/runner.ts: Runner.useTool"]
+  u_e_9869bfe69504fa37316e5bee["Unresolved: (output + chunk.toString()).slice"]
+  u_e_9c4aac48f3f851cd0221d1df["Unresolved: randomUUID"]
+  u_e_9ea44ced748be7df5c4862e1["Unresolved: Promise"]
+  s_d30402e3b94e8e5992062306["src/main/runner.ts: Runner.stop"]
+  s_989b9bbb3a019fe943989c90["CommandGate.cancel · 31"]
+  u_e_ad517ac8d29720f37d56e34d["Unresolved: child.kill"]
+  s_f883f96302ddc932a542818e["src/main/runner.ts: Runner.answerCommand"]
+  u_e_d26e03a641c36997726387ec["Unresolved: String"]
+  u_e_d738a28487142d26bb3cadd7["Unresolved: Promise"]
+  u_e_e021bb13a66357d5220e6b32["Unresolved: clearTimeout"]
+  u_e_fba93b9903f4a399c2511eee["Unresolved: Error"]
+  s_123276361c2faa57bfbded01 --> u_e_03e969dd27855e872060411a
+  s_be5a775221c107113d4cccea --> u_e_0990a4c7d8283e4c442fa5e4
+  s_c212b536d5a765688880ec38 --> u_e_0c649a170040abf3e92b5677
+  s_123276361c2faa57bfbded01 -.-> s_e7792a63effd07c9b0fada65
+  s_be5a775221c107113d4cccea --> u_e_29568fb3b4624c8c719ebbe1
+  s_c212b536d5a765688880ec38 --> u_e_2b0818c292fd6b66e524e1f8
+  s_be5a775221c107113d4cccea --> u_e_2c0b1c56015cf644c839ac52
+  s_be5a775221c107113d4cccea --> u_e_30df5e553f0d9c5a128a9823
+  s_123276361c2faa57bfbded01 -.-> s_c212b536d5a765688880ec38
+  s_a26c220bf37ee317ae6ace1e --> s_be5a775221c107113d4cccea
+  s_123276361c2faa57bfbded01 --> u_e_44733903e4a5940a589ced7d
+  s_123276361c2faa57bfbded01 --> u_e_52d3c49f8281fa134cc58d86
+  f_0e0db3767b4781adc3375a0d --> u_e_53938484da46af55b32e277c
+  s_be5a775221c107113d4cccea --> u_e_5db5f3ef23c0111b690d78ad
+  s_48342ad714a28af21f4a1505 -.-> s_da676eeea9f83053f3bf1001
+  s_be5a775221c107113d4cccea --> s_c25aa1377644dd51787f1c0f
+  s_123276361c2faa57bfbded01 --> u_e_6ab915e55df1dd6644e490b6
+  s_be5a775221c107113d4cccea --> u_e_75a59cf53d0e96e4995a9766
+  s_be5a775221c107113d4cccea --> u_e_792ba4e2a378a6a08b3e42b3
+  s_c25aa1377644dd51787f1c0f --> u_e_7a44c2f5f63237e1189a8bac
+  s_123276361c2faa57bfbded01 -.-> s_e7792a63effd07c9b0fada65
+  s_c212b536d5a765688880ec38 --> u_e_7e00ce4ccf24e6d558cfd6d8
+  s_34a282209c59867aa49b99cc --> u_e_9036f439438d0987bf693db0
+  s_be5a775221c107113d4cccea --> u_e_92ac71a70fbeed3c2a851bab
+  s_be5a775221c107113d4cccea --> u_e_93e57cbc953042063ee77351
+  s_71fd89b480fab8b8c0a93b37 -.-> s_123276361c2faa57bfbded01
+  s_34a282209c59867aa49b99cc --> u_e_9869bfe69504fa37316e5bee
+  s_123276361c2faa57bfbded01 --> u_e_9c4aac48f3f851cd0221d1df
+  s_be5a775221c107113d4cccea --> u_e_9ea44ced748be7df5c4862e1
+  s_d30402e3b94e8e5992062306 -.-> s_989b9bbb3a019fe943989c90
+  s_c25aa1377644dd51787f1c0f --> u_e_ad517ac8d29720f37d56e34d
+  s_71fd89b480fab8b8c0a93b37 --> s_be5a775221c107113d4cccea
+  s_f883f96302ddc932a542818e -.-> s_c212b536d5a765688880ec38
+  s_c25aa1377644dd51787f1c0f --> u_e_d26e03a641c36997726387ec
+  s_123276361c2faa57bfbded01 --> u_e_d738a28487142d26bb3cadd7
+  s_be5a775221c107113d4cccea --> u_e_e021bb13a66357d5220e6b32
+  s_989b9bbb3a019fe943989c90 -.-> s_c212b536d5a765688880ec38
+  s_123276361c2faa57bfbded01 --> u_e_fba93b9903f4a399c2511eee

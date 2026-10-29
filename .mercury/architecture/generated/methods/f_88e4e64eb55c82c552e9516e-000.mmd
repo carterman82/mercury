@@ -1,0 +1,93 @@
+flowchart LR
+  s_10b6283226ff498fc18604cc["Store.constructor · 15"]
+  u_e_012324826cf1e20aac1c2758["Unresolved: this.db.exec"]
+  s_0d392b70402244d23f560111["src/main/project-tools.test.ts: fixture"]
+  s_5489336cf59f0cba96ed0ca3["Store.saveSettings · 105"]
+  s_d94683ad00d905014309bff4["Store.sessions · 76"]
+  s_5651fbe4733b1ae4a46981ae["Store.migrateSession · 82"]
+  s_11e8c8809c629b79241c80a5["src/main/project-tools.ts: ProjectTools.context"]
+  s_60c896f3250fe893ef6ec761["Store.project · 57"]
+  s_9f9556e990e031d46e454003["Store.saveChat · 68"]
+  u_e_0b21605a711aea4efec150a0["Unresolved: JSON.stringify"]
+  s_7da90b41405a14dc0a0514fe["Store.session · 77"]
+  u_e_0ca9c0aee79b09a1e0fa7672["Unresolved: JSON.parse"]
+  u_e_0ed88c18af0692d7d2f4c14a["Unresolved: this.db.prepare('INSERT OR REPLACE INTO chats (id,updated_at,data,project_id) VALUES (?,?,?,?)').run"]
+  u_e_13b2be5df7411a3c1c01a8ef["Unresolved: this.db.prepare(&quot;INSERT OR REPLACE INTO meta (key,value) VALUES ('version','2')&quot;).run"]
+  u_e_160527c038b80b9a6df3ad6b["Unresolved: this.db.prepare('SELECT data FROM sessions ORDER BY updated_at DESC').all"]
+  u_e_17fbe82125e805f2255d72f0["Unresolved: Error"]
+  s_2ece7ccb7e1bc25e8bfb4727["src/main/main.ts: snapshot"]
+  s_6e27c048e152267e5b5b020c["src/main/chat.ts: ChatService.save"]
+  u_e_1c07938e71762319bb55f2b8["Unresolved: this.db.prepare"]
+  s_809f4650e4c38ce4a8c61300["Store.secret · 114"]
+  u_e_1d0115a6f7b80246d9bb643a["Unresolved: this.db.prepare('SELECT data FROM secrets WHERE key = ?').get"]
+  s_72e582247916ebc50956475d["Store.chat · 63"]
+  u_e_1eed57eb6fe843da4da42a52["Unresolved: Error"]
+  s_fa12516ca2aeb31d1eb8ffb6["Store.saveSecret · 115"]
+  u_e_1f22d4cbb9731aecc3f43ef8["Unresolved: this.db.prepare('DELETE FROM secrets WHERE key = ?').run"]
+  u_e_20983bbb7b0e633a493800c6["Unresolved: this.db.prepare('SELECT data FROM sessions WHERE id = ?').get"]
+  s_f95ad6e3b385c0fbee0dc62e["Store.chats · 62"]
+  u_e_20b71d1574ffbc8120c11a8d["Unresolved: JSON.parse"]
+  s_4820b9c5713fc364fd817a35["Store.projects · 56"]
+  u_e_24447fb6c6fd27ef808d8957["Unresolved: JSON.parse"]
+  s_6b6320cf03e5c1ff06071f6b["src/main/main.ts: readSecret"]
+  s_b7f92a06f494dc98fe01d966["Store.saveSession · 87"]
+  u_e_272e421306e62cce1ca5c906["Unresolved: Date.now"]
+  u_e_28a32a6ebc84bcfcb1db5c63["Unresolved: this.db.exec"]
+  u_e_2a1f5feebdfb7edfae7c7e24["Unresolved: this.db.prepare"]
+  s_2ec68a3f4e507b649f608d09["Store.settings · 91"]
+  u_e_2b8506c48c057bda68176ecf["Unresolved: this.db.prepare"]
+  u_e_2c418326a016744efb4d0972["Unresolved: (this.db.prepare('SELECT data FROM sessions ORDER BY updated_at DESC').all() as any[]).map"]
+  s_527de7f256747338c4159daf["src/main/model-roles.test.ts: fixture"]
+  u_e_31d28022a84bab2e6906a88a["Unresolved: this.db.exec"]
+  u_e_328d41d762ac5b3d25ce2886["Unresolved: (saved.additionalMainModels ?? []).map"]
+  s_fecfabfb552f421a10a78b87["src/main/project-tools.ts: ProjectTools.ensureWorkspace"]
+  s_588b838882c34879c8cb89b7["Store.saveProject · 75"]
+  u_e_34c2de5540f90dd298f125c4["Unresolved: this.db.prepare"]
+  u_e_3525379dbc6b8568824413f2["Unresolved: (this.db.prepare('SELECT data FROM chats ORDER BY updated_at DESC').all() as any[]).map"]
+  u_e_357d959db1387b7283d3b7b8["Unresolved: JSON.stringify"]
+  u_e_3df53984b1eef301cc1dbea5["Unresolved: this.db.prepare"]
+  u_e_4058a10ee41984edfe677aae["Unresolved: this.db.exec"]
+  u_e_41a29ca1daef178b8aa7205d["Unresolved: this.db.prepare('SELECT data FROM projects').all"]
+  u_e_41c6551f71686e35572cfd2f["Unresolved: (this.db.prepare('SELECT data FROM projects').all() as any[]).map"]
+  u_e_44011b94b12d32e879af21f6["Unresolved: this.db.prepare"]
+  u_e_44c046d408e646e133331f36["Unresolved: DatabaseSync"]
+  s_10b6283226ff498fc18604cc --> u_e_012324826cf1e20aac1c2758
+  s_0d392b70402244d23f560111 -.-> s_5489336cf59f0cba96ed0ca3
+  s_d94683ad00d905014309bff4 -.-> s_5651fbe4733b1ae4a46981ae
+  s_11e8c8809c629b79241c80a5 -.-> s_60c896f3250fe893ef6ec761
+  s_9f9556e990e031d46e454003 --> u_e_0b21605a711aea4efec150a0
+  s_7da90b41405a14dc0a0514fe --> u_e_0ca9c0aee79b09a1e0fa7672
+  s_9f9556e990e031d46e454003 --> u_e_0ed88c18af0692d7d2f4c14a
+  s_10b6283226ff498fc18604cc --> u_e_13b2be5df7411a3c1c01a8ef
+  s_d94683ad00d905014309bff4 --> u_e_160527c038b80b9a6df3ad6b
+  s_60c896f3250fe893ef6ec761 --> u_e_17fbe82125e805f2255d72f0
+  s_2ece7ccb7e1bc25e8bfb4727 -.-> s_d94683ad00d905014309bff4
+  s_6e27c048e152267e5b5b020c -.-> s_9f9556e990e031d46e454003
+  s_10b6283226ff498fc18604cc --> u_e_1c07938e71762319bb55f2b8
+  s_809f4650e4c38ce4a8c61300 --> u_e_1d0115a6f7b80246d9bb643a
+  s_72e582247916ebc50956475d --> u_e_1eed57eb6fe843da4da42a52
+  s_fa12516ca2aeb31d1eb8ffb6 --> u_e_1f22d4cbb9731aecc3f43ef8
+  s_7da90b41405a14dc0a0514fe --> u_e_20983bbb7b0e633a493800c6
+  s_f95ad6e3b385c0fbee0dc62e --> u_e_20b71d1574ffbc8120c11a8d
+  s_4820b9c5713fc364fd817a35 --> u_e_24447fb6c6fd27ef808d8957
+  s_6b6320cf03e5c1ff06071f6b -.-> s_809f4650e4c38ce4a8c61300
+  s_b7f92a06f494dc98fe01d966 --> u_e_272e421306e62cce1ca5c906
+  s_10b6283226ff498fc18604cc --> u_e_28a32a6ebc84bcfcb1db5c63
+  s_b7f92a06f494dc98fe01d966 --> u_e_2a1f5feebdfb7edfae7c7e24
+  s_2ece7ccb7e1bc25e8bfb4727 -.-> s_4820b9c5713fc364fd817a35
+  s_2ec68a3f4e507b649f608d09 --> u_e_2b8506c48c057bda68176ecf
+  s_d94683ad00d905014309bff4 --> u_e_2c418326a016744efb4d0972
+  s_527de7f256747338c4159daf -.-> s_b7f92a06f494dc98fe01d966
+  s_10b6283226ff498fc18604cc --> u_e_31d28022a84bab2e6906a88a
+  s_2ec68a3f4e507b649f608d09 --> u_e_328d41d762ac5b3d25ce2886
+  s_fecfabfb552f421a10a78b87 -.-> s_60c896f3250fe893ef6ec761
+  s_0d392b70402244d23f560111 -.-> s_588b838882c34879c8cb89b7
+  s_588b838882c34879c8cb89b7 --> u_e_34c2de5540f90dd298f125c4
+  s_f95ad6e3b385c0fbee0dc62e --> u_e_3525379dbc6b8568824413f2
+  s_588b838882c34879c8cb89b7 --> u_e_357d959db1387b7283d3b7b8
+  s_d94683ad00d905014309bff4 --> u_e_3df53984b1eef301cc1dbea5
+  s_10b6283226ff498fc18604cc --> u_e_4058a10ee41984edfe677aae
+  s_4820b9c5713fc364fd817a35 --> u_e_41a29ca1daef178b8aa7205d
+  s_4820b9c5713fc364fd817a35 --> u_e_41c6551f71686e35572cfd2f
+  s_10b6283226ff498fc18604cc --> u_e_44011b94b12d32e879af21f6
+  s_10b6283226ff498fc18604cc --> u_e_44c046d408e646e133331f36

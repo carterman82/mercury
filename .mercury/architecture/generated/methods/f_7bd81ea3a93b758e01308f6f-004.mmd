@@ -1,0 +1,50 @@
+flowchart LR
+  f_7bd81ea3a93b758e01308f6f["src/main/agent-pools.test.ts"]
+  s_32a5813d88937ce3eb46d2aa["src/main/chat.ts: ChatService.send"]
+  u_e_e1223aa5d920dff5f22946e7["Unresolved: expect"]
+  s_75cc5b8d40e23dcaa78713ca["fixture · 16"]
+  u_e_e397321e0168de281661743a["Unresolved: expect(store.chat(spilled.id).messages.filter(item =&gt; item.role === 'user')).toHaveLength"]
+  s_e907cd1bba660231f7716080["answer · 27"]
+  u_e_e4ce0c15f8bd3236bd212e90["Unresolved: os.tmpdir"]
+  s_a09efff11943e6c563bf5ebf["src/main/chat-files.ts: ChatFiles.import"]
+  u_e_e5df23d9650eb2424438c96e["Unresolved: expect(requests.filter(item =&gt; item.url.includes('127.0.0.1'))).toHaveLength"]
+  u_e_ea5d019f753ccf4a5d192777["Unresolved: expect(providers.requestCounts.every(item =&gt; item.active === 4 &amp;&amp; item.queued === 0)).toBe"]
+  s_2ec68a3f4e507b649f608d09["src/main/store.ts: Store.settings"]
+  u_e_f08583f208ccbed77993eb1e["Unresolved: expect"]
+  u_e_f0eac7e4584ed70a4b964fc9["Unresolved: providers.requestCounts.find"]
+  u_e_f3b969e8b3ab35337539afe9["Unresolved: expect(providers.requestCounts).toEqual"]
+  u_e_f3ecf0b9071398058a7c21b9["Unresolved: Promise.all"]
+  u_e_f575c60c97ea41ebea2fffcd["Unresolved: it"]
+  u_e_f72915d9874dfbc66d32a498["Unresolved: it"]
+  u_e_f9442bb8e81f5c3740c9afd6["Unresolved: expect(lease.profile.connectionId).toBe"]
+  u_e_fab58ead886d698383a532c5["Unresolved: expect"]
+  u_e_fbaa87eb9cfc6d5fc6489407["Unresolved: expect"]
+  u_e_fbf68b35f76e91eab26e9b20["Unresolved: Promise.resolve"]
+  u_e_fcde7135693f20cfecaa4bba["Unresolved: expect(requests.filter(item =&gt; item.url.includes('device-b'))).toHaveLength"]
+  u_e_fd0aa914d60d1ff09abbe061["Unresolved: store.chat(spilled.id).messages.filter"]
+  u_e_ff1850ecb0e9558a74d38f75["Unresolved: expect"]
+  u_e_ff7f849c432f7dcf57d7cbea["Unresolved: expect(providers.requestCounts.find(item =&gt; item.endpoint.includes('127.0.0.1'))?.active).toBe"]
+  f_7bd81ea3a93b758e01308f6f -.-> s_32a5813d88937ce3eb46d2aa
+  f_7bd81ea3a93b758e01308f6f --> u_e_e1223aa5d920dff5f22946e7
+  f_7bd81ea3a93b758e01308f6f --> s_75cc5b8d40e23dcaa78713ca
+  f_7bd81ea3a93b758e01308f6f --> u_e_e397321e0168de281661743a
+  f_7bd81ea3a93b758e01308f6f --> s_e907cd1bba660231f7716080
+  s_75cc5b8d40e23dcaa78713ca --> u_e_e4ce0c15f8bd3236bd212e90
+  f_7bd81ea3a93b758e01308f6f -.-> s_a09efff11943e6c563bf5ebf
+  f_7bd81ea3a93b758e01308f6f --> u_e_e5df23d9650eb2424438c96e
+  f_7bd81ea3a93b758e01308f6f --> u_e_ea5d019f753ccf4a5d192777
+  f_7bd81ea3a93b758e01308f6f -.-> s_2ec68a3f4e507b649f608d09
+  f_7bd81ea3a93b758e01308f6f --> u_e_f08583f208ccbed77993eb1e
+  f_7bd81ea3a93b758e01308f6f --> u_e_f0eac7e4584ed70a4b964fc9
+  f_7bd81ea3a93b758e01308f6f --> u_e_f3b969e8b3ab35337539afe9
+  f_7bd81ea3a93b758e01308f6f --> u_e_f3ecf0b9071398058a7c21b9
+  f_7bd81ea3a93b758e01308f6f --> u_e_f575c60c97ea41ebea2fffcd
+  f_7bd81ea3a93b758e01308f6f --> u_e_f72915d9874dfbc66d32a498
+  f_7bd81ea3a93b758e01308f6f --> u_e_f9442bb8e81f5c3740c9afd6
+  f_7bd81ea3a93b758e01308f6f --> u_e_fab58ead886d698383a532c5
+  f_7bd81ea3a93b758e01308f6f --> u_e_fbaa87eb9cfc6d5fc6489407
+  f_7bd81ea3a93b758e01308f6f --> u_e_fbf68b35f76e91eab26e9b20
+  f_7bd81ea3a93b758e01308f6f --> u_e_fcde7135693f20cfecaa4bba
+  f_7bd81ea3a93b758e01308f6f --> u_e_fd0aa914d60d1ff09abbe061
+  f_7bd81ea3a93b758e01308f6f --> u_e_ff1850ecb0e9558a74d38f75
+  f_7bd81ea3a93b758e01308f6f --> u_e_ff7f849c432f7dcf57d7cbea

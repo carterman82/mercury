@@ -1,0 +1,19 @@
+flowchart LR
+  s_e6f1a2fdbec10d3e9393ac01["ProjectModelGateway.handle.cancel · 434"]
+  u_e_f73374933acc9cfe606fe001["Unresolved: reader.cancel(signal.reason).catch"]
+  s_caff1d36cc1621c1e6b9b65f["ProjectModelGateway.handle · 367"]
+  u_e_f840a0236be3deb28699b359["Unresolved: (message.tool_calls ?? []).map"]
+  s_34d647a32e95de0451172c39["readJson · 219"]
+  s_7ff90bc3567f9c4e2b66a891["ProjectModelGateway.open · 292"]
+  u_e_fbc6bae368826539d56d3f12["Unresolved: server.once"]
+  f_b5d14919b622055ad9110965["src/main/project-gateway.ts"]
+  u_e_fd7397b21d4be9887c96b82f["Unresolved: z           .object({             name: z.string().regex(/^[a-zA-Z0-9_-]{1,128}$/),             description: z.string().optional(),             input_schema: jsonObject,           })           .passthrough"]
+  u_e_fd933e334f65e7be604c6d3c["Unresolved: signal.throwIfAborted"]
+  u_e_fe5755f84235bb1d291d05c4["Unresolved: clearInterval"]
+  s_e6f1a2fdbec10d3e9393ac01 --> u_e_f73374933acc9cfe606fe001
+  s_caff1d36cc1621c1e6b9b65f --> u_e_f840a0236be3deb28699b359
+  s_caff1d36cc1621c1e6b9b65f --> s_34d647a32e95de0451172c39
+  s_7ff90bc3567f9c4e2b66a891 --> u_e_fbc6bae368826539d56d3f12
+  f_b5d14919b622055ad9110965 --> u_e_fd7397b21d4be9887c96b82f
+  s_caff1d36cc1621c1e6b9b65f --> u_e_fd933e334f65e7be604c6d3c
+  s_caff1d36cc1621c1e6b9b65f --> u_e_fe5755f84235bb1d291d05c4

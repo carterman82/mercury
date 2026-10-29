@@ -1,0 +1,59 @@
+flowchart LR
+  f_fb44679a824d572f494e83a9["src/main/chat-approvals.test.ts"]
+  u_e_90a7d4ba3dc65ce32975bfdd["Unresolved: expect"]
+  u_e_96b4b96b34853e4f6662070e["Unresolved: expect"]
+  s_d3df231c957c029f1cfba67e["src/main/chat-approvals.ts: ChatApprovals.answer"]
+  u_e_b4579c1e7fd4b00804e84eba["Unresolved: expect"]
+  u_e_b5b8891b2dd0784b6140c56f["Unresolved: AbortController"]
+  s_acb24e947bac7f66a6786f3f["src/main/chat-approvals.ts: ChatApprovals.constructor"]
+  u_e_bcef269fb24866ffbd513eae["Unresolved: expect(approvals.request('full-access', 'Run action', '', new AbortController().signal)).resolves.toBeUndefined"]
+  s_e19aa7e1d2410fdf33fbbaf7["src/main/chat-approvals.ts: ChatApprovals.request"]
+  u_e_bfa68918ac2714867d416a6d["Unresolved: expect(approvals.snapshot()).toEqual"]
+  u_e_c4e759ecd759f83cf2e8c528["Unresolved: AbortController"]
+  u_e_d0696e9389dea25a6e084d06["Unresolved: expect"]
+  u_e_d272167306f2a3cb69a50fb4["Unresolved: it"]
+  u_e_d290b48ca50fa492c5e3fe34["Unresolved: Error"]
+  u_e_d369a34423f2bff32eb09c48["Unresolved: expect(pending).rejects.toThrow"]
+  u_e_d97b2e7f46360135b6aedb9b["Unresolved: expect"]
+  u_e_d98cb3eb5ef0b0e1788289ab["Unresolved: expect(approvals.request('two', 'Different action?', '', new AbortController().signal)).rejects.toThrow"]
+  u_e_e187f98d83b20adf814940eb["Unresolved: expect"]
+  u_e_e27e8c76165ff896747506ad["Unresolved: AbortController"]
+  u_e_e682b3651567257452c0dfce["Unresolved: expect(() =&gt; approvals.answer('invented', true)).toThrow"]
+  u_e_ec2457c9d4cde3d593992a39["Unresolved: expect"]
+  u_e_ee620509a74e5bf27fd9f497["Unresolved: vi.advanceTimersByTimeAsync"]
+  u_e_eeb5e3beaecc86d589e384f8["Unresolved: expect"]
+  u_e_ef565a8613768849bb1a97b3["Unresolved: expect(third).rejects.toThrow"]
+  u_e_f2dac5155fe4dd3e716d06c5["Unresolved: expect(approvals.snapshot()).toEqual"]
+  u_e_f411bede53e55b944ca75da4["Unresolved: vi.useFakeTimers"]
+  u_e_febc749500916aa8a0efcc16["Unresolved: expect(() =&gt; approvals.answer(three.id, true)).toThrow"]
+  f_fb44679a824d572f494e83a9 --> u_e_90a7d4ba3dc65ce32975bfdd
+  f_fb44679a824d572f494e83a9 --> u_e_96b4b96b34853e4f6662070e
+  f_fb44679a824d572f494e83a9 -.-> s_d3df231c957c029f1cfba67e
+  f_fb44679a824d572f494e83a9 --> u_e_b4579c1e7fd4b00804e84eba
+  f_fb44679a824d572f494e83a9 --> u_e_b5b8891b2dd0784b6140c56f
+  f_fb44679a824d572f494e83a9 -.-> s_acb24e947bac7f66a6786f3f
+  f_fb44679a824d572f494e83a9 --> u_e_bcef269fb24866ffbd513eae
+  f_fb44679a824d572f494e83a9 -.-> s_e19aa7e1d2410fdf33fbbaf7
+  f_fb44679a824d572f494e83a9 --> u_e_bfa68918ac2714867d416a6d
+  f_fb44679a824d572f494e83a9 --> u_e_c4e759ecd759f83cf2e8c528
+  f_fb44679a824d572f494e83a9 --> u_e_d0696e9389dea25a6e084d06
+  f_fb44679a824d572f494e83a9 --> u_e_d272167306f2a3cb69a50fb4
+  f_fb44679a824d572f494e83a9 --> u_e_d290b48ca50fa492c5e3fe34
+  f_fb44679a824d572f494e83a9 -.-> s_d3df231c957c029f1cfba67e
+  f_fb44679a824d572f494e83a9 --> u_e_d369a34423f2bff32eb09c48
+  f_fb44679a824d572f494e83a9 --> u_e_d97b2e7f46360135b6aedb9b
+  f_fb44679a824d572f494e83a9 --> u_e_d98cb3eb5ef0b0e1788289ab
+  f_fb44679a824d572f494e83a9 -.-> s_acb24e947bac7f66a6786f3f
+  f_fb44679a824d572f494e83a9 -.-> s_e19aa7e1d2410fdf33fbbaf7
+  f_fb44679a824d572f494e83a9 --> u_e_e187f98d83b20adf814940eb
+  f_fb44679a824d572f494e83a9 --> u_e_e27e8c76165ff896747506ad
+  f_fb44679a824d572f494e83a9 --> u_e_e682b3651567257452c0dfce
+  f_fb44679a824d572f494e83a9 --> u_e_ec2457c9d4cde3d593992a39
+  f_fb44679a824d572f494e83a9 --> u_e_ee620509a74e5bf27fd9f497
+  f_fb44679a824d572f494e83a9 --> u_e_eeb5e3beaecc86d589e384f8
+  f_fb44679a824d572f494e83a9 --> u_e_ef565a8613768849bb1a97b3
+  f_fb44679a824d572f494e83a9 --> u_e_f2dac5155fe4dd3e716d06c5
+  f_fb44679a824d572f494e83a9 -.-> s_acb24e947bac7f66a6786f3f
+  f_fb44679a824d572f494e83a9 --> u_e_f411bede53e55b944ca75da4
+  f_fb44679a824d572f494e83a9 --> u_e_febc749500916aa8a0efcc16
+  f_fb44679a824d572f494e83a9 -.-> s_e19aa7e1d2410fdf33fbbaf7

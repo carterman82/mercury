@@ -1,0 +1,85 @@
+flowchart LR
+  f_d34a877cfbce8068f034fcee["src/main/project-tools.test.ts"]
+  u_e_4e2f8156071a7553dbebcb1c["Unresolved: approvals.snapshot"]
+  u_e_4f3c83bef43a895533b699d4["Unresolved: it"]
+  s_b6f4c4973a64a39a33a25db7["chat · 131"]
+  u_e_4fdf1927eee9f0cab9312fe9["Unresolved: expect"]
+  s_0d392b70402244d23f560111["fixture · 27"]
+  s_acb24e947bac7f66a6786f3f["src/main/chat-approvals.ts: ChatApprovals.constructor"]
+  s_21afce609bf39066dbd6a7e5["service · 21"]
+  u_e_5486d821035358135ba04a6f["Unresolved: path.dirname"]
+  u_e_54cc1531a6e43015e232c106["Unresolved: fs.rm"]
+  u_e_5688db253ef61755a70f2722["Unresolved: expect"]
+  s_c642171d1f75c8629db325a2["git · 123"]
+  u_e_5ada2bef7e2183554cedf255["Unresolved: cleanups.splice"]
+  u_e_5d880504736522e0c0b77a17["Unresolved: expect"]
+  s_3da60fe520ed16dc00ca59e4["chat · 195"]
+  u_e_5f8468d49b99209ecb8947d9["Unresolved: input.signal!.addEventListener"]
+  u_e_61cff908496b7bc735e7d39d["Unresolved: expect"]
+  u_e_61eb46a044b3f032eb811f9a["Unresolved: expect"]
+  u_e_62566433669a0311fafa5ee8["Unresolved: expect"]
+  u_e_62ee0d87702ce22de7a78603["Unresolved: String"]
+  u_e_637be938d849878905350468["Unresolved: store.chat"]
+  s_4dc55d7d744552710f9bde4a["fixture.git · 32"]
+  u_e_63c55429482071292308f0d6["Unresolved: projects.authorizePlugin"]
+  u_e_64b9e544be4c8e249a8543ee["Unresolved: expect(names).toContain"]
+  u_e_64c89ce84eb9ba505a04d2cd["Unresolved: expect(await fs.readFile(outside, 'utf8')).toBe"]
+  u_e_6512ec941f67f003bb3bfecd["Unresolved: expect(projects.execute(chat, 'run_project_command', { command: `echo unsafe &gt; &quot;${marker}&quot;` }, controller.signal)).rejects.toThrow"]
+  u_e_66adf26bef5eab2fdb34ad4c["Unresolved: expect(await fs.readFile(path.join(root, 'note.txt'), 'utf8')).toBe"]
+  u_e_6718f6dc42862a1aa58e71b5["Unresolved: path.join"]
+  u_e_6805211ffac6416c2dbce980["Unresolved: fs.writeFile"]
+  u_e_682a3d83beba27298eaef41d["Unresolved: expect.poll(() =&gt; approvals.snapshot().length).toBe"]
+  u_e_687aa57c2c67fbddf7e79b47["Unresolved: promisify(execFile)"]
+  u_e_6898ab4be65b603dd1d528ac["Unresolved: path.join"]
+  u_e_690f5df7bd145c506cc5d53f["Unresolved: path.join"]
+  u_e_6a3f68ba626aec78d95b2490["Unresolved: path.join"]
+  u_e_6ca5178c717e64c32c106c14["Unresolved: AbortController"]
+  u_e_6dfa68b34926d9a0e8638735["Unresolved: expect(approvals.snapshot()).toEqual"]
+  u_e_6f1c7a26af10c8cfb4b645ff["Unresolved: expect.poll(() =&gt; waiting.length).toBe"]
+  u_e_6fcd463d56161c30c56984cc["Unresolved: store.saveProject"]
+  u_e_70433e3347f6ff1f2c676f4f["Unresolved: expect.poll"]
+  u_e_723759aeb6b2244024300b7c["Unresolved: promisify"]
+  s_32c78d917ab5b09d3265f295["chat · 118"]
+  s_6aa60aeb10ffaed53f6b83ab["src/main/workspace.ts: hash"]
+  u_e_75f4a0738dda0fde64cb0ea4["Unresolved: expect"]
+  u_e_763d57f475d25a7b0cc6b706["Unresolved: expect"]
+  f_d34a877cfbce8068f034fcee --> u_e_4e2f8156071a7553dbebcb1c
+  f_d34a877cfbce8068f034fcee --> u_e_4f3c83bef43a895533b699d4
+  s_b6f4c4973a64a39a33a25db7 --> u_e_4fdf1927eee9f0cab9312fe9
+  s_0d392b70402244d23f560111 -.-> s_acb24e947bac7f66a6786f3f
+  s_21afce609bf39066dbd6a7e5 --> u_e_5486d821035358135ba04a6f
+  s_0d392b70402244d23f560111 --> u_e_54cc1531a6e43015e232c106
+  f_d34a877cfbce8068f034fcee --> s_0d392b70402244d23f560111
+  f_d34a877cfbce8068f034fcee --> u_e_5688db253ef61755a70f2722
+  f_d34a877cfbce8068f034fcee --> s_c642171d1f75c8629db325a2
+  f_d34a877cfbce8068f034fcee --> u_e_5ada2bef7e2183554cedf255
+  f_d34a877cfbce8068f034fcee --> u_e_5d880504736522e0c0b77a17
+  s_3da60fe520ed16dc00ca59e4 --> u_e_5f8468d49b99209ecb8947d9
+  f_d34a877cfbce8068f034fcee --> u_e_61cff908496b7bc735e7d39d
+  s_b6f4c4973a64a39a33a25db7 --> u_e_61eb46a044b3f032eb811f9a
+  f_d34a877cfbce8068f034fcee --> u_e_62566433669a0311fafa5ee8
+  f_d34a877cfbce8068f034fcee --> s_0d392b70402244d23f560111
+  s_b6f4c4973a64a39a33a25db7 --> u_e_62ee0d87702ce22de7a78603
+  f_d34a877cfbce8068f034fcee --> u_e_637be938d849878905350468
+  s_0d392b70402244d23f560111 --> s_4dc55d7d744552710f9bde4a
+  f_d34a877cfbce8068f034fcee --> u_e_63c55429482071292308f0d6
+  s_b6f4c4973a64a39a33a25db7 --> u_e_64b9e544be4c8e249a8543ee
+  f_d34a877cfbce8068f034fcee --> u_e_64c89ce84eb9ba505a04d2cd
+  f_d34a877cfbce8068f034fcee --> u_e_6512ec941f67f003bb3bfecd
+  f_d34a877cfbce8068f034fcee --> u_e_66adf26bef5eab2fdb34ad4c
+  f_d34a877cfbce8068f034fcee --> u_e_6718f6dc42862a1aa58e71b5
+  f_d34a877cfbce8068f034fcee --> u_e_6805211ffac6416c2dbce980
+  f_d34a877cfbce8068f034fcee --> u_e_682a3d83beba27298eaef41d
+  s_4dc55d7d744552710f9bde4a --> u_e_687aa57c2c67fbddf7e79b47
+  f_d34a877cfbce8068f034fcee --> u_e_6898ab4be65b603dd1d528ac
+  s_21afce609bf39066dbd6a7e5 --> u_e_690f5df7bd145c506cc5d53f
+  f_d34a877cfbce8068f034fcee --> u_e_6a3f68ba626aec78d95b2490
+  s_0d392b70402244d23f560111 --> u_e_6ca5178c717e64c32c106c14
+  f_d34a877cfbce8068f034fcee --> u_e_6dfa68b34926d9a0e8638735
+  f_d34a877cfbce8068f034fcee --> u_e_6f1c7a26af10c8cfb4b645ff
+  f_d34a877cfbce8068f034fcee --> u_e_6fcd463d56161c30c56984cc
+  f_d34a877cfbce8068f034fcee --> u_e_70433e3347f6ff1f2c676f4f
+  s_4dc55d7d744552710f9bde4a --> u_e_723759aeb6b2244024300b7c
+  s_32c78d917ab5b09d3265f295 --> s_6aa60aeb10ffaed53f6b83ab
+  f_d34a877cfbce8068f034fcee --> u_e_75f4a0738dda0fde64cb0ea4
+  f_d34a877cfbce8068f034fcee --> u_e_763d57f475d25a7b0cc6b706

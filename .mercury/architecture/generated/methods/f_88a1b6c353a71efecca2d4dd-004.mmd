@@ -1,0 +1,37 @@
+flowchart LR
+  s_dbafb8571053ccc3bf08ef15["Workspace.resolve · 22"]
+  u_e_ebe8bd03a024051ca081484c["Unresolved: relative.split(/[\\/]+/).includes"]
+  s_a63e5a1513d2fc01d0c902f5["Workspace.read · 68"]
+  u_e_ebf1736190594742dd4f836d["Unresolved: lines.slice"]
+  s_36f2bee38b20cd143406a4e3["Workspace.list.walk · 53"]
+  u_e_ec8b5090e57e052e7f7a60ef["Unresolved: entry.isDirectory"]
+  s_7f3461fae9605a90596eb58d["src/main/pdf.ts: extractPdfText"]
+  s_a26c220bf37ee317ae6ace1e["src/main/project-tools.ts: ProjectTools.execute"]
+  s_6aa60aeb10ffaed53f6b83ab["hash · 10"]
+  u_e_f543dca1eb30b388bc3fa9af["Unresolved: Error"]
+  u_e_f93314cee21dbad882f6abf4["Unresolved: lines.slice(start - 1, end).map"]
+  s_6c57fb22fa612eeba88295b5["Workspace.list · 45"]
+  u_e_fc5021d089a27b089ccb247f["Unresolved: x.startsWith"]
+  u_e_fd2f7f0f2ad2ce5372ac6518["Unresolved: fs.readdir"]
+  s_1bf203f3a677de8fed1cd884["Workspace.edit · 101"]
+  u_e_fe28f4cf79e459f6d972d435["Unresolved: fs.rm"]
+  u_e_fe54bdb4d8da2084a01d1f5f["Unresolved: fs.readFile"]
+  u_e_ff7d784552563cba59636404["Unresolved: fs.lstat"]
+  s_3416ba8d5bced309d41195a8["Workspace.createPdf · 115"]
+  s_273b7d7d1b5d687488fdbcb1["src/main/pdf.ts: makePdf"]
+  s_dbafb8571053ccc3bf08ef15 --> u_e_ebe8bd03a024051ca081484c
+  s_a63e5a1513d2fc01d0c902f5 --> u_e_ebf1736190594742dd4f836d
+  s_36f2bee38b20cd143406a4e3 --> u_e_ec8b5090e57e052e7f7a60ef
+  s_a63e5a1513d2fc01d0c902f5 --> s_7f3461fae9605a90596eb58d
+  s_a26c220bf37ee317ae6ace1e --> s_6aa60aeb10ffaed53f6b83ab
+  s_dbafb8571053ccc3bf08ef15 --> u_e_f543dca1eb30b388bc3fa9af
+  s_a26c220bf37ee317ae6ace1e --> s_6aa60aeb10ffaed53f6b83ab
+  s_a63e5a1513d2fc01d0c902f5 --> u_e_f93314cee21dbad882f6abf4
+  s_a63e5a1513d2fc01d0c902f5 --> s_6aa60aeb10ffaed53f6b83ab
+  s_6c57fb22fa612eeba88295b5 --> u_e_fc5021d089a27b089ccb247f
+  s_36f2bee38b20cd143406a4e3 --> u_e_fd2f7f0f2ad2ce5372ac6518
+  s_1bf203f3a677de8fed1cd884 --> u_e_fe28f4cf79e459f6d972d435
+  s_a63e5a1513d2fc01d0c902f5 --> u_e_fe54bdb4d8da2084a01d1f5f
+  s_a26c220bf37ee317ae6ace1e --> s_6aa60aeb10ffaed53f6b83ab
+  s_dbafb8571053ccc3bf08ef15 --> u_e_ff7d784552563cba59636404
+  s_3416ba8d5bced309d41195a8 --> s_273b7d7d1b5d687488fdbcb1

@@ -1,0 +1,80 @@
+flowchart LR
+  f_fdf723941e6fa064b262ade7["src/main/chat-capabilities.ts"]
+  u_e_9e802c614f05ebd034804c32["Unresolved: z.string().min(1).max"]
+  u_e_9f0f4c5bd2526be3f38baf8b["Unresolved: z.string().min(1).max(200).optional"]
+  s_cf968ce7d4cc1795fed19306["ChatCapabilities.execute · 58"]
+  u_e_9f242bfdce4b583c9d958d8a["Unresolved: String(tool.name).slice"]
+  s_f76d9d7468789b9acd6b7bfe["src/main/chat-plugins.ts: ChatPlugins.call"]
+  s_7a54cf30d0d554e5a8766c64["tool · 7"]
+  u_e_a43386a8fdcbed5b0ff7d645["Unresolved: z.object"]
+  u_e_a6ab3c1c670a9ec50838e704["Unresolved: z.string().url"]
+  s_ed127b6ace48873935fd6000["ChatCapabilities.handles · 57"]
+  u_e_aaedfecf7cee3f048223a082["Unresolved: z.object"]
+  u_e_ab92069d13e64f2c8f6f46da["Unresolved: Array.isArray"]
+  u_e_b02d5a88938cc1f353f8b547["Unresolved: z.string().min"]
+  u_e_b059e8847e2c55ed6dd33753["Unresolved: z.object"]
+  u_e_b478159c880b19b3e1c011fa["Unresolved: String"]
+  u_e_b51dd3c4c5ae9ac39439ffe9["Unresolved: z.number().int().min(0).max"]
+  u_e_b659a6d877e5ecd163324b37["Unresolved: z.string().url().max"]
+  u_e_bc67d4a69d1a3a169a6da932["Unresolved: z.number"]
+  s_17f58733c667055c20e28a74["ChatCapabilities.dispose · 98"]
+  s_828ec9770a2e1b0ce96f6d7f["src/main/chat-browser.ts: ChatBrowser.dispose"]
+  u_e_bec0f50f398a818a74000c86["Unresolved: z.array(z.string().regex(/^(Arrow(Up|Down|Left|Right)|[wasdWASD0-9]|Space|Enter|Escape|Backspace|Shift)$/)).min"]
+  u_e_c3a96042829113900e51af52["Unresolved: z.number().min"]
+  u_e_c6d03ef0fec33c0c40170140["Unresolved: z.number().min(0).max"]
+  s_3b123a6864570a16208cca55["ChatCapabilities.beginTurn · 56"]
+  s_72d5b28c496227db76dd9030["src/main/chat-plugins.ts: ChatPlugins.beginTurn"]
+  u_e_c7946ba3ab5cb107f40f2d7e["Unresolved: signal.throwIfAborted"]
+  s_b70fc9f324519456a80b5f7c["src/main/chat-plugins.ts: ChatPlugins.discover"]
+  u_e_c9b48027d40c958f5aefaa18["Unresolved: z.number().int"]
+  u_e_cd631c61f9a9f74c398e8823["Unresolved: z.object"]
+  u_e_cea5e7160ae11262738a8ac6["Unresolved: z.object"]
+  u_e_d43a1d1e57c9663e62918e5b["Unresolved: z.unknown"]
+  u_e_d59438eec534d5e767004e73["Unresolved: z.string"]
+  s_8e87c8abec358cf8d840188e["src/main/chat-browser.ts: ChatBrowser.open"]
+  u_e_db62e960acdfe8312df64d2f["Unresolved: String(match.description ?? '').slice"]
+  u_e_db9d2e9f6019a68ada24c672["Unresolved: z.number().int"]
+  u_e_dc178a529a8adabacdbeb1d4["Unresolved: z.object"]
+  u_e_dc7051f2f3a0dd58f2b37092["Unresolved: z.number().int().min"]
+  u_e_dd9d9c430972914439076280["Unresolved: z.string().regex"]
+  s_bea7fde3b939ab3a2283075b["src/main/chat-browser.ts: ChatBrowser.click"]
+  f_fdf723941e6fa064b262ade7 --> u_e_9e802c614f05ebd034804c32
+  f_fdf723941e6fa064b262ade7 --> u_e_9f0f4c5bd2526be3f38baf8b
+  s_cf968ce7d4cc1795fed19306 --> u_e_9f242bfdce4b583c9d958d8a
+  s_cf968ce7d4cc1795fed19306 -.-> s_f76d9d7468789b9acd6b7bfe
+  f_fdf723941e6fa064b262ade7 --> s_7a54cf30d0d554e5a8766c64
+  f_fdf723941e6fa064b262ade7 --> u_e_a43386a8fdcbed5b0ff7d645
+  f_fdf723941e6fa064b262ade7 --> u_e_a6ab3c1c670a9ec50838e704
+  s_cf968ce7d4cc1795fed19306 -.-> s_ed127b6ace48873935fd6000
+  f_fdf723941e6fa064b262ade7 --> u_e_aaedfecf7cee3f048223a082
+  s_cf968ce7d4cc1795fed19306 --> u_e_ab92069d13e64f2c8f6f46da
+  f_fdf723941e6fa064b262ade7 --> u_e_b02d5a88938cc1f353f8b547
+  f_fdf723941e6fa064b262ade7 --> u_e_b059e8847e2c55ed6dd33753
+  s_cf968ce7d4cc1795fed19306 --> u_e_b478159c880b19b3e1c011fa
+  f_fdf723941e6fa064b262ade7 --> u_e_b51dd3c4c5ae9ac39439ffe9
+  f_fdf723941e6fa064b262ade7 --> u_e_b659a6d877e5ecd163324b37
+  f_fdf723941e6fa064b262ade7 --> s_7a54cf30d0d554e5a8766c64
+  f_fdf723941e6fa064b262ade7 --> u_e_bc67d4a69d1a3a169a6da932
+  s_17f58733c667055c20e28a74 -.-> s_828ec9770a2e1b0ce96f6d7f
+  f_fdf723941e6fa064b262ade7 --> u_e_bec0f50f398a818a74000c86
+  f_fdf723941e6fa064b262ade7 --> u_e_c3a96042829113900e51af52
+  f_fdf723941e6fa064b262ade7 --> u_e_c6d03ef0fec33c0c40170140
+  s_3b123a6864570a16208cca55 -.-> s_72d5b28c496227db76dd9030
+  s_cf968ce7d4cc1795fed19306 --> u_e_c7946ba3ab5cb107f40f2d7e
+  s_cf968ce7d4cc1795fed19306 -.-> s_b70fc9f324519456a80b5f7c
+  f_fdf723941e6fa064b262ade7 --> u_e_c9b48027d40c958f5aefaa18
+  f_fdf723941e6fa064b262ade7 --> u_e_cd631c61f9a9f74c398e8823
+  f_fdf723941e6fa064b262ade7 --> u_e_cea5e7160ae11262738a8ac6
+  f_fdf723941e6fa064b262ade7 --> s_7a54cf30d0d554e5a8766c64
+  f_fdf723941e6fa064b262ade7 --> u_e_d43a1d1e57c9663e62918e5b
+  f_fdf723941e6fa064b262ade7 --> u_e_d59438eec534d5e767004e73
+  s_cf968ce7d4cc1795fed19306 -.-> s_8e87c8abec358cf8d840188e
+  s_cf968ce7d4cc1795fed19306 --> u_e_db62e960acdfe8312df64d2f
+  f_fdf723941e6fa064b262ade7 --> u_e_db9d2e9f6019a68ada24c672
+  f_fdf723941e6fa064b262ade7 --> u_e_dc178a529a8adabacdbeb1d4
+  f_fdf723941e6fa064b262ade7 --> u_e_dc7051f2f3a0dd58f2b37092
+  f_fdf723941e6fa064b262ade7 --> s_7a54cf30d0d554e5a8766c64
+  f_fdf723941e6fa064b262ade7 --> u_e_dd9d9c430972914439076280
+  f_fdf723941e6fa064b262ade7 --> s_7a54cf30d0d554e5a8766c64
+  s_cf968ce7d4cc1795fed19306 -.-> s_bea7fde3b939ab3a2283075b
+  f_fdf723941e6fa064b262ade7 --> s_7a54cf30d0d554e5a8766c64

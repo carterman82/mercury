@@ -1,0 +1,76 @@
+flowchart LR
+  f_b770b15e4baff0c7b14c8c66["src/shared/cloud-context.test.ts"]
+  s_8b302fc6c54c83a6e7c9a5f9["src/shared/cloud-context.ts: publishedContextLimit"]
+  u_e_86f6cb9fc58566a4e8ae0bf9["Unresolved: expect"]
+  u_e_8898b1f42f842b76cde2af6d["Unresolved: expect(withContextLimit({ ...claude, contextLimit: 128_000 })).toMatchObject"]
+  u_e_8b1774d441933477c91180ee["Unresolved: expect"]
+  u_e_8cad760610860e462043f514["Unresolved: expect"]
+  u_e_93b26a9e173d91a6ec05fc6a["Unresolved: expect"]
+  s_5388822ad2d66c126b805dfa["src/shared/model-context.ts: modelProfile"]
+  u_e_9605158647c0be7850f50dbb["Unresolved: expect"]
+  u_e_9b7d7ec0ed791aa69eb06d9f["Unresolved: expect(modelProfile({ ...model, id: 'unknown' }).contextLimit).toBe"]
+  u_e_9e31acbca9841dc56638b595["Unresolved: expect(publishedContextLimit('claude', id)).toBeUndefined"]
+  u_e_9f5b10d79f5c76562bc9a04b["Unresolved: expect"]
+  u_e_aa5abb693b19c24d0e1f1df8["Unresolved: expect(publishedContextLimit('claude', id)).toMatchObject"]
+  u_e_b0b38d7bc157489a0cd82df0["Unresolved: expect"]
+  u_e_b30a55500bb1186ec29af8d6["Unresolved: expect(withContextLimit({ ...model, contextLimit: 400_000, contextLimitSource: 'published' }).contextLimit).toBe"]
+  u_e_b431f0c166fc999ce81ea0c4["Unresolved: expect"]
+  u_e_b57e87c58ff6c73df62f631c["Unresolved: expect(modelProfile(claude).contextLimit).toBe"]
+  u_e_b7315b657eab9dfc08a69c41["Unresolved: expect(contextLimitDetails({ ...model, id: 'unknown', label: model.id })).toBeUndefined"]
+  u_e_bf4df9a4a459066b97018503["Unresolved: expect"]
+  u_e_c3057706ae478cdcc1a473b5["Unresolved: expect(refreshModelContext(legacy, [model]).contextLimit).toBe"]
+  u_e_c3df1b62021ad512cb8af8ef["Unresolved: expect"]
+  u_e_c41fbb0f11d9b7e176881e68["Unresolved: expect(contextLimitDetails({ ...model, contextLimit: 32_768 })).toEqual"]
+  u_e_c52d52a0300d150559282fc8["Unresolved: expect(withContextLimit({ ...model, contextLimit: 0 })).toMatchObject"]
+  s_0ed063a443f14c86961790fd["src/shared/cloud-context.ts: contextLimitDetails"]
+  u_e_cd05270eaaa565afe7653392["Unresolved: expect"]
+  u_e_cd904a1f97965435eb721bd8["Unresolved: expect"]
+  u_e_d177ec3000005178f3e11acc["Unresolved: it.each([   ['claude-sonnet-5', 1_000_000], ['claude-opus-5', 1_000_000], ['claude-fable-5', 1_000_000],   ['claude-opus-4-8', 1_000_000], ['claude-opus-4-7', 1_000_000],   ['claude-opus-4-5', 200_000], ['claude-haiku-4-5', 200_000], ] as const)"]
+  u_e_deda822bde168b5f7c62ed2a["Unresolved: expect(publishedContextLimit('openai', id)).toBeUndefined"]
+  u_e_df6d5e7a14316c62f503769d["Unresolved: expect"]
+  u_e_e1343b5eac04e89603ac4f77["Unresolved: it"]
+  u_e_e7d6eb001e2653247742025a["Unresolved: it"]
+  u_e_f3159b620bd9185c92734162["Unresolved: expect(publishedContextLimit('lmstudio', model.id)).toBeUndefined"]
+  u_e_f6757a2fea5060c831337366["Unresolved: expect(publishedContextLimit('openai', 'gpt-5.4')?.tokens).toBe"]
+  u_e_f6b2c6e24fd7f5e04a7d0994["Unresolved: expect"]
+  u_e_f81c126d64c2d28e0f4a85b4["Unresolved: expect"]
+  f_b770b15e4baff0c7b14c8c66 --> s_8b302fc6c54c83a6e7c9a5f9
+  f_b770b15e4baff0c7b14c8c66 --> u_e_86f6cb9fc58566a4e8ae0bf9
+  f_b770b15e4baff0c7b14c8c66 --> u_e_8898b1f42f842b76cde2af6d
+  f_b770b15e4baff0c7b14c8c66 --> u_e_8b1774d441933477c91180ee
+  f_b770b15e4baff0c7b14c8c66 --> u_e_8cad760610860e462043f514
+  f_b770b15e4baff0c7b14c8c66 --> s_8b302fc6c54c83a6e7c9a5f9
+  f_b770b15e4baff0c7b14c8c66 --> u_e_93b26a9e173d91a6ec05fc6a
+  f_b770b15e4baff0c7b14c8c66 --> s_5388822ad2d66c126b805dfa
+  f_b770b15e4baff0c7b14c8c66 --> u_e_9605158647c0be7850f50dbb
+  f_b770b15e4baff0c7b14c8c66 --> u_e_9b7d7ec0ed791aa69eb06d9f
+  f_b770b15e4baff0c7b14c8c66 --> u_e_9e31acbca9841dc56638b595
+  f_b770b15e4baff0c7b14c8c66 --> u_e_9f5b10d79f5c76562bc9a04b
+  f_b770b15e4baff0c7b14c8c66 --> s_5388822ad2d66c126b805dfa
+  f_b770b15e4baff0c7b14c8c66 --> u_e_aa5abb693b19c24d0e1f1df8
+  f_b770b15e4baff0c7b14c8c66 --> s_8b302fc6c54c83a6e7c9a5f9
+  f_b770b15e4baff0c7b14c8c66 --> u_e_b0b38d7bc157489a0cd82df0
+  f_b770b15e4baff0c7b14c8c66 --> u_e_b30a55500bb1186ec29af8d6
+  f_b770b15e4baff0c7b14c8c66 --> u_e_b431f0c166fc999ce81ea0c4
+  f_b770b15e4baff0c7b14c8c66 --> u_e_b57e87c58ff6c73df62f631c
+  f_b770b15e4baff0c7b14c8c66 --> u_e_b7315b657eab9dfc08a69c41
+  f_b770b15e4baff0c7b14c8c66 --> u_e_bf4df9a4a459066b97018503
+  f_b770b15e4baff0c7b14c8c66 --> u_e_c3057706ae478cdcc1a473b5
+  f_b770b15e4baff0c7b14c8c66 --> u_e_c3df1b62021ad512cb8af8ef
+  f_b770b15e4baff0c7b14c8c66 --> u_e_c41fbb0f11d9b7e176881e68
+  f_b770b15e4baff0c7b14c8c66 --> u_e_c52d52a0300d150559282fc8
+  f_b770b15e4baff0c7b14c8c66 --> s_0ed063a443f14c86961790fd
+  f_b770b15e4baff0c7b14c8c66 --> u_e_cd05270eaaa565afe7653392
+  f_b770b15e4baff0c7b14c8c66 --> u_e_cd904a1f97965435eb721bd8
+  f_b770b15e4baff0c7b14c8c66 --> u_e_d177ec3000005178f3e11acc
+  f_b770b15e4baff0c7b14c8c66 --> u_e_deda822bde168b5f7c62ed2a
+  f_b770b15e4baff0c7b14c8c66 --> u_e_df6d5e7a14316c62f503769d
+  f_b770b15e4baff0c7b14c8c66 --> u_e_e1343b5eac04e89603ac4f77
+  f_b770b15e4baff0c7b14c8c66 --> s_8b302fc6c54c83a6e7c9a5f9
+  f_b770b15e4baff0c7b14c8c66 --> u_e_e7d6eb001e2653247742025a
+  f_b770b15e4baff0c7b14c8c66 --> s_8b302fc6c54c83a6e7c9a5f9
+  f_b770b15e4baff0c7b14c8c66 --> s_8b302fc6c54c83a6e7c9a5f9
+  f_b770b15e4baff0c7b14c8c66 --> u_e_f3159b620bd9185c92734162
+  f_b770b15e4baff0c7b14c8c66 --> u_e_f6757a2fea5060c831337366
+  f_b770b15e4baff0c7b14c8c66 --> u_e_f6b2c6e24fd7f5e04a7d0994
+  f_b770b15e4baff0c7b14c8c66 --> u_e_f81c126d64c2d28e0f4a85b4

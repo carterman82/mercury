@@ -1,0 +1,86 @@
+flowchart LR
+  s_b12ed33770ce75dda195b1a4["src/main/chat.test.ts: uploadSources"]
+  s_cae60b05be48b19c58093049["ChatFiles.constructor · 11"]
+  s_736e6a586bec09bab8e8cd59["ChatFiles.createStandard · 59"]
+  s_176fecd913cca011d24867eb["src/main/file-formats.ts: FileFormats.graphic"]
+  s_d0eea3d2f63f9893f0688208["ChatFiles.create · 50"]
+  u_e_01eab0d241e6a9067135c497["Unresolved: JSON.parse"]
+  s_ab9119555475b6642d53afae["ChatFiles.filename · 12"]
+  u_e_0391b2a817bb13216d35f6c0["Unresolved: Error"]
+  u_e_0514a862ea93f72e16bd8793["Unresolved: sources.set"]
+  u_e_053e3dee366a195637852fe7["Unresolved: /\.rtf$/i.test"]
+  s_702caf43abde67fe87671fd6["ChatFiles.bytes · 17"]
+  s_73df895b7739624f600cd829["src/main/file-formats.ts: FileFormats.document"]
+  u_e_0c20d14cb5c04d0ae0b7019e["Unresolved: process.cwd"]
+  u_e_0c6f5f4e1d0737db831f060a["Unresolved: content.startsWith"]
+  s_de9b2f73b06a25a85802ae9a["ChatFiles.validateName · 47"]
+  u_e_0d54d80f072d0b7aeddddd99["Unresolved: /[&lt;&gt;:&quot;/\\|?*\x00-\x1f]/.test"]
+  s_a09efff11943e6c563bf5ebf["ChatFiles.import · 33"]
+  u_e_0da7823532ceef5dce6d844f["Unresolved: this.readPdf"]
+  s_377882a31711102b846e0ea1["ChatFiles.get · 16"]
+  u_e_0e35397ad8e803cc8e9ba500["Unresolved: fs.readFile"]
+  u_e_0f7b9e72efe8af796ae8cba6["Unresolved: name.toLowerCase().endsWith"]
+  u_e_113184280d6c8f65cdb9e41c["Unresolved: /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test"]
+  u_e_11d63dc09978286faab413a9["Unresolved: path.extname"]
+  s_3bd57ffc79ab5aa46a18925f["ChatFiles.store · 23"]
+  u_e_1217877d1471adade3126e27["Unresolved: fs.writeFile"]
+  u_e_135cdce9bab60aa9cf2d5df7["Unresolved: /^(con|prn|aux|nul|com[0-9]|lpt[0-9])(?:\.|$)/i.test"]
+  s_32a5813d88937ce3eb46d2aa["src/main/chat.ts: ChatService.send"]
+  s_1bc16026f3d796f1536aab53["src/main/chat.ts: ChatService.send.executeCall"]
+  u_e_1a3b019b927d9244e95f8d8f["Unresolved: Error"]
+  s_51136e2ed54f5b023c7409e3["ChatFiles.image · 19"]
+  u_e_1d463fcb00e77933cebffb45["Unresolved: bytes.subarray(0, 5).toString"]
+  u_e_1daea94733b1c3993717cdeb["Unresolved: Error"]
+  u_e_26246f082102d49ae7e4a3fd["Unresolved: Error"]
+  s_ff0ef2dcd6aeb7fc03f073d7["src/main/file-formats.ts: FileFormats.inspect"]
+  u_e_3183ffa04045e8a8a71e3174["Unresolved: path.join"]
+  u_e_35e23640843f968a76a5d1ac["Unresolved: Error"]
+  u_e_431f9bc07b04c6affd842445["Unresolved: Buffer.from"]
+  u_e_4b28bf63408845dff45212b4["Unresolved: Error"]
+  u_e_4b633a4196f1433aeaaa4f73["Unresolved: JSON.stringify"]
+  u_e_4dddfb8108dbbf4e7854d0b3["Unresolved: stat.isFile"]
+  u_e_5080b6b321992de15c417595["Unresolved: randomUUID"]
+  u_e_51bbc497a0326c98b9c7d283["Unresolved: fs.stat"]
+  u_e_559384b74efd183a4bdf773e["Unresolved: String"]
+  u_e_561ff4f6fd191cac57198e94["Unresolved: fs.mkdir"]
+  u_e_57060e85df22ba776891a2d2["Unresolved: extensions[tool]?.test"]
+  s_b12ed33770ce75dda195b1a4 -.-> s_cae60b05be48b19c58093049
+  s_736e6a586bec09bab8e8cd59 -.-> s_176fecd913cca011d24867eb
+  s_d0eea3d2f63f9893f0688208 --> u_e_01eab0d241e6a9067135c497
+  s_ab9119555475b6642d53afae --> u_e_0391b2a817bb13216d35f6c0
+  s_736e6a586bec09bab8e8cd59 --> u_e_0514a862ea93f72e16bd8793
+  s_d0eea3d2f63f9893f0688208 --> u_e_053e3dee366a195637852fe7
+  s_702caf43abde67fe87671fd6 -.-> s_ab9119555475b6642d53afae
+  s_736e6a586bec09bab8e8cd59 -.-> s_73df895b7739624f600cd829
+  s_cae60b05be48b19c58093049 --> u_e_0c20d14cb5c04d0ae0b7019e
+  s_d0eea3d2f63f9893f0688208 --> u_e_0c6f5f4e1d0737db831f060a
+  s_de9b2f73b06a25a85802ae9a --> u_e_0d54d80f072d0b7aeddddd99
+  s_a09efff11943e6c563bf5ebf --> u_e_0da7823532ceef5dce6d844f
+  s_377882a31711102b846e0ea1 --> u_e_0e35397ad8e803cc8e9ba500
+  s_d0eea3d2f63f9893f0688208 --> u_e_0f7b9e72efe8af796ae8cba6
+  s_ab9119555475b6642d53afae --> u_e_113184280d6c8f65cdb9e41c
+  s_a09efff11943e6c563bf5ebf --> u_e_11d63dc09978286faab413a9
+  s_3bd57ffc79ab5aa46a18925f --> u_e_1217877d1471adade3126e27
+  s_de9b2f73b06a25a85802ae9a --> u_e_135cdce9bab60aa9cf2d5df7
+  s_32a5813d88937ce3eb46d2aa -.-> s_377882a31711102b846e0ea1
+  s_1bc16026f3d796f1536aab53 -.-> s_377882a31711102b846e0ea1
+  s_d0eea3d2f63f9893f0688208 --> u_e_1a3b019b927d9244e95f8d8f
+  s_32a5813d88937ce3eb46d2aa -.-> s_51136e2ed54f5b023c7409e3
+  s_a09efff11943e6c563bf5ebf --> u_e_1d463fcb00e77933cebffb45
+  s_736e6a586bec09bab8e8cd59 --> u_e_1daea94733b1c3993717cdeb
+  s_377882a31711102b846e0ea1 -.-> s_ab9119555475b6642d53afae
+  s_736e6a586bec09bab8e8cd59 --> u_e_26246f082102d49ae7e4a3fd
+  s_a09efff11943e6c563bf5ebf -.-> s_ff0ef2dcd6aeb7fc03f073d7
+  s_ab9119555475b6642d53afae --> u_e_3183ffa04045e8a8a71e3174
+  s_d0eea3d2f63f9893f0688208 --> u_e_35e23640843f968a76a5d1ac
+  s_d0eea3d2f63f9893f0688208 --> u_e_431f9bc07b04c6affd842445
+  s_736e6a586bec09bab8e8cd59 --> u_e_4b28bf63408845dff45212b4
+  s_736e6a586bec09bab8e8cd59 --> u_e_4b633a4196f1433aeaaa4f73
+  s_a09efff11943e6c563bf5ebf --> u_e_4dddfb8108dbbf4e7854d0b3
+  s_a09efff11943e6c563bf5ebf -.-> s_3bd57ffc79ab5aa46a18925f
+  s_3bd57ffc79ab5aa46a18925f --> u_e_5080b6b321992de15c417595
+  s_a09efff11943e6c563bf5ebf --> u_e_51bbc497a0326c98b9c7d283
+  s_3bd57ffc79ab5aa46a18925f -.-> s_ab9119555475b6642d53afae
+  s_a09efff11943e6c563bf5ebf --> u_e_559384b74efd183a4bdf773e
+  s_3bd57ffc79ab5aa46a18925f --> u_e_561ff4f6fd191cac57198e94
+  s_736e6a586bec09bab8e8cd59 --> u_e_57060e85df22ba776891a2d2

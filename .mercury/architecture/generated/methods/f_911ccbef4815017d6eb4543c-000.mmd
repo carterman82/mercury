@@ -1,0 +1,75 @@
+flowchart LR
+  f_911ccbef4815017d6eb4543c["src/main/project-store.test.ts"]
+  s_9f9556e990e031d46e454003["src/main/store.ts: Store.saveChat"]
+  s_10b6283226ff498fc18604cc["src/main/store.ts: Store.constructor"]
+  u_e_0745ac9e4fbf8043c2a4082c["Unresolved: expect(store.chat('linked').projectId).toBe"]
+  u_e_0786315c95411bbbd1e4eb62["Unresolved: migrated.prepare(&quot;SELECT project_id FROM chats WHERE id = 'linked'&quot;).get"]
+  u_e_08a1ad77472d101a52b9779e["Unresolved: JSON.stringify"]
+  u_e_0f8c5694877a76ca2db5e192["Unresolved: expect(store.project('project')).toMatchObject"]
+  s_86f024fd6484279d58d3029e["src/main/store.ts: Store.close"]
+  u_e_1370b9873e818b8f8fc5344e["Unresolved: expect(restored.chat('linked').projectId).toBe"]
+  u_e_15a947b6adcd461a8cf1f922["Unresolved: expect(store.project('one')).toMatchObject"]
+  u_e_15e50da1da7a260ae1b11d16["Unresolved: expect"]
+  u_e_15ffadb1c82c0e89e5328dcc["Unresolved: expect(store.chat('linked').projectId).toBe"]
+  u_e_197ba3d7a65f1c0bd6fd84f5["Unresolved: rmSync"]
+  s_3328aa467be6836b854b5d35["database · 11"]
+  u_e_205fe25a1c6951ca5270e57d["Unresolved: path.join"]
+  u_e_2919684a9b7fafbbb6e4576b["Unresolved: expect"]
+  s_72e582247916ebc50956475d["src/main/store.ts: Store.chat"]
+  s_e775e7e77114fd939d71ae3f["thread · 12"]
+  u_e_2cf456c7a57057dedb87fa18["Unresolved: migrated.close"]
+  u_e_3249c90937816bce721062d9["Unresolved: DatabaseSync"]
+  u_e_3285407d4973f238b661a583["Unresolved: old.exec"]
+  u_e_34b636992fc87bc7dabbb1f0["Unresolved: expect(() =&gt; store.saveChat(thread('bad', 'missing'))).toThrow"]
+  u_e_42fa9cddb9531f8e193ec091["Unresolved: migrated.prepare"]
+  u_e_45c19a3bc759ee8468e9d7c3["Unresolved: interrupted.close"]
+  u_e_4da9aa189f0d86c1b42ec255["Unresolved: expect"]
+  u_e_5541017e5f8b7d329fdcec47["Unresolved: old.prepare('INSERT INTO projects VALUES (?,?)').run"]
+  u_e_58ec3726a26b163b8e9adeb4["Unresolved: roots.splice"]
+  u_e_5c1ec80a34b6ffa68a1957e8["Unresolved: expect(restored.chat('active')).toMatchObject"]
+  u_e_5c467e9fa13d5706a7f30f88["Unresolved: old.prepare"]
+  u_e_5cbb69b01232c91e61429833["Unresolved: it"]
+  u_e_63c29a3db55b92e201fee6a7["Unresolved: expect(() =&gt; store.saveChat(thread('linked', 'two'))).toThrow"]
+  u_e_643f4fd3a2ee5ab2077367b4["Unresolved: expect"]
+  u_e_655ce6d71eb546245182a8a4["Unresolved: expect"]
+  s_588b838882c34879c8cb89b7["src/main/store.ts: Store.saveProject"]
+  f_911ccbef4815017d6eb4543c -.-> s_9f9556e990e031d46e454003
+  f_911ccbef4815017d6eb4543c -.-> s_10b6283226ff498fc18604cc
+  f_911ccbef4815017d6eb4543c --> u_e_0745ac9e4fbf8043c2a4082c
+  f_911ccbef4815017d6eb4543c --> u_e_0786315c95411bbbd1e4eb62
+  f_911ccbef4815017d6eb4543c --> u_e_08a1ad77472d101a52b9779e
+  f_911ccbef4815017d6eb4543c --> u_e_0f8c5694877a76ca2db5e192
+  f_911ccbef4815017d6eb4543c -.-> s_86f024fd6484279d58d3029e
+  f_911ccbef4815017d6eb4543c --> u_e_1370b9873e818b8f8fc5344e
+  f_911ccbef4815017d6eb4543c --> u_e_15a947b6adcd461a8cf1f922
+  f_911ccbef4815017d6eb4543c --> u_e_15e50da1da7a260ae1b11d16
+  f_911ccbef4815017d6eb4543c --> u_e_15ffadb1c82c0e89e5328dcc
+  f_911ccbef4815017d6eb4543c --> u_e_197ba3d7a65f1c0bd6fd84f5
+  s_3328aa467be6836b854b5d35 --> u_e_205fe25a1c6951ca5270e57d
+  f_911ccbef4815017d6eb4543c --> u_e_2919684a9b7fafbbb6e4576b
+  f_911ccbef4815017d6eb4543c -.-> s_72e582247916ebc50956475d
+  f_911ccbef4815017d6eb4543c --> s_e775e7e77114fd939d71ae3f
+  f_911ccbef4815017d6eb4543c --> u_e_2cf456c7a57057dedb87fa18
+  f_911ccbef4815017d6eb4543c -.-> s_10b6283226ff498fc18604cc
+  f_911ccbef4815017d6eb4543c --> u_e_3249c90937816bce721062d9
+  f_911ccbef4815017d6eb4543c --> u_e_3285407d4973f238b661a583
+  f_911ccbef4815017d6eb4543c --> u_e_34b636992fc87bc7dabbb1f0
+  f_911ccbef4815017d6eb4543c -.-> s_9f9556e990e031d46e454003
+  f_911ccbef4815017d6eb4543c --> s_e775e7e77114fd939d71ae3f
+  f_911ccbef4815017d6eb4543c --> u_e_42fa9cddb9531f8e193ec091
+  f_911ccbef4815017d6eb4543c --> u_e_45c19a3bc759ee8468e9d7c3
+  f_911ccbef4815017d6eb4543c -.-> s_86f024fd6484279d58d3029e
+  f_911ccbef4815017d6eb4543c -.-> s_86f024fd6484279d58d3029e
+  f_911ccbef4815017d6eb4543c --> s_e775e7e77114fd939d71ae3f
+  f_911ccbef4815017d6eb4543c --> u_e_4da9aa189f0d86c1b42ec255
+  f_911ccbef4815017d6eb4543c -.-> s_72e582247916ebc50956475d
+  f_911ccbef4815017d6eb4543c --> u_e_5541017e5f8b7d329fdcec47
+  f_911ccbef4815017d6eb4543c --> u_e_58ec3726a26b163b8e9adeb4
+  f_911ccbef4815017d6eb4543c --> u_e_5c1ec80a34b6ffa68a1957e8
+  f_911ccbef4815017d6eb4543c --> u_e_5c467e9fa13d5706a7f30f88
+  f_911ccbef4815017d6eb4543c --> u_e_5cbb69b01232c91e61429833
+  f_911ccbef4815017d6eb4543c --> u_e_63c29a3db55b92e201fee6a7
+  f_911ccbef4815017d6eb4543c --> u_e_643f4fd3a2ee5ab2077367b4
+  f_911ccbef4815017d6eb4543c --> s_e775e7e77114fd939d71ae3f
+  f_911ccbef4815017d6eb4543c --> u_e_655ce6d71eb546245182a8a4
+  f_911ccbef4815017d6eb4543c -.-> s_588b838882c34879c8cb89b7

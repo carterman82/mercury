@@ -1,0 +1,82 @@
+flowchart LR
+  s_8db8527c66d356bfa790ca3f["WebSearch.search · 91"]
+  s_c5c05d455b3c17e0eb48b889["attr · 7"]
+  f_7b97eba85f3c924c4b9adae5["src/main/web-search.ts"]
+  u_e_0328f5624e5465aca3fe52ef["Unresolved: z.string"]
+  s_a727f555fbdc0a5be8fced40["WebSearch.read · 118"]
+  s_1f1da97e24fdff9df49618c1["nodes · 26"]
+  s_6e856b10678f7f82b4aa2f92["WebSearch.request · 70"]
+  u_e_0523da788519832bb7e88d2f["Unresolved: ['application/json', 'application/xml', 'application/xhtml+xml', 'application/ld+json'].includes"]
+  u_e_069c7dad8c5951ab91e15df2["Unresolved: Object.entries(webSchemas).map"]
+  u_e_07ae7d87cad228ba8db873ae["Unresolved: Set"]
+  s_9bbb4883cf0c890e1430f080["WebSearch.handles · 60"]
+  u_e_08db7b5a16fa3586f05662c8["Unresolved: Object.hasOwn"]
+  s_af5fbbb22ac7a9dbd1fd3189["WebSearch.execute · 61"]
+  u_e_0a4824b4ee50fdafd451571f["Unresolved: webSchemas.web_search.parse"]
+  u_e_0a9698de7e2ff9aa1e5f52f8["Unresolved: Error"]
+  s_e8410e09b3afc03abe848988["text · 10"]
+  u_e_0c50b1edd56a14e0c7235f46["Unresolved: parts.push"]
+  s_356548f8fa802f93f977526f["clean · 25"]
+  u_e_0e228e3fefc5bfadb3f9cb7c["Unresolved: value.replace"]
+  u_e_0efcd213228a70170608f408["Unresolved: seen.add"]
+  s_cb69a8b678f15ba8175e27a0["src/main/web-search.test.ts: service"]
+  s_9874310e2ebc639cf6a6c41c["WebSearch.constructor · 59"]
+  u_e_100ef68311d6d5cd0ebf0775["Unresolved: /^(p|div|section|article|main|header|footer|nav|h[1-6]|li|tr|br|pre|blockquote)$/.test"]
+  s_74fa55cfcb99b18b906c187e["children · 6"]
+  u_e_12f9d268323bfcdfeeb971f4["Unresolved: (response.headers.get('content-type') ?? '').split(';')[0].trim().toLowerCase"]
+  s_4b7964bbec9f8d0ccf35d7db["src/main/chat-capabilities.ts: ChatCapabilities.constructor"]
+  u_e_14dea1d03916bd16b25e2b0f["Unresolved: parts.push"]
+  u_e_1654161027735b7533d570aa["Unresolved: Error"]
+  u_e_1aa911f8f5adc72f98a8d4fd["Unresolved: URL"]
+  u_e_1ba39fc8b101216e35021b49["Unresolved: all.find"]
+  u_e_1ce091778386ca1073e36ebd["Unresolved: parts.join"]
+  s_e2a521ec7977786a9fa36230["tag · 8"]
+  u_e_1fb056ea33ef16d3b007d8bb["Unresolved: children(children(root).find(item =&gt; tag(item) === 'html')!).find"]
+  u_e_21b3cce44c78ad0ae1357d6a["Unresolved: parse"]
+  u_e_27c3c9d42afa82336bde3e98["Unresolved: combined.throwIfAborted"]
+  u_e_2afc688cc3052b91178553bb["Unresolved: z.number().int().min(1).max(10).optional"]
+  u_e_2b057fba0981dedf66e7898f["Unresolved: z.toJSONSchema"]
+  u_e_2b0c36d40b5368bacf792a42["Unresolved: attr(node, 'class').split"]
+  u_e_2b5bdab8220f11a8bfb5f6de["Unresolved: ['duckduckgo.com', 'html.duckduckgo.com'].includes"]
+  u_e_3428c784730314a47b5c5f2f["Unresolved: attr(node, 'class').split(/\s+/).some"]
+  u_e_35a4bc9e6397c62bc535813b["Unresolved: Object.entries"]
+  s_8db8527c66d356bfa790ca3f --> s_c5c05d455b3c17e0eb48b889
+  f_7b97eba85f3c924c4b9adae5 --> u_e_0328f5624e5465aca3fe52ef
+  s_a727f555fbdc0a5be8fced40 --> s_1f1da97e24fdff9df49618c1
+  s_6e856b10678f7f82b4aa2f92 --> u_e_0523da788519832bb7e88d2f
+  f_7b97eba85f3c924c4b9adae5 --> u_e_069c7dad8c5951ab91e15df2
+  s_8db8527c66d356bfa790ca3f --> u_e_07ae7d87cad228ba8db873ae
+  s_9bbb4883cf0c890e1430f080 --> u_e_08db7b5a16fa3586f05662c8
+  s_af5fbbb22ac7a9dbd1fd3189 --> u_e_0a4824b4ee50fdafd451571f
+  s_6e856b10678f7f82b4aa2f92 --> u_e_0a9698de7e2ff9aa1e5f52f8
+  s_e8410e09b3afc03abe848988 --> u_e_0c50b1edd56a14e0c7235f46
+  s_356548f8fa802f93f977526f --> u_e_0e228e3fefc5bfadb3f9cb7c
+  s_8db8527c66d356bfa790ca3f --> u_e_0efcd213228a70170608f408
+  s_cb69a8b678f15ba8175e27a0 -.-> s_9874310e2ebc639cf6a6c41c
+  s_e8410e09b3afc03abe848988 --> u_e_100ef68311d6d5cd0ebf0775
+  s_1f1da97e24fdff9df49618c1 --> s_74fa55cfcb99b18b906c187e
+  s_a727f555fbdc0a5be8fced40 --> s_74fa55cfcb99b18b906c187e
+  s_8db8527c66d356bfa790ca3f --> s_1f1da97e24fdff9df49618c1
+  s_6e856b10678f7f82b4aa2f92 --> u_e_12f9d268323bfcdfeeb971f4
+  s_4b7964bbec9f8d0ccf35d7db -.-> s_9874310e2ebc639cf6a6c41c
+  s_e8410e09b3afc03abe848988 --> u_e_14dea1d03916bd16b25e2b0f
+  s_6e856b10678f7f82b4aa2f92 --> u_e_1654161027735b7533d570aa
+  s_8db8527c66d356bfa790ca3f --> u_e_1aa911f8f5adc72f98a8d4fd
+  s_a727f555fbdc0a5be8fced40 --> u_e_1ba39fc8b101216e35021b49
+  s_a727f555fbdc0a5be8fced40 -.-> s_6e856b10678f7f82b4aa2f92
+  s_e8410e09b3afc03abe848988 --> u_e_1ce091778386ca1073e36ebd
+  s_a727f555fbdc0a5be8fced40 --> s_e2a521ec7977786a9fa36230
+  s_a727f555fbdc0a5be8fced40 --> u_e_1fb056ea33ef16d3b007d8bb
+  s_8db8527c66d356bfa790ca3f --> s_c5c05d455b3c17e0eb48b889
+  s_a727f555fbdc0a5be8fced40 --> u_e_21b3cce44c78ad0ae1357d6a
+  s_a727f555fbdc0a5be8fced40 --> s_e8410e09b3afc03abe848988
+  s_6e856b10678f7f82b4aa2f92 --> u_e_27c3c9d42afa82336bde3e98
+  s_8db8527c66d356bfa790ca3f --> s_c5c05d455b3c17e0eb48b889
+  f_7b97eba85f3c924c4b9adae5 --> u_e_2afc688cc3052b91178553bb
+  f_7b97eba85f3c924c4b9adae5 --> u_e_2b057fba0981dedf66e7898f
+  s_8db8527c66d356bfa790ca3f --> u_e_2b0c36d40b5368bacf792a42
+  s_8db8527c66d356bfa790ca3f --> u_e_2b5bdab8220f11a8bfb5f6de
+  s_1f1da97e24fdff9df49618c1 --> s_e2a521ec7977786a9fa36230
+  s_a727f555fbdc0a5be8fced40 --> s_356548f8fa802f93f977526f
+  s_8db8527c66d356bfa790ca3f --> u_e_3428c784730314a47b5c5f2f
+  f_7b97eba85f3c924c4b9adae5 --> u_e_35a4bc9e6397c62bc535813b

@@ -1,0 +1,83 @@
+flowchart LR
+  s_d0eea3d2f63f9893f0688208["ChatFiles.create · 50"]
+  u_e_58cb8f2ffff3d98c11d6bb86["Unresolved: path.extname(name).slice"]
+  s_cd1863b7fbad0d7082156c1f["ChatFiles.text · 18"]
+  s_ab9119555475b6642d53afae["ChatFiles.filename · 12"]
+  s_de9b2f73b06a25a85802ae9a["ChatFiles.validateName · 47"]
+  u_e_604b3677a4e1f6aaa707ce38["Unresolved: Error"]
+  s_736e6a586bec09bab8e8cd59["ChatFiles.createStandard · 59"]
+  s_702caf43abde67fe87671fd6["ChatFiles.bytes · 17"]
+  s_72bb12b4c5f88bad03f676c6["src/main/file-formats.ts: FileFormats.spreadsheet"]
+  s_026cda64760dc195a4c4e777["src/main/file-formats.ts: FileFormats.presentation"]
+  s_32a5813d88937ce3eb46d2aa["src/main/chat.ts: ChatService.send"]
+  s_a09efff11943e6c563bf5ebf["ChatFiles.import · 33"]
+  u_e_6e566d50e4959b941f816f52["Unresolved: path.extname(filename).toLowerCase"]
+  u_e_6ef6c13ea486bb6d67799833["Unresolved: path.basename"]
+  s_cae60b05be48b19c58093049["ChatFiles.constructor · 11"]
+  s_2320762902884e3cfbb90c04["src/main/file-formats.ts: FileFormats.constructor"]
+  s_3bd57ffc79ab5aa46a18925f["ChatFiles.store · 23"]
+  u_e_733532991c4cfa95aaaf47a4["Unresolved: Error"]
+  u_e_73870fe71a2b6d9deb0f8b37["Unresolved: /\.json$/i.test"]
+  u_e_771f102a3e59c68f7d736383["Unresolved: /\.(docx?|xlsx?|xlsm|pptx?|png|jpe?g|gif|webp|bmp|tiff?|ico|zip|7z|rar|exe|dll|mp[34]|wav)$/i.test"]
+  s_1bc16026f3d796f1536aab53["src/main/chat.ts: ChatService.send.executeCall"]
+  s_d6fbfb7b4116d97c27f32b80["src/main/file-inspection.ts: boundedInspection"]
+  u_e_7cc06fc5422eeb57b2a154d5["Unresolved: path.extname"]
+  s_1e93ecf12139cf2cfed6c7cd["src/main/file-inspection.ts: binaryInspection"]
+  u_e_84c0173a6eac8ba6a7617012["Unresolved: Error"]
+  u_e_875b8829acf3ec33ee0338db["Unresolved: Error"]
+  u_e_89669ce81f565325f8034a36["Unresolved: fs.readFile"]
+  u_e_8a32557be8943689bf656917["Unresolved: Map"]
+  u_e_8f1ba13fa8b3ce252fbeee96["Unresolved: archiveSchema.parse"]
+  s_1afc7ca6c5674db16242b7be["src/main/chat.ts: ChatService.send.readForSubagent"]
+  u_e_956c734b363fb425c585993e["Unresolved: JSON.stringify"]
+  u_e_96e8a9508c3e82eb3c2daf0f["Unresolved: Error"]
+  u_e_9851b22ba4a85e1ed2f91afe["Unresolved: Error"]
+  s_51136e2ed54f5b023c7409e3["ChatFiles.image · 19"]
+  u_e_a129e6a4795f2d2dc3ef1f89["Unresolved: content.trim"]
+  s_377882a31711102b846e0ea1["ChatFiles.get · 16"]
+  u_e_a780d0b909b929679d05697a["Unresolved: fs.writeFile"]
+  u_e_a80085a02ca842578bd7db16["Unresolved: Error"]
+  u_e_ac383fdd43c9d4c300759a86["Unresolved: /[. ]$/.test"]
+  u_e_b831efaa35c4cd9e53d4a18c["Unresolved: fs.writeFile"]
+  u_e_b97eb6fc291517398729a592["Unresolved: path.extname(name).slice(1).toUpperCase"]
+  s_c7848f6706a9c2e4da3538bc["src/main/file-formats.ts: FileFormats.visionImage"]
+  s_d0eea3d2f63f9893f0688208 --> u_e_58cb8f2ffff3d98c11d6bb86
+  s_cd1863b7fbad0d7082156c1f -.-> s_ab9119555475b6642d53afae
+  s_de9b2f73b06a25a85802ae9a --> u_e_604b3677a4e1f6aaa707ce38
+  s_736e6a586bec09bab8e8cd59 -.-> s_702caf43abde67fe87671fd6
+  s_736e6a586bec09bab8e8cd59 -.-> s_72bb12b4c5f88bad03f676c6
+  s_736e6a586bec09bab8e8cd59 -.-> s_026cda64760dc195a4c4e777
+  s_32a5813d88937ce3eb46d2aa -.-> s_cd1863b7fbad0d7082156c1f
+  s_a09efff11943e6c563bf5ebf --> u_e_6e566d50e4959b941f816f52
+  s_d0eea3d2f63f9893f0688208 -.-> s_de9b2f73b06a25a85802ae9a
+  s_a09efff11943e6c563bf5ebf --> u_e_6ef6c13ea486bb6d67799833
+  s_cae60b05be48b19c58093049 -.-> s_2320762902884e3cfbb90c04
+  s_3bd57ffc79ab5aa46a18925f --> u_e_733532991c4cfa95aaaf47a4
+  s_d0eea3d2f63f9893f0688208 --> u_e_73870fe71a2b6d9deb0f8b37
+  s_d0eea3d2f63f9893f0688208 --> u_e_771f102a3e59c68f7d736383
+  s_1bc16026f3d796f1536aab53 -.-> s_cd1863b7fbad0d7082156c1f
+  s_736e6a586bec09bab8e8cd59 --> s_d6fbfb7b4116d97c27f32b80
+  s_d0eea3d2f63f9893f0688208 --> u_e_7cc06fc5422eeb57b2a154d5
+  s_a09efff11943e6c563bf5ebf --> s_1e93ecf12139cf2cfed6c7cd
+  s_d0eea3d2f63f9893f0688208 --> u_e_84c0173a6eac8ba6a7617012
+  s_1bc16026f3d796f1536aab53 -.-> s_736e6a586bec09bab8e8cd59
+  s_a09efff11943e6c563bf5ebf --> u_e_875b8829acf3ec33ee0338db
+  s_702caf43abde67fe87671fd6 --> u_e_89669ce81f565325f8034a36
+  s_736e6a586bec09bab8e8cd59 --> u_e_8a32557be8943689bf656917
+  s_736e6a586bec09bab8e8cd59 --> u_e_8f1ba13fa8b3ce252fbeee96
+  s_1afc7ca6c5674db16242b7be -.-> s_cd1863b7fbad0d7082156c1f
+  s_3bd57ffc79ab5aa46a18925f --> u_e_956c734b363fb425c585993e
+  s_a09efff11943e6c563bf5ebf --> u_e_96e8a9508c3e82eb3c2daf0f
+  s_736e6a586bec09bab8e8cd59 --> u_e_9851b22ba4a85e1ed2f91afe
+  s_51136e2ed54f5b023c7409e3 -.-> s_702caf43abde67fe87671fd6
+  s_d0eea3d2f63f9893f0688208 --> u_e_a129e6a4795f2d2dc3ef1f89
+  s_736e6a586bec09bab8e8cd59 -.-> s_377882a31711102b846e0ea1
+  s_3bd57ffc79ab5aa46a18925f --> u_e_a780d0b909b929679d05697a
+  s_736e6a586bec09bab8e8cd59 --> u_e_a80085a02ca842578bd7db16
+  s_de9b2f73b06a25a85802ae9a --> u_e_ac383fdd43c9d4c300759a86
+  s_3bd57ffc79ab5aa46a18925f -.-> s_ab9119555475b6642d53afae
+  s_3bd57ffc79ab5aa46a18925f --> u_e_b831efaa35c4cd9e53d4a18c
+  s_d0eea3d2f63f9893f0688208 --> u_e_b97eb6fc291517398729a592
+  s_51136e2ed54f5b023c7409e3 -.-> s_c7848f6706a9c2e4da3538bc
+  s_3bd57ffc79ab5aa46a18925f -.-> s_ab9119555475b6642d53afae
+  s_736e6a586bec09bab8e8cd59 -.-> s_3bd57ffc79ab5aa46a18925f

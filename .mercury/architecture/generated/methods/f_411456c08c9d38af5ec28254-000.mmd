@@ -1,0 +1,75 @@
+flowchart LR
+  s_5b4f50a717ab376038fc77db["within · 37"]
+  u_e_005937e9a2accf035ba29464["Unresolved: path.relative"]
+  s_e2d23644676d3f99a2a33f68["assessProjectAction · 42"]
+  u_e_0de6171fedc658a81186437f["Unresolved: target.includes"]
+  u_e_140dd08ec5baff03764c5397["Unresolved: ['read', 'write', 'command', 'plugin', 'integrate'].includes"]
+  s_92fc798ff6adf41ba96f748a["OneShotProjectGrants.clear · 96"]
+  u_e_1689084b5ab6cc61a3439b87["Unresolved: this.grants.clear"]
+  s_4d2467463907bcffb0d5fc52["assessProjectAction.decision · 43"]
+  s_1df4c45b70b014dee8d8b5f6["actionFingerprint · 67"]
+  u_e_2616077d338ad4ae5de98ed5["Unresolved: createHash('sha256').update"]
+  u_e_2b75db1b3b42d68fa2c771fc["Unresolved: path.isAbsolute"]
+  s_daafbe7406118f2fb605dfd6["src/main/project-tools.ts: ProjectTools.invalidate"]
+  s_9c46ec0b4f332abee614e07a["OneShotProjectGrants.invalidateProject · 93"]
+  s_6027b3409df606d3e466e942["OneShotProjectGrants.prune · 97"]
+  u_e_3d8dc8b35725fd1d8de58dab["Unresolved: this.now"]
+  u_e_40fb9cc172f1a8e0c6a333b7["Unresolved: path.isAbsolute"]
+  s_434b5124f189fce3883debff["OneShotProjectGrants.issue · 82"]
+  u_e_41735f4ce6cda6475d653c13["Unresolved: this.grants.set"]
+  s_f27f8fdef451d7bb05c5048b["src/main/project-tools.ts: ProjectTools.authorize"]
+  u_e_4bca2d7ee8ad89425aa6e7c3["Unresolved: createHash"]
+  u_e_53812eff8e866e3a7843c1cd["Unresolved: path.isAbsolute"]
+  f_411456c08c9d38af5ec28254["src/main/project-policy.ts"]
+  u_e_596c019c288e51a5f244a12b["Unresolved: Map"]
+  s_baa6cf57ae4a7200bc72a010["OneShotProjectGrants.consume · 88"]
+  u_e_6197c35ef860bda5e9843efd["Unresolved: this.grants.get"]
+  u_e_660c287a1d731952c8d3e003["Unresolved: createHash('sha256').update(JSON.stringify([     context.projectId, context.chatId, context.mode, context.revision, context.workspaceRoot,     action.kind, action.paths ?? [], action.command ?? null, action.cwd ?? null,     action.contentHash ?? null, action.agentId ?? null, action.destructive ?? fa"]
+  u_e_6f48f0f8635fd6840bd205d3["Unresolved: this.grants.delete"]
+  u_e_76fca6d7c18de97ee3e1a816["Unresolved: JSON.stringify"]
+  u_e_778f1083c8199553a75f8846["Unresolved: action.cwd.includes"]
+  u_e_7f7d8f20b77886601f9ff201["Unresolved: this.grants.delete"]
+  s_420a6667f9d16798afc6a039["OneShotProjectGrants.constructor · 79"]
+  u_e_924236c52df423ffb428f9a3["Unresolved: Error"]
+  u_e_97e31b5e5bf1dd64d2ed9d1f["Unresolved: action.paths?.some"]
+  u_e_9d5aad7d040ed29e1b898e97["Unresolved: Number.isFinite"]
+  s_5b4f50a717ab376038fc77db --> u_e_005937e9a2accf035ba29464
+  s_e2d23644676d3f99a2a33f68 --> s_5b4f50a717ab376038fc77db
+  s_e2d23644676d3f99a2a33f68 --> u_e_0de6171fedc658a81186437f
+  s_e2d23644676d3f99a2a33f68 --> u_e_140dd08ec5baff03764c5397
+  s_92fc798ff6adf41ba96f748a --> u_e_1689084b5ab6cc61a3439b87
+  s_e2d23644676d3f99a2a33f68 --> s_4d2467463907bcffb0d5fc52
+  s_e2d23644676d3f99a2a33f68 --> s_4d2467463907bcffb0d5fc52
+  s_e2d23644676d3f99a2a33f68 --> s_4d2467463907bcffb0d5fc52
+  s_1df4c45b70b014dee8d8b5f6 --> u_e_2616077d338ad4ae5de98ed5
+  s_e2d23644676d3f99a2a33f68 --> s_4d2467463907bcffb0d5fc52
+  s_e2d23644676d3f99a2a33f68 --> s_4d2467463907bcffb0d5fc52
+  s_e2d23644676d3f99a2a33f68 --> s_4d2467463907bcffb0d5fc52
+  s_e2d23644676d3f99a2a33f68 --> u_e_2b75db1b3b42d68fa2c771fc
+  s_daafbe7406118f2fb605dfd6 -.-> s_9c46ec0b4f332abee614e07a
+  s_6027b3409df606d3e466e942 --> u_e_3d8dc8b35725fd1d8de58dab
+  s_e2d23644676d3f99a2a33f68 --> s_4d2467463907bcffb0d5fc52
+  s_5b4f50a717ab376038fc77db --> u_e_40fb9cc172f1a8e0c6a333b7
+  s_434b5124f189fce3883debff --> u_e_41735f4ce6cda6475d653c13
+  s_f27f8fdef451d7bb05c5048b -.-> s_434b5124f189fce3883debff
+  s_1df4c45b70b014dee8d8b5f6 --> u_e_4bca2d7ee8ad89425aa6e7c3
+  s_e2d23644676d3f99a2a33f68 --> u_e_53812eff8e866e3a7843c1cd
+  s_e2d23644676d3f99a2a33f68 --> s_5b4f50a717ab376038fc77db
+  f_411456c08c9d38af5ec28254 --> u_e_596c019c288e51a5f244a12b
+  s_baa6cf57ae4a7200bc72a010 --> s_1df4c45b70b014dee8d8b5f6
+  s_baa6cf57ae4a7200bc72a010 --> u_e_6197c35ef860bda5e9843efd
+  s_e2d23644676d3f99a2a33f68 --> s_4d2467463907bcffb0d5fc52
+  s_1df4c45b70b014dee8d8b5f6 --> u_e_660c287a1d731952c8d3e003
+  s_6027b3409df606d3e466e942 --> u_e_6f48f0f8635fd6840bd205d3
+  s_434b5124f189fce3883debff -.-> s_6027b3409df606d3e466e942
+  s_e2d23644676d3f99a2a33f68 --> s_4d2467463907bcffb0d5fc52
+  s_1df4c45b70b014dee8d8b5f6 --> u_e_76fca6d7c18de97ee3e1a816
+  s_e2d23644676d3f99a2a33f68 --> u_e_778f1083c8199553a75f8846
+  s_e2d23644676d3f99a2a33f68 --> s_4d2467463907bcffb0d5fc52
+  s_9c46ec0b4f332abee614e07a --> u_e_7f7d8f20b77886601f9ff201
+  s_f27f8fdef451d7bb05c5048b -.-> s_baa6cf57ae4a7200bc72a010
+  s_420a6667f9d16798afc6a039 --> u_e_924236c52df423ffb428f9a3
+  s_e2d23644676d3f99a2a33f68 --> s_4d2467463907bcffb0d5fc52
+  s_e2d23644676d3f99a2a33f68 --> u_e_97e31b5e5bf1dd64d2ed9d1f
+  s_420a6667f9d16798afc6a039 --> u_e_9d5aad7d040ed29e1b898e97
+  s_e2d23644676d3f99a2a33f68 --> s_4d2467463907bcffb0d5fc52

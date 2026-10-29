@@ -1,0 +1,37 @@
+flowchart LR
+  s_e66bc46d8b32f3b8eff3c820["link · 37"]
+  u_e_ed045ba536d33e5a6bf2dce5["Unresolved: URL"]
+  s_8db8527c66d356bfa790ca3f["WebSearch.search · 91"]
+  s_356548f8fa802f93f977526f["clean · 25"]
+  s_c5c05d455b3c17e0eb48b889["attr · 7"]
+  s_a727f555fbdc0a5be8fced40["WebSearch.read · 118"]
+  u_e_f42d42c854fa3ef0a5379109["Unresolved: seen.has"]
+  s_e8410e09b3afc03abe848988["text · 10"]
+  s_9874310e2ebc639cf6a6c41c["WebSearch.constructor · 59"]
+  s_6d2de09a43552387966259c9["src/main/web-policy.ts: WebPolicy.constructor"]
+  s_6e856b10678f7f82b4aa2f92["WebSearch.request · 70"]
+  u_e_f9f65ea6f5fce710bc6b2fe8["Unresolved: (response.headers.get('content-type') ?? '').split"]
+  s_e2a521ec7977786a9fa36230["tag · 8"]
+  f_7b97eba85f3c924c4b9adae5["src/main/web-search.ts"]
+  u_e_fb7fbae65779e40adb4793f2["Unresolved: z.number().int"]
+  u_e_fc69731c19e6ce1fe9301d38["Unresolved: combined.throwIfAborted"]
+  u_e_fddcc4ab56dadb69ea24873d["Unresolved: z.number().int().min(0).max(300_000).optional"]
+  u_e_fddcd04be51c8ebba8c2fc2f["Unresolved: links.push"]
+  u_e_ff653f66050c823886e1cfaa["Unresolved: z.number"]
+  u_e_ffe4a241e3893481ff3a93a0["Unresolved: parts.push"]
+  s_e66bc46d8b32f3b8eff3c820 --> u_e_ed045ba536d33e5a6bf2dce5
+  s_8db8527c66d356bfa790ca3f --> s_356548f8fa802f93f977526f
+  s_8db8527c66d356bfa790ca3f --> s_c5c05d455b3c17e0eb48b889
+  s_a727f555fbdc0a5be8fced40 --> u_e_f42d42c854fa3ef0a5379109
+  s_a727f555fbdc0a5be8fced40 --> s_e8410e09b3afc03abe848988
+  s_9874310e2ebc639cf6a6c41c -.-> s_6d2de09a43552387966259c9
+  s_a727f555fbdc0a5be8fced40 --> s_e8410e09b3afc03abe848988
+  s_6e856b10678f7f82b4aa2f92 --> u_e_f9f65ea6f5fce710bc6b2fe8
+  s_a727f555fbdc0a5be8fced40 --> s_e2a521ec7977786a9fa36230
+  f_7b97eba85f3c924c4b9adae5 --> u_e_fb7fbae65779e40adb4793f2
+  s_6e856b10678f7f82b4aa2f92 --> u_e_fc69731c19e6ce1fe9301d38
+  f_7b97eba85f3c924c4b9adae5 --> u_e_fddcc4ab56dadb69ea24873d
+  s_a727f555fbdc0a5be8fced40 --> u_e_fddcd04be51c8ebba8c2fc2f
+  s_8db8527c66d356bfa790ca3f --> s_c5c05d455b3c17e0eb48b889
+  f_7b97eba85f3c924c4b9adae5 --> u_e_ff653f66050c823886e1cfaa
+  s_e8410e09b3afc03abe848988 --> u_e_ffe4a241e3893481ff3a93a0

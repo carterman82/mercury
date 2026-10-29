@@ -1,0 +1,93 @@
+flowchart LR
+  s_176fecd913cca011d24867eb["FileFormats.graphic · 237"]
+  u_e_67aea82ce5b1d41e9186d453["Unresolved: canvas.getContext"]
+  u_e_67f2d1af7c5969f1c36bedf2["Unresolved: loadImage"]
+  s_73df895b7739624f600cd829["FileFormats.document · 159"]
+  u_e_68093b3583be1e9c90f0a37b["Unresolved: documentSchema.parse"]
+  f_22cb000fc96e117144c24910["src/main/file-formats.ts"]
+  u_e_69ee5875b6f7a6820497ace2["Unresolved: z.string"]
+  s_a4059bc1c8aa188a3e79a205["FileFormats.document.plain · 164"]
+  u_e_6b5f8fdf09d2b9e7c5f750c8["Unresolved: node.children?.map(plain).join"]
+  u_e_6b99c427188473722e02991b["Unresolved: z.string().max"]
+  u_e_6c14d9dc40fa4d658e208e8f["Unresolved: canvas.toBuffer"]
+  u_e_6c6dfb2c93e79c6e08531696["Unresolved: input.name.toLowerCase"]
+  s_ff0ef2dcd6aeb7fc03f073d7["FileFormats.inspect · 88"]
+  s_2b346cb6c2756939c525f063["FileFormats.unzipHtml · 133"]
+  s_72bb12b4c5f88bad03f676c6["FileFormats.spreadsheet · 184"]
+  u_e_6d329fdc8eb977ca2ed7f060["Unresolved: sheet.columns.forEach"]
+  s_026cda64760dc195a4c4e777["FileFormats.presentation · 198"]
+  u_e_6e59ccd91c8a6622dd9c4525["Unresolved: slide.addShape"]
+  u_e_6e8497495efad1cf496e17c9["Unresolved: String"]
+  u_e_6f737bacee3649aaec8ae089["Unresolved: z.array(z.object({ title: z.string().min(1).max(100), body: z.string().max(1200).optional(), bullets: z.array(z.string().max(180)).max(10).optional(), table: z.array(z.array(z.string().max(160)).max(6)).max(14).optional(), notes: z.string().max(4000).optional() })).min"]
+  s_c7848f6706a9c2e4da3538bc["FileFormats.visionImage · 49"]
+  u_e_709c48ca6ae58ab1263ba63b["Unresolved: Math.max"]
+  u_e_70a2c66574e8c4ffeae04f65["Unresolved: slide.addNotes"]
+  s_bdb2bef9f8b6d08cea700533["src/main/file-inspection.ts: rtfText"]
+  s_2c31b29b5290d6ee79313d80["graphicSvg · 29"]
+  s_a381dd73a1af4933eaa18553["FileFormats.ocr · 66"]
+  u_e_7268e6bb2f945abc32c7866a["Unresolved: Promise.race"]
+  u_e_72db93a22d4a5f2ccc0d5b2f["Unresolved: z.string().max(500).optional"]
+  s_cae60b05be48b19c58093049["src/main/chat-files.ts: ChatFiles.constructor"]
+  s_2320762902884e3cfbb90c04["FileFormats.constructor · 45"]
+  u_e_731d648c6f1d7a41f17b5650["Unresolved: input.sheets.map(sheet =&gt; `[${sheet.name}]\n${sheet.rows.map(row =&gt; row.join('\t')).join('\n')}`).join"]
+  u_e_7335f828a7a749ba782dd5a7["Unresolved: z.string"]
+  u_e_75c016acfb7a7fe0b52cac10["Unresolved: z.string"]
+  u_e_77a41c8460fd5db4be95c320["Unresolved: presentationSchema.parse"]
+  u_e_77fb53ea65af28a81f84fd49["Unresolved: canvas.toBuffer"]
+  u_e_7843cf63311bf72a104ede7c["Unresolved: z.number().min(6).max(180).optional"]
+  s_371facf82d181de91c1c28c3["FileFormats.document.blocks · 172"]
+  u_e_78b947589b5e19f1d4f2ce9d["Unresolved: TextRun"]
+  u_e_79e19caa6703d2adfb9a3bd0["Unresolved: (async () =&gt; {           worker = await createWorker('eng', 1, { langPath: language, cacheMethod: 'none', gzip: true, errorHandler: () =&gt; {} });           if (timedOut) { await worker.terminate(); throw new Error('OCR timed out.'); }           const result = await worker.recognize(bytes);           "]
+  u_e_7a6f9880154f9740cf69105d["Unresolved: z.array(z.object({ name: z.string().min(1).max(200), content: z.string().max(300_000).optional(), fileId: z.string().uuid().optional() })).min(1).max"]
+  u_e_7c005793ce27810b9677f34f["Unresolved: z.array(z.string().max(180)).max"]
+  u_e_7c95e07930a4d155037e493f["Unresolved: z.array(z.array(z.string().max(160)).max(6)).max"]
+  u_e_7fd816524424bbe19f01ace7["Unresolved: Buffer.from"]
+  s_746274e067bb5b24f71eba9e["FileFormats.inspectWorkbook · 137"]
+  s_d6fbfb7b4116d97c27f32b80["src/main/file-inspection.ts: boundedInspection"]
+  u_e_81b32ab60957edbd2b7172f1["Unresolved: (node.value ?? '').split('\n').map"]
+  u_e_82b6715f905510e1fc0bb2fa["Unresolved: z.string().max"]
+  u_e_82d6b0197cac2dc33465b16c["Unresolved: z.number().int"]
+  u_e_8480b046dfad065ec4b9a8c8["Unresolved: createRequire"]
+  u_e_85291ba1d514b4e156dedb6a["Unresolved: /\.(xhtml|html|htm)$/i.test"]
+  u_e_862980860f509c5657184188["Unresolved: JSON.stringify"]
+  u_e_863d81137dced447fbfd8e79["Unresolved: setTimeout"]
+  s_176fecd913cca011d24867eb --> u_e_67aea82ce5b1d41e9186d453
+  s_176fecd913cca011d24867eb --> u_e_67f2d1af7c5969f1c36bedf2
+  s_73df895b7739624f600cd829 --> u_e_68093b3583be1e9c90f0a37b
+  f_22cb000fc96e117144c24910 --> u_e_69ee5875b6f7a6820497ace2
+  s_a4059bc1c8aa188a3e79a205 --> u_e_6b5f8fdf09d2b9e7c5f750c8
+  f_22cb000fc96e117144c24910 --> u_e_6b99c427188473722e02991b
+  s_176fecd913cca011d24867eb --> u_e_6c14d9dc40fa4d658e208e8f
+  s_176fecd913cca011d24867eb --> u_e_6c6dfb2c93e79c6e08531696
+  s_ff0ef2dcd6aeb7fc03f073d7 -.-> s_2b346cb6c2756939c525f063
+  s_72bb12b4c5f88bad03f676c6 --> u_e_6d329fdc8eb977ca2ed7f060
+  s_026cda64760dc195a4c4e777 --> u_e_6e59ccd91c8a6622dd9c4525
+  s_ff0ef2dcd6aeb7fc03f073d7 --> u_e_6e8497495efad1cf496e17c9
+  f_22cb000fc96e117144c24910 --> u_e_6f737bacee3649aaec8ae089
+  s_c7848f6706a9c2e4da3538bc --> u_e_709c48ca6ae58ab1263ba63b
+  s_026cda64760dc195a4c4e777 --> u_e_70a2c66574e8c4ffeae04f65
+  s_ff0ef2dcd6aeb7fc03f073d7 --> s_bdb2bef9f8b6d08cea700533
+  s_176fecd913cca011d24867eb --> s_2c31b29b5290d6ee79313d80
+  s_a381dd73a1af4933eaa18553 --> u_e_7268e6bb2f945abc32c7866a
+  f_22cb000fc96e117144c24910 --> u_e_72db93a22d4a5f2ccc0d5b2f
+  s_cae60b05be48b19c58093049 -.-> s_2320762902884e3cfbb90c04
+  s_72bb12b4c5f88bad03f676c6 --> u_e_731d648c6f1d7a41f17b5650
+  f_22cb000fc96e117144c24910 --> u_e_7335f828a7a749ba782dd5a7
+  f_22cb000fc96e117144c24910 --> u_e_75c016acfb7a7fe0b52cac10
+  s_026cda64760dc195a4c4e777 --> u_e_77a41c8460fd5db4be95c320
+  s_ff0ef2dcd6aeb7fc03f073d7 --> u_e_77fb53ea65af28a81f84fd49
+  f_22cb000fc96e117144c24910 --> u_e_7843cf63311bf72a104ede7c
+  s_371facf82d181de91c1c28c3 --> u_e_78b947589b5e19f1d4f2ce9d
+  s_a381dd73a1af4933eaa18553 --> u_e_79e19caa6703d2adfb9a3bd0
+  f_22cb000fc96e117144c24910 --> u_e_7a6f9880154f9740cf69105d
+  f_22cb000fc96e117144c24910 --> u_e_7c005793ce27810b9677f34f
+  f_22cb000fc96e117144c24910 --> u_e_7c95e07930a4d155037e493f
+  s_176fecd913cca011d24867eb --> u_e_7fd816524424bbe19f01ace7
+  s_746274e067bb5b24f71eba9e --> s_d6fbfb7b4116d97c27f32b80
+  s_371facf82d181de91c1c28c3 --> u_e_81b32ab60957edbd2b7172f1
+  f_22cb000fc96e117144c24910 --> u_e_82b6715f905510e1fc0bb2fa
+  f_22cb000fc96e117144c24910 --> u_e_82d6b0197cac2dc33465b16c
+  s_2320762902884e3cfbb90c04 --> u_e_8480b046dfad065ec4b9a8c8
+  s_ff0ef2dcd6aeb7fc03f073d7 --> u_e_85291ba1d514b4e156dedb6a
+  s_176fecd913cca011d24867eb --> u_e_862980860f509c5657184188
+  s_a381dd73a1af4933eaa18553 --> u_e_863d81137dced447fbfd8e79

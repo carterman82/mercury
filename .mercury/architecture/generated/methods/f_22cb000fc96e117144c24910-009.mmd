@@ -1,0 +1,85 @@
+flowchart LR
+  s_ff0ef2dcd6aeb7fc03f073d7["FileFormats.inspect · 88"]
+  u_e_e98ae9bba19f5ab23202722a["Unresolved: Object.keys(files).filter(filename =&gt; ext === '.docx' ? /^word\/(document|header\d+|footer\d+|footnotes|endnotes)\.xml$/.test(filename) : ext === '.pptx' ? /^ppt\/(slides\/slide\d+|notesSlides\/notesSlide\d+)\.xml$/.test(filename) : filename === 'content.xml').sort"]
+  f_22cb000fc96e117144c24910["src/main/file-formats.ts"]
+  u_e_e9fd8af5f3d43e9fb41fc6bf["Unresolved: color.optional"]
+  u_e_eb0b150e21599da488c3d6fd["Unresolved: z.number().min(0).max"]
+  s_746274e067bb5b24f71eba9e["FileFormats.inspectWorkbook · 137"]
+  u_e_ebd5357044e5c76021a529d5["Unresolved: workbook.xlsx.load"]
+  u_e_ec9966daf49962a202822695["Unresolved: all.map(entry =&gt; `[${entry.name}]\n${xmlDocumentText(epubFiles[entry.name])}`).join"]
+  u_e_ec9ed7192a7e37fd1c9b6b46["Unresolved: z.array"]
+  s_72bb12b4c5f88bad03f676c6["FileFormats.spreadsheet · 184"]
+  u_e_ecf43f34eca8a86d92495f74["Unresolved: /[\\/?*\[\]:]/.test"]
+  s_aecb3fdd25443684fc19ed87["FileFormats.archive · 247"]
+  u_e_ed131c106f2457299673655a["Unresolved: Error"]
+  u_e_ed3224d242750ab6523e4e33["Unresolved: bytes.subarray(0, 4).equals"]
+  s_73df895b7739624f600cd829["FileFormats.document · 159"]
+  u_e_ed38a8a40eeb0abda31a7bd9["Unresolved: Packer.toBuffer"]
+  s_0eccde2bfa0d43fb0700b836["src/main/file-inspection.ts: inspectZip"]
+  u_e_ef6f8ed55985483ff8246231["Unresolved: z.string().min(1).max"]
+  s_c7848f6706a9c2e4da3538bc["FileFormats.visionImage · 49"]
+  u_e_ef90a949912174603fc44141["Unresolved: Math.round"]
+  u_e_f046126e42bbc5a6477cef76["Unresolved: Error"]
+  s_a381dd73a1af4933eaa18553["FileFormats.ocr · 66"]
+  u_e_f0a431306a6ddf9b7a4e5698["Unresolved: path.dirname"]
+  u_e_f13524059537becd3b3ad1a2["Unresolved: z.number().int().min(16).max"]
+  s_371facf82d181de91c1c28c3["FileFormats.document.blocks · 172"]
+  s_0e2079c92d795f9bc517adde["FileFormats.document.runs · 165"]
+  s_736e6a586bec09bab8e8cd59["src/main/chat-files.ts: ChatFiles.createStandard"]
+  u_e_f36b98087853c3fa020e2eed["Unresolved: context.fillRect"]
+  u_e_f3aaab8aeefd9be022ca4ee7["Unresolved: z.array"]
+  u_e_f3f3f284fee5eb45747a2b55["Unresolved: z.string().min(1).max"]
+  u_e_f41aff0adbe3cba9e50eaed6["Unresolved: ext.slice"]
+  u_e_f4304a75e54566de7688bcca["Unresolved: bytes.toString"]
+  u_e_f483a7da77dd1776d62f0cc2["Unresolved: /^word\/(document|header\d+|footer\d+|footnotes|endnotes)\.xml$/.test"]
+  u_e_f83cc2e7159f869c51d0b04b["Unresolved: TableRow"]
+  s_026cda64760dc195a4c4e777["FileFormats.presentation · 198"]
+  u_e_f9747c35f56ba6c3f55405fc["Unresolved: deck.addSlide"]
+  u_e_fa15b4cf71db83fab1c087fe["Unresolved: z.array"]
+  u_e_fa560102e07e5d0a75a97c85["Unresolved: z.object"]
+  u_e_fa9462dee05d41c3060e9c56["Unresolved: Buffer.from"]
+  u_e_fb77f22ee5f68d0cddb7d9db["Unresolved: data.rows.map"]
+  u_e_fc0dbf3ae44a43844c8e208a["Unresolved: z.string().max(300_000).optional"]
+  u_e_fcc42b3ed600a605bfdc3c49["Unresolved: ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp', '.tif', '.tiff', '.ico', '.avif'].includes"]
+  u_e_fd113e4a11ab051353b51c76["Unresolved: z.object"]
+  u_e_fe3dbe96b831a86c4e1d131c["Unresolved: /[. ]$/.test"]
+  u_e_fe715ca9d55641ba943913e0["Unresolved: /\.(txt|md|markdown|csv|tsv|json|jsonl|ndjson|xml|html?|css|js|jsx|ts|tsx|py|java|c|cpp|h|cs|rs|go|rb|php|sh|ps1|bat|sql|yaml|yml|toml|ini|cfg|log|tex|svg|rtf|eml|srt|vtt|ics)$/i.test"]
+  u_e_fec619bfbc0aa4fa3a511e0e["Unresolved: slides.entries"]
+  s_ff0ef2dcd6aeb7fc03f073d7 --> u_e_e98ae9bba19f5ab23202722a
+  f_22cb000fc96e117144c24910 --> u_e_e9fd8af5f3d43e9fb41fc6bf
+  f_22cb000fc96e117144c24910 --> u_e_eb0b150e21599da488c3d6fd
+  s_746274e067bb5b24f71eba9e --> u_e_ebd5357044e5c76021a529d5
+  s_ff0ef2dcd6aeb7fc03f073d7 --> u_e_ec9966daf49962a202822695
+  f_22cb000fc96e117144c24910 --> u_e_ec9ed7192a7e37fd1c9b6b46
+  s_72bb12b4c5f88bad03f676c6 --> u_e_ecf43f34eca8a86d92495f74
+  s_aecb3fdd25443684fc19ed87 --> u_e_ed131c106f2457299673655a
+  s_ff0ef2dcd6aeb7fc03f073d7 --> u_e_ed3224d242750ab6523e4e33
+  s_73df895b7739624f600cd829 --> u_e_ed38a8a40eeb0abda31a7bd9
+  s_ff0ef2dcd6aeb7fc03f073d7 --> s_0eccde2bfa0d43fb0700b836
+  f_22cb000fc96e117144c24910 --> u_e_ef6f8ed55985483ff8246231
+  s_c7848f6706a9c2e4da3538bc --> u_e_ef90a949912174603fc44141
+  s_aecb3fdd25443684fc19ed87 --> u_e_f046126e42bbc5a6477cef76
+  s_a381dd73a1af4933eaa18553 --> u_e_f0a431306a6ddf9b7a4e5698
+  f_22cb000fc96e117144c24910 --> u_e_f13524059537becd3b3ad1a2
+  s_371facf82d181de91c1c28c3 --> s_0e2079c92d795f9bc517adde
+  s_736e6a586bec09bab8e8cd59 -.-> s_aecb3fdd25443684fc19ed87
+  s_c7848f6706a9c2e4da3538bc --> u_e_f36b98087853c3fa020e2eed
+  f_22cb000fc96e117144c24910 --> u_e_f3aaab8aeefd9be022ca4ee7
+  f_22cb000fc96e117144c24910 --> u_e_f3f3f284fee5eb45747a2b55
+  s_ff0ef2dcd6aeb7fc03f073d7 --> u_e_f41aff0adbe3cba9e50eaed6
+  s_c7848f6706a9c2e4da3538bc --> u_e_f4304a75e54566de7688bcca
+  s_ff0ef2dcd6aeb7fc03f073d7 --> u_e_f483a7da77dd1776d62f0cc2
+  s_371facf82d181de91c1c28c3 --> s_0e2079c92d795f9bc517adde
+  s_371facf82d181de91c1c28c3 --> u_e_f83cc2e7159f869c51d0b04b
+  s_ff0ef2dcd6aeb7fc03f073d7 --> s_0eccde2bfa0d43fb0700b836
+  s_026cda64760dc195a4c4e777 --> u_e_f9747c35f56ba6c3f55405fc
+  f_22cb000fc96e117144c24910 --> u_e_fa15b4cf71db83fab1c087fe
+  f_22cb000fc96e117144c24910 --> u_e_fa560102e07e5d0a75a97c85
+  s_026cda64760dc195a4c4e777 --> u_e_fa9462dee05d41c3060e9c56
+  s_72bb12b4c5f88bad03f676c6 --> u_e_fb77f22ee5f68d0cddb7d9db
+  f_22cb000fc96e117144c24910 --> u_e_fc0dbf3ae44a43844c8e208a
+  s_ff0ef2dcd6aeb7fc03f073d7 --> u_e_fcc42b3ed600a605bfdc3c49
+  f_22cb000fc96e117144c24910 --> u_e_fd113e4a11ab051353b51c76
+  s_aecb3fdd25443684fc19ed87 --> u_e_fe3dbe96b831a86c4e1d131c
+  s_ff0ef2dcd6aeb7fc03f073d7 --> u_e_fe715ca9d55641ba943913e0
+  s_026cda64760dc195a4c4e777 --> u_e_fec619bfbc0aa4fa3a511e0e

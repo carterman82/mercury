@@ -1,0 +1,38 @@
+flowchart LR
+  s_8b7188ffef6e68b4568ea83d["ProjectNotes.read · 65"]
+  u_e_d839f97778bb26bc225ea4ad["Unresolved: this.pending.get"]
+  f_064e832a3ec973f2451dd376["src/main/project-context.ts"]
+  u_e_dab04c94d9f53e62ff31511b["Unresolved: z.number"]
+  s_fdd4d8e7aa6db53e5f6cd77a["projectContext · 22"]
+  u_e_dd88bb480e4905dedd6394e0["Unresolved: handle.close"]
+  u_e_dde736cc7970da2a488c8338["Unresolved: this.pending.get(projectId)?.catch"]
+  u_e_deaaa0c24e594b9b89778a2f["Unresolved: sections.push"]
+  s_00397ee249dc7b66d90b9007["ProjectNotes.update · 70"]
+  u_e_e15763e51d20775037b2c9b8["Unresolved: z.string"]
+  u_e_e41245bad3751cf24ccf396f["Unresolved: sections.push"]
+  u_e_e4d548f143cbe04b627808e9["Unresolved: z.object({ revision: z.number().int().nonnegative(), content: z.string().max(MAX_CONTENT), history: z.array(entrySchema).max(MAX_HISTORY) }).strict"]
+  s_777adb3a34f0d16864c6956e["within · 16"]
+  u_e_e513c416e4d622c8744a57d6["Unresolved: path.relative"]
+  u_e_e6d65deab5b1fac8d347e600["Unresolved: z.number"]
+  u_e_ebc77e4660c382d393188cf0["Unresolved: z.array(entrySchema).max"]
+  u_e_ed08b9c96f994989c3ec5c23["Unresolved: path.isAbsolute"]
+  u_e_f23b384454273cc1475723ff["Unresolved: z.number().int"]
+  u_e_fc3898c6846b7ff10cb3d954["Unresolved: fs.realpath"]
+  u_e_fe9e5becf13dfc57d70c0574["Unresolved: previous.catch"]
+  s_a26c220bf37ee317ae6ace1e["src/main/project-tools.ts: ProjectTools.execute"]
+  s_8b7188ffef6e68b4568ea83d --> u_e_d839f97778bb26bc225ea4ad
+  f_064e832a3ec973f2451dd376 --> u_e_dab04c94d9f53e62ff31511b
+  s_fdd4d8e7aa6db53e5f6cd77a --> u_e_dd88bb480e4905dedd6394e0
+  s_8b7188ffef6e68b4568ea83d --> u_e_dde736cc7970da2a488c8338
+  s_fdd4d8e7aa6db53e5f6cd77a --> u_e_deaaa0c24e594b9b89778a2f
+  s_00397ee249dc7b66d90b9007 --> u_e_e15763e51d20775037b2c9b8
+  s_fdd4d8e7aa6db53e5f6cd77a --> u_e_e41245bad3751cf24ccf396f
+  f_064e832a3ec973f2451dd376 --> u_e_e4d548f143cbe04b627808e9
+  s_777adb3a34f0d16864c6956e --> u_e_e513c416e4d622c8744a57d6
+  f_064e832a3ec973f2451dd376 --> u_e_e6d65deab5b1fac8d347e600
+  f_064e832a3ec973f2451dd376 --> u_e_ebc77e4660c382d393188cf0
+  s_777adb3a34f0d16864c6956e --> u_e_ed08b9c96f994989c3ec5c23
+  f_064e832a3ec973f2451dd376 --> u_e_f23b384454273cc1475723ff
+  s_fdd4d8e7aa6db53e5f6cd77a --> u_e_fc3898c6846b7ff10cb3d954
+  s_00397ee249dc7b66d90b9007 --> u_e_fe9e5becf13dfc57d70c0574
+  s_a26c220bf37ee317ae6ace1e -.-> s_00397ee249dc7b66d90b9007

@@ -69,12 +69,24 @@ export interface ProjectMapSummary { available: boolean; fresh: boolean; persist
 export interface Snapshot { projects: Project[]; sessions: Session[]; chats: ChatThread[]; settings: Settings; activeRole: AgentRole | null; activeChatId: string | null; activeChatIds?: string[]; modelRequests?: ModelRequestCount[]; chatApprovals?: ChatApproval[]; }
 export interface ToolRequest { id: string; name: string; arguments: unknown; }
 
+export interface ProjectReport {
+  content: string;
+  diagram: string;
+  sources: number;
+  generatedAt?: string;
+  lastCommit?: string | null;
+}
+
 export interface DesktopApi {
   snapshot(): Promise<Snapshot>;
   onUpdate(callback: (snapshot: Snapshot) => void): () => void;
   openProject(): Promise<Project | null>;
   updateProjectPermissions(projectId: string, mode: ProjectPermissionMode): Promise<void>;
   projectMapStatus(chatId: string): Promise<ProjectMapSummary>;
+  generateProjectReport(chatId: string, regenerate?: boolean): Promise<ProjectReport>;
+  cachedProjectReport(chatId: string): Promise<ProjectReport | null>;
+  onProjectReportProgress(callback: (chatId: string, message: string) => void): () => void;
+  saveProjectReport(chatId: string): Promise<boolean>;
   refreshProjectMaps(chatId: string): Promise<ProjectMapSummary>;
   readProjectDiagram(chatId: string, path: string): Promise<{ path: string; content: string }>;
   createSession(projectId: string, objective: string): Promise<Session>;

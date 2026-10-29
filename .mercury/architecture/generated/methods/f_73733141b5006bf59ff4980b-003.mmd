@@ -1,0 +1,70 @@
+flowchart LR
+  f_73733141b5006bf59ff4980b["src/main/chat.test.ts"]
+  u_e_285fe6b560b731096cc453de["Unresolved: expect"]
+  s_72e582247916ebc50956475d["src/main/store.ts: Store.chat"]
+  u_e_2a6207b3db2787b55ce4ab7e["Unresolved: store.close"]
+  s_32a5813d88937ce3eb46d2aa["src/main/chat.ts: ChatService.send"]
+  s_db313b5e1575d3a5cf0d33d0["fixture · 15"]
+  u_e_2abb3bfbd30ddfb92f9a4afe["Unresolved: path.join"]
+  u_e_2ad1d50fe84d94f71da2275f["Unresolved: task.result?.includes"]
+  s_5fa0518f5f75a9ed0f51f4b2["src/main/chat.ts: ChatService.constructor"]
+  u_e_2bf41c48cd50b4c2a354e2f3["Unresolved: expect"]
+  u_e_2d7ce4a28a816f4c3fd5f267["Unresolved: expect(store.chat(id).messages.at(-1)?.content).toContain"]
+  s_a9c0d2a8136f797876a84c96["chat · 172"]
+  u_e_2dc40934f045cced33834a60["Unresolved: (input.tools as any[]).map"]
+  u_e_2de95317c6e8f5b850fe5704["Unresolved: expect"]
+  u_e_2fa6150f5541de382855abce["Unresolved: it.each([true, false])"]
+  u_e_2fb3923a7b16ef980da0d529["Unresolved: expect(started).toBe"]
+  s_b12ed33770ce75dda195b1a4["uploadSources · 208"]
+  u_e_2fdc1fbcc476c557d943f48e["Unresolved: expect"]
+  u_e_307420e0a388999a8bd69fa1["Unresolved: expect"]
+  u_e_30aefb26d2829cdaa3c90724["Unresolved: expect(store.chat(id).messages.at(-1)?.toolActivity?.every(task =&gt; task.status === 'failed')).toBe"]
+  u_e_32a0ca1d7dbadeb3bd646a3f["Unresolved: stores.splice"]
+  u_e_337678eb7c2f124aadf0fe8d["Unresolved: expect(store.chat(id).messages.at(-1)?.sourceEvidence?.[0].tool).toBe"]
+  u_e_34168f00ef7aba2ed65e456e["Unresolved: uploads.map"]
+  s_ce75ded468f71454b2dfe58b["chat · 462"]
+  u_e_34ad7dfbb24b2bc394e8f21f["Unresolved: expect(names).toContain"]
+  u_e_34eab0002b48d58c7f82ab14["Unresolved: expect"]
+  u_e_35493d7587da62004ff632ff["Unresolved: vi.waitFor"]
+  u_e_35c1b3c0fb05a31065e8519b["Unresolved: events.map(event =&gt; 'data: ' + JSON.stringify(event) + '\n\n').join"]
+  u_e_35e21ee5811654445bdcdced["Unresolved: uploads.map"]
+  f_73733141b5006bf59ff4980b --> u_e_285fe6b560b731096cc453de
+  f_73733141b5006bf59ff4980b -.-> s_72e582247916ebc50956475d
+  f_73733141b5006bf59ff4980b --> u_e_2a6207b3db2787b55ce4ab7e
+  f_73733141b5006bf59ff4980b -.-> s_32a5813d88937ce3eb46d2aa
+  f_73733141b5006bf59ff4980b --> s_db313b5e1575d3a5cf0d33d0
+  f_73733141b5006bf59ff4980b --> u_e_2abb3bfbd30ddfb92f9a4afe
+  f_73733141b5006bf59ff4980b --> s_db313b5e1575d3a5cf0d33d0
+  f_73733141b5006bf59ff4980b --> u_e_2ad1d50fe84d94f71da2275f
+  f_73733141b5006bf59ff4980b -.-> s_72e582247916ebc50956475d
+  f_73733141b5006bf59ff4980b -.-> s_5fa0518f5f75a9ed0f51f4b2
+  f_73733141b5006bf59ff4980b --> u_e_2bf41c48cd50b4c2a354e2f3
+  f_73733141b5006bf59ff4980b -.-> s_72e582247916ebc50956475d
+  f_73733141b5006bf59ff4980b -.-> s_72e582247916ebc50956475d
+  f_73733141b5006bf59ff4980b --> u_e_2d7ce4a28a816f4c3fd5f267
+  s_a9c0d2a8136f797876a84c96 --> u_e_2dc40934f045cced33834a60
+  f_73733141b5006bf59ff4980b --> u_e_2de95317c6e8f5b850fe5704
+  f_73733141b5006bf59ff4980b --> s_db313b5e1575d3a5cf0d33d0
+  f_73733141b5006bf59ff4980b -.-> s_32a5813d88937ce3eb46d2aa
+  f_73733141b5006bf59ff4980b -.-> s_32a5813d88937ce3eb46d2aa
+  f_73733141b5006bf59ff4980b -.-> s_5fa0518f5f75a9ed0f51f4b2
+  f_73733141b5006bf59ff4980b -.-> s_32a5813d88937ce3eb46d2aa
+  f_73733141b5006bf59ff4980b -.-> s_5fa0518f5f75a9ed0f51f4b2
+  f_73733141b5006bf59ff4980b --> u_e_2fa6150f5541de382855abce
+  f_73733141b5006bf59ff4980b --> u_e_2fb3923a7b16ef980da0d529
+  f_73733141b5006bf59ff4980b --> s_b12ed33770ce75dda195b1a4
+  f_73733141b5006bf59ff4980b --> u_e_2fdc1fbcc476c557d943f48e
+  f_73733141b5006bf59ff4980b -.-> s_5fa0518f5f75a9ed0f51f4b2
+  f_73733141b5006bf59ff4980b -.-> s_72e582247916ebc50956475d
+  f_73733141b5006bf59ff4980b --> u_e_307420e0a388999a8bd69fa1
+  f_73733141b5006bf59ff4980b --> u_e_30aefb26d2829cdaa3c90724
+  f_73733141b5006bf59ff4980b --> s_db313b5e1575d3a5cf0d33d0
+  f_73733141b5006bf59ff4980b --> s_db313b5e1575d3a5cf0d33d0
+  f_73733141b5006bf59ff4980b --> u_e_32a0ca1d7dbadeb3bd646a3f
+  f_73733141b5006bf59ff4980b --> u_e_337678eb7c2f124aadf0fe8d
+  f_73733141b5006bf59ff4980b --> u_e_34168f00ef7aba2ed65e456e
+  s_ce75ded468f71454b2dfe58b --> u_e_34ad7dfbb24b2bc394e8f21f
+  f_73733141b5006bf59ff4980b --> u_e_34eab0002b48d58c7f82ab14
+  f_73733141b5006bf59ff4980b --> u_e_35493d7587da62004ff632ff
+  f_73733141b5006bf59ff4980b --> u_e_35c1b3c0fb05a31065e8519b
+  f_73733141b5006bf59ff4980b --> u_e_35e21ee5811654445bdcdced

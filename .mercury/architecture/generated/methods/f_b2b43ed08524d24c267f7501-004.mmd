@@ -1,0 +1,82 @@
+flowchart LR
+  f_b2b43ed08524d24c267f7501["src/main/core.test.ts"]
+  u_e_8d1b110e43a731650de6e10e["Unresolved: expect"]
+  s_2a61ae8c7364769b9cb7e3c8["src/main/workspace.ts: Workspace.constructor"]
+  u_e_8e76ff846c1e6de7c8f7e2a5["Unresolved: it"]
+  u_e_8ff489e08cc504a9bd4b1ca1["Unresolved: expect"]
+  s_10b6283226ff498fc18604cc["src/main/store.ts: Store.constructor"]
+  u_e_90e1653f31355dea3de49522["Unresolved: expect(execute.mock.calls.map(args =&gt; args[0])).toEqual"]
+  u_e_919d8d159b5cfbf6e56b61d0["Unresolved: it"]
+  s_2cfa38485cfb16125a8246e1["fixture · 19"]
+  u_e_91ace7606ac8dcf8497858db["Unresolved: path.join"]
+  u_e_9215e16e559791333f1283f0["Unresolved: expect.objectContaining"]
+  s_e7134e8ec9768303ff3fab7f["start · 224"]
+  u_e_929a3de4525c1c8c074b55e1["Unresolved: encoder.encode"]
+  u_e_92b7ca60235c24e0f44fa152["Unresolved: Response"]
+  u_e_9340324e35fd99a49295ccd5["Unresolved: path.join"]
+  u_e_935b2c0ffa1ad5a9a9f81eab["Unresolved: randomUUID"]
+  u_e_93d16450e0bc00bf813305ee["Unresolved: it.each"]
+  s_7da90b41405a14dc0a0514fe["src/main/store.ts: Store.session"]
+  u_e_9471ac4613066c43fab9bed7["Unresolved: expect(JSON.parse(fetcher.mock.calls[1][1]!.body as string)).toHaveProperty"]
+  s_c212b536d5a765688880ec38["src/main/commands.ts: CommandGate.answer"]
+  s_5489336cf59f0cba96ed0ca3["src/main/store.ts: Store.saveSettings"]
+  u_e_98efdab15032b68925816803["Unresolved: JSON.parse"]
+  u_e_993249aa4fb5cddb08e15b92["Unresolved: path.join"]
+  s_883c99eb9cc7cea5461d956e["chat · 72"]
+  u_e_9a01a6e23cce7633cf20e57a["Unresolved: expect(names).toContain"]
+  u_e_9d0db9ae0edc14dbbc46c966["Unresolved: it.each(['ollama', 'lmstudio'] as const)"]
+  s_beed8c56e19c2ab9c510cfca["start · 181"]
+  u_e_9e9510e589cbc7d6bcd22653["Unresolved: controller.enqueue"]
+  s_674616fb80e60e023242849d["chat · 112"]
+  s_6aa60aeb10ffaed53f6b83ab["src/main/workspace.ts: hash"]
+  u_e_a108cde2499b046471963967["Unresolved: expect(reopened.settings().connections.some(item =&gt; item.id === 'shared-lmstudio')).toBe"]
+  s_86f024fd6484279d58d3029e["src/main/store.ts: Store.close"]
+  s_1bf203f3a677de8fed1cd884["src/main/workspace.ts: Workspace.edit"]
+  u_e_a8e513061fd9df62363c85b7["Unresolved: afterEach"]
+  s_bd8d832c8c9c07233640c1df["src/main/runner.ts: Runner.plan"]
+  u_e_a9b21ba6d1d708aa38154481["Unresolved: (input.tools as any[]).map"]
+  u_e_aa6a8120021a8cb59831e780["Unresolved: expect"]
+  u_e_ac04ff9dfa075be373516234["Unresolved: store.session(session.id).sourceEvidence?.map"]
+  s_123276361c2faa57bfbded01["src/main/commands.ts: CommandGate.ask"]
+  u_e_ada9fddc401c264d9d503b5c["Unresolved: writeFileSync"]
+  u_e_ae88d388c967e5e59fc0b7b8["Unresolved: expect(models).toEqual"]
+  f_b2b43ed08524d24c267f7501 --> u_e_8d1b110e43a731650de6e10e
+  f_b2b43ed08524d24c267f7501 -.-> s_2a61ae8c7364769b9cb7e3c8
+  f_b2b43ed08524d24c267f7501 --> u_e_8e76ff846c1e6de7c8f7e2a5
+  f_b2b43ed08524d24c267f7501 --> u_e_8ff489e08cc504a9bd4b1ca1
+  f_b2b43ed08524d24c267f7501 -.-> s_10b6283226ff498fc18604cc
+  f_b2b43ed08524d24c267f7501 --> u_e_90e1653f31355dea3de49522
+  f_b2b43ed08524d24c267f7501 --> u_e_919d8d159b5cfbf6e56b61d0
+  s_2cfa38485cfb16125a8246e1 --> u_e_91ace7606ac8dcf8497858db
+  f_b2b43ed08524d24c267f7501 --> u_e_9215e16e559791333f1283f0
+  s_e7134e8ec9768303ff3fab7f --> u_e_929a3de4525c1c8c074b55e1
+  f_b2b43ed08524d24c267f7501 --> u_e_92b7ca60235c24e0f44fa152
+  f_b2b43ed08524d24c267f7501 --> u_e_9340324e35fd99a49295ccd5
+  f_b2b43ed08524d24c267f7501 --> u_e_935b2c0ffa1ad5a9a9f81eab
+  f_b2b43ed08524d24c267f7501 --> u_e_93d16450e0bc00bf813305ee
+  f_b2b43ed08524d24c267f7501 -.-> s_7da90b41405a14dc0a0514fe
+  f_b2b43ed08524d24c267f7501 --> u_e_9471ac4613066c43fab9bed7
+  f_b2b43ed08524d24c267f7501 -.-> s_c212b536d5a765688880ec38
+  f_b2b43ed08524d24c267f7501 -.-> s_5489336cf59f0cba96ed0ca3
+  f_b2b43ed08524d24c267f7501 --> u_e_98efdab15032b68925816803
+  f_b2b43ed08524d24c267f7501 --> u_e_993249aa4fb5cddb08e15b92
+  f_b2b43ed08524d24c267f7501 --> s_2cfa38485cfb16125a8246e1
+  s_883c99eb9cc7cea5461d956e --> u_e_9a01a6e23cce7633cf20e57a
+  f_b2b43ed08524d24c267f7501 -.-> s_7da90b41405a14dc0a0514fe
+  f_b2b43ed08524d24c267f7501 -.-> s_7da90b41405a14dc0a0514fe
+  f_b2b43ed08524d24c267f7501 --> u_e_9d0db9ae0edc14dbbc46c966
+  s_beed8c56e19c2ab9c510cfca --> u_e_9e9510e589cbc7d6bcd22653
+  s_674616fb80e60e023242849d --> s_6aa60aeb10ffaed53f6b83ab
+  f_b2b43ed08524d24c267f7501 --> u_e_a108cde2499b046471963967
+  f_b2b43ed08524d24c267f7501 -.-> s_c212b536d5a765688880ec38
+  f_b2b43ed08524d24c267f7501 -.-> s_86f024fd6484279d58d3029e
+  f_b2b43ed08524d24c267f7501 -.-> s_1bf203f3a677de8fed1cd884
+  f_b2b43ed08524d24c267f7501 --> u_e_a8e513061fd9df62363c85b7
+  f_b2b43ed08524d24c267f7501 -.-> s_bd8d832c8c9c07233640c1df
+  s_883c99eb9cc7cea5461d956e --> u_e_a9b21ba6d1d708aa38154481
+  f_b2b43ed08524d24c267f7501 -.-> s_bd8d832c8c9c07233640c1df
+  f_b2b43ed08524d24c267f7501 --> u_e_aa6a8120021a8cb59831e780
+  f_b2b43ed08524d24c267f7501 --> u_e_ac04ff9dfa075be373516234
+  f_b2b43ed08524d24c267f7501 -.-> s_123276361c2faa57bfbded01
+  f_b2b43ed08524d24c267f7501 --> u_e_ada9fddc401c264d9d503b5c
+  f_b2b43ed08524d24c267f7501 --> u_e_ae88d388c967e5e59fc0b7b8

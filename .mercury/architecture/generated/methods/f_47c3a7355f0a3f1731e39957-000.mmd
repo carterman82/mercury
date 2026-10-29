@@ -1,0 +1,89 @@
+flowchart LR
+  s_3febca80946d9dd9f4ef73c9["TreeSitterDependencyAnalyzer.analyze.visit · 358"]
+  s_0c8e1f042a15816f08345013["TreeSitterDependencyAnalyzer.analyze.addImport · 356"]
+  s_0c38beb4b74ee7a442680203["TypeScriptDependencyAnalyzer.analyze.visit · 105"]
+  u_e_032beb279dd73e86f7f85ee1["Unresolved: node.getStart"]
+  s_ed537527a5c741094fd94c31["TypeScriptDependencyAnalyzer.analyze.readFile · 83"]
+  s_29d6a8b08bf0001b53da09af["normalized · 10"]
+  u_e_0860ce1288280e68b1507bd2["Unresolved: parts.join"]
+  u_e_0b392162c81349d4b0dd066a["Unresolved: ts.isMethodDeclaration"]
+  s_ab7ec2026847af01f4174b52["callableName · 296"]
+  u_e_0c1e2f12a008ba12c68b0e14["Unresolved: node.childForFieldName"]
+  s_70d5fa69c64489b7fdc5b630["TreeSitterDependencyAnalyzer.analyze · 340"]
+  u_e_0f20ed8f46ae9f806d1ff1e7["Unresolved: parser.delete"]
+  s_93f98ef6f564beb51a8762c2["TreeSitterDependencyAnalyzer.parser · 319"]
+  u_e_11a316e6a0c2df5fdeb5f139["Unresolved: require.resolve"]
+  s_f06b86f390eae59ae49f8570["src/main/project-maps.ts: ProjectMaps.refresh"]
+  s_b6e5379b47639f100971c7dd["TypeScriptDependencyAnalyzer.analyze · 45"]
+  u_e_159cad27be67dfa4b6bc452d["Unresolved: this.sourceCache.keys"]
+  f_47c3a7355f0a3f1731e39957["src/main/project-map-analyzers.ts"]
+  u_e_166582d73bd57042054acde7["Unresolved: Map"]
+  u_e_166764679df77c970dcb7977["Unresolved: sources.map"]
+  s_95bb364a0f926550a4953624["declaratorName · 288"]
+  u_e_1748705c823884cd71a49559["Unresolved: node.childForFieldName"]
+  u_e_17b1aacd5aa61dd3770fe146["Unresolved: Set"]
+  s_b4b7d8f9495b1038fde95a97["TypeScriptDependencyAnalyzer.analyze.getSourceFile · 69"]
+  u_e_189cc50bada2afab8dc63592["Unresolved: ts.createSourceFile"]
+  u_e_196671003c702bb094fc3ec3["Unresolved: Error"]
+  s_4c50a7cb74ff3f92f6e8004d["TypeScriptDependencyAnalyzer.analyze.getDirectories · 81"]
+  u_e_1af10a92042a2bb6c0fc910f["Unresolved: path.dirname"]
+  u_e_1b5f117bd848d4688a15d228["Unresolved: Set"]
+  u_e_1ccdbdba8affc949e4186273["Unresolved: node.childForFieldName"]
+  u_e_1eafd7b48470f76617601bc4["Unresolved: output.imports.push"]
+  u_e_1eec2f91097a3d33d041108e["Unresolved: node.children.some"]
+  s_30b7da510566f31820b52d7e["TypeScriptDependencyAnalyzer.analyze.visit · 174"]
+  s_6ffba7eee1176a1d7b02ae61["TypeScriptDependencyAnalyzer.analyze.location · 170"]
+  u_e_225193ef82e4b61664741b0c["Unresolved: Set"]
+  u_e_23a53492bbd88ba6f0c79348["Unresolved: process.cwd"]
+  u_e_27d5b22865f5e5cabd8112de["Unresolved: node.childForFieldName"]
+  u_e_28b687dced43c2d72adee5e9["Unresolved: named.name?.getText"]
+  u_e_28ced073290079395661a1e9["Unresolved: node.childForFieldName"]
+  u_e_2a1ae19bf52aba7aed0abc91["Unresolved: node.childForFieldName"]
+  u_e_2a8d8c0c53582a0ba0c9f0a7["Unresolved: Set"]
+  s_8711dcddd82ae3cd57fb514b["TreeSitterDependencyAnalyzer.analyze.location · 351"]
+  u_e_2cb00b45ba1b0c8eb22b8a77["Unresolved: directories.add"]
+  u_e_2d7c2cc92d4868dbbce38b1e["Unresolved: path.normalize"]
+  u_e_2f787825ef4d74d2647080fd["Unresolved: path.join"]
+  u_e_3092b86ab1f3afe4d09568af["Unresolved: child.childForFieldName"]
+  u_e_30c449669f8ea1643451bb24["Unresolved: ts.isArrowFunction"]
+  u_e_30e6e3ccce0ca3238780da55["Unresolved: sourceMap.get"]
+  s_3febca80946d9dd9f4ef73c9 --> s_0c8e1f042a15816f08345013
+  s_0c38beb4b74ee7a442680203 --> u_e_032beb279dd73e86f7f85ee1
+  s_ed537527a5c741094fd94c31 --> s_29d6a8b08bf0001b53da09af
+  s_3febca80946d9dd9f4ef73c9 --> u_e_0860ce1288280e68b1507bd2
+  s_0c38beb4b74ee7a442680203 --> u_e_0b392162c81349d4b0dd066a
+  s_ab7ec2026847af01f4174b52 --> u_e_0c1e2f12a008ba12c68b0e14
+  s_3febca80946d9dd9f4ef73c9 --> s_0c8e1f042a15816f08345013
+  s_70d5fa69c64489b7fdc5b630 --> u_e_0f20ed8f46ae9f806d1ff1e7
+  s_93f98ef6f564beb51a8762c2 --> u_e_11a316e6a0c2df5fdeb5f139
+  s_f06b86f390eae59ae49f8570 -.-> s_70d5fa69c64489b7fdc5b630
+  s_b6e5379b47639f100971c7dd --> u_e_159cad27be67dfa4b6bc452d
+  f_47c3a7355f0a3f1731e39957 --> u_e_166582d73bd57042054acde7
+  s_b6e5379b47639f100971c7dd --> u_e_166764679df77c970dcb7977
+  s_95bb364a0f926550a4953624 --> u_e_1748705c823884cd71a49559
+  f_47c3a7355f0a3f1731e39957 --> u_e_17b1aacd5aa61dd3770fe146
+  s_b4b7d8f9495b1038fde95a97 --> u_e_189cc50bada2afab8dc63592
+  s_70d5fa69c64489b7fdc5b630 --> u_e_196671003c702bb094fc3ec3
+  s_4c50a7cb74ff3f92f6e8004d --> u_e_1af10a92042a2bb6c0fc910f
+  f_47c3a7355f0a3f1731e39957 --> u_e_1b5f117bd848d4688a15d228
+  s_3febca80946d9dd9f4ef73c9 --> u_e_1ccdbdba8affc949e4186273
+  s_0c8e1f042a15816f08345013 --> u_e_1eafd7b48470f76617601bc4
+  s_3febca80946d9dd9f4ef73c9 --> s_ab7ec2026847af01f4174b52
+  s_3febca80946d9dd9f4ef73c9 --> u_e_1eec2f91097a3d33d041108e
+  s_30b7da510566f31820b52d7e --> s_6ffba7eee1176a1d7b02ae61
+  f_47c3a7355f0a3f1731e39957 --> u_e_225193ef82e4b61664741b0c
+  s_93f98ef6f564beb51a8762c2 --> u_e_23a53492bbd88ba6f0c79348
+  s_3febca80946d9dd9f4ef73c9 --> u_e_27d5b22865f5e5cabd8112de
+  s_b6e5379b47639f100971c7dd --> s_30b7da510566f31820b52d7e
+  s_0c38beb4b74ee7a442680203 --> u_e_28b687dced43c2d72adee5e9
+  s_ab7ec2026847af01f4174b52 --> u_e_28ced073290079395661a1e9
+  s_3febca80946d9dd9f4ef73c9 --> u_e_2a1ae19bf52aba7aed0abc91
+  f_47c3a7355f0a3f1731e39957 --> u_e_2a8d8c0c53582a0ba0c9f0a7
+  s_0c8e1f042a15816f08345013 --> s_8711dcddd82ae3cd57fb514b
+  s_b6e5379b47639f100971c7dd --> u_e_2cb00b45ba1b0c8eb22b8a77
+  s_29d6a8b08bf0001b53da09af --> u_e_2d7c2cc92d4868dbbce38b1e
+  s_3febca80946d9dd9f4ef73c9 --> s_0c8e1f042a15816f08345013
+  s_93f98ef6f564beb51a8762c2 --> u_e_2f787825ef4d74d2647080fd
+  s_3febca80946d9dd9f4ef73c9 --> u_e_3092b86ab1f3afe4d09568af
+  s_0c38beb4b74ee7a442680203 --> u_e_30c449669f8ea1643451bb24
+  s_30b7da510566f31820b52d7e --> u_e_30e6e3ccce0ca3238780da55

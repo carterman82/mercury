@@ -1,0 +1,28 @@
+flowchart LR
+  s_8b7632abe09e450cee40a988["src/main/providers.ts: LocalProviders.chatOnce.thinking"]
+  s_362ce27c6e539a607e1c8dec["InactivityWatchdog.progress · 7"]
+  s_d545c2bc89ab958a457aa700["src/main/chat-browser.ts: ChatBrowser.interact"]
+  s_433f33c12021213e1f31a831["abortable · 17"]
+  u_e_cfb2ea414c1f875f7c837ea5["Unresolved: signal.addEventListener"]
+  s_3376d1c2ac5e05274938adbf["src/main/chat-generation.ts: generateChatTurn.onRequestState"]
+  s_dafb7bc9df96bb2400d55208["InactivityWatchdog.pause · 13"]
+  u_e_d8f6a33cef698b228185e98e["Unresolved: signal.throwIfAborted"]
+  s_f31ec72d318f5e404d179202["src/main/chat-browser.ts: ChatBrowser.screenshot"]
+  s_bcad904a9326b17af8a6306b["InactivityWatchdog.dispose · 14"]
+  s_ce19c24314f9ba71a6083a4e["src/main/providers.ts: LocalProviders.messages"]
+  s_7d79861c82eda1c61e025bb8["InactivityWatchdog.constructor · 6"]
+  s_8e87c8abec358cf8d840188e["src/main/chat-browser.ts: ChatBrowser.open"]
+  s_8d3ea567cff795446a267621["src/main/chat-browser.ts: ChatBrowser.read"]
+  s_9bd065f97be99a0c31453b50["src/main/providers.ts: LocalProviders.chatOnce"]
+  s_8b7632abe09e450cee40a988 -.-> s_362ce27c6e539a607e1c8dec
+  s_d545c2bc89ab958a457aa700 -.-> s_362ce27c6e539a607e1c8dec
+  s_433f33c12021213e1f31a831 --> u_e_cfb2ea414c1f875f7c837ea5
+  s_3376d1c2ac5e05274938adbf -.-> s_dafb7bc9df96bb2400d55208
+  s_433f33c12021213e1f31a831 --> u_e_d8f6a33cef698b228185e98e
+  s_f31ec72d318f5e404d179202 -.-> s_bcad904a9326b17af8a6306b
+  s_ce19c24314f9ba71a6083a4e -.-> s_7d79861c82eda1c61e025bb8
+  s_3376d1c2ac5e05274938adbf -.-> s_362ce27c6e539a607e1c8dec
+  s_8e87c8abec358cf8d840188e -.-> s_bcad904a9326b17af8a6306b
+  s_f31ec72d318f5e404d179202 -.-> s_7d79861c82eda1c61e025bb8
+  s_8d3ea567cff795446a267621 -.-> s_362ce27c6e539a607e1c8dec
+  s_9bd065f97be99a0c31453b50 -.-> s_362ce27c6e539a607e1c8dec

@@ -1,0 +1,42 @@
+flowchart LR
+  s_ba3be7a42f0af23d08bf989f["tests.invalid_utf8_file_is_a_malformed_lifecycle_input · 2168"]
+  u_e_fc583fc66c7e544dc0fc13fe["Unresolved: assert"]
+  s_ec03ef5fca4a2e59d9564039["tests.parse_rejection_logging_preserves_optional_phase_context · 2233"]
+  u_e_fc5f1bd7a4c9fb1313a6db36["Unresolved: WxcError::ConfigParse"]
+  s_aeddc1be0753b60d8bf66d4b["tests.rejection_reason_is_driven_by_the_error_code · 1911"]
+  u_e_fc7e374083f5256c1c1554a0["Unresolved: MxcError::malformed_request"]
+  s_61af96d253f484cbe16c0555["tests.cli_accepts_lifecycle_operation_and_container_id · 1789"]
+  u_e_fd44417849615c9b9e961b9c["Unresolved: assert_eq"]
+  s_389d8e6e328509b2081305ac["tests.cli_operation_routes_input_failures_to_lifecycle_errors · 2093"]
+  u_e_fd8cb0cabd7645dade477a37["Unresolved: std::fs::read_to_string"]
+  s_5ffe69e19965b218673f424e["main · 1031"]
+  u_e_fda7e46fc8097158ce6d58fd["Unresolved: mxc_sdk::mxc_common::script_runner::emit_backend_error_envelope"]
+  s_246d95db49bfb729e1d13258["tests.state_aware_exec_cli_command_overrides_policy_command_line · 2962"]
+  s_c61fba9c8c0be59e18174723["tests.resolve_with_cli · 2378"]
+  s_adae7ce67e6be5e995a18909["run_state_aware_main · 504"]
+  u_e_fe2eee0f47a7cdb0e77ec0dc["Unresolved: eprint"]
+  u_e_fe61c4fd64898b6c5ef93e85["Unresolved: telemetry::install_panic_hook"]
+  s_f442e2a824ed5f7625421786["config_file_path · 835"]
+  u_e_fe97ac88c59aad3d350e055f["Unresolved: cli.config         .as_ref()         .or(cli.config_path.as_ref())         .map"]
+  s_70087aaf0833d89bd3e8bbff["tests.audit_mode_only_accepts_process_container · 2419"]
+  u_e_ff2caac87f4feb42956455ad["Unresolved: assert"]
+  s_ff9223d811c125f11c875a19["tests.wslc_cli_command_uses_posix_shell_quoting · 2953"]
+  u_e_ff32ff1f4e4fd2f739ca152b["Unresolved: cmdline_from_argv_for_context"]
+  u_e_ff688419d3e63df2f4746900["Unresolved: eprint"]
+  u_e_ffdd9ba69e895d17586adbb5["Unresolved: print"]
+  u_e_fff12342bec7bbaad1ee1619["Unresolved: assert_eq"]
+  s_ba3be7a42f0af23d08bf989f --> u_e_fc583fc66c7e544dc0fc13fe
+  s_ec03ef5fca4a2e59d9564039 --> u_e_fc5f1bd7a4c9fb1313a6db36
+  s_aeddc1be0753b60d8bf66d4b --> u_e_fc7e374083f5256c1c1554a0
+  s_61af96d253f484cbe16c0555 --> u_e_fd44417849615c9b9e961b9c
+  s_389d8e6e328509b2081305ac --> u_e_fd8cb0cabd7645dade477a37
+  s_5ffe69e19965b218673f424e --> u_e_fda7e46fc8097158ce6d58fd
+  s_246d95db49bfb729e1d13258 -.-> s_c61fba9c8c0be59e18174723
+  s_adae7ce67e6be5e995a18909 --> u_e_fe2eee0f47a7cdb0e77ec0dc
+  s_adae7ce67e6be5e995a18909 --> u_e_fe61c4fd64898b6c5ef93e85
+  s_f442e2a824ed5f7625421786 --> u_e_fe97ac88c59aad3d350e055f
+  s_70087aaf0833d89bd3e8bbff --> u_e_ff2caac87f4feb42956455ad
+  s_ff9223d811c125f11c875a19 --> u_e_ff32ff1f4e4fd2f739ca152b
+  s_5ffe69e19965b218673f424e --> u_e_ff688419d3e63df2f4746900
+  s_5ffe69e19965b218673f424e --> u_e_ffdd9ba69e895d17586adbb5
+  s_389d8e6e328509b2081305ac --> u_e_fff12342bec7bbaad1ee1619

@@ -1,0 +1,24 @@
+flowchart LR
+  f_c7bdd2256f4d10102bf8622b["src/main/native-files.test.ts"]
+  u_e_da4379f8a3ebd2744391e06e["Unresolved: expect(() =&gt; claudeInput([{ role: 'user', documents: [{ ...document, name: 'report.docx', mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' }] }])).toThrow"]
+  u_e_deeb3872a387d68d4a2f820c["Unresolved: expect"]
+  u_e_deecefb94acd14bafe059493["Unresolved: expect(result[1].content).toContainEqual"]
+  s_a9bd77f265ffd35e649e6aea["src/main/native-files.ts: nativeFileMime"]
+  s_078cf959df6360ef51700b1b["src/main/cloud-providers.ts: responsesInput"]
+  u_e_ee983d35e76179f5c766cbae["Unresolved: expect"]
+  u_e_f0d110c72d81897ca1607d01["Unresolved: expect"]
+  u_e_f642d0f54da13fb657f0c1a5["Unresolved: expect"]
+  u_e_f8eb6ab7b22cc770d4a9e7bf["Unresolved: expect(nativeFileMime('ollama', 'report.pdf', pdf)).toBeNull"]
+  u_e_fd1dd0d4010df3776ff1ff6d["Unresolved: expect"]
+  f_c7bdd2256f4d10102bf8622b --> u_e_da4379f8a3ebd2744391e06e
+  f_c7bdd2256f4d10102bf8622b --> u_e_deeb3872a387d68d4a2f820c
+  f_c7bdd2256f4d10102bf8622b --> u_e_deecefb94acd14bafe059493
+  f_c7bdd2256f4d10102bf8622b --> s_a9bd77f265ffd35e649e6aea
+  f_c7bdd2256f4d10102bf8622b --> s_078cf959df6360ef51700b1b
+  f_c7bdd2256f4d10102bf8622b --> u_e_ee983d35e76179f5c766cbae
+  f_c7bdd2256f4d10102bf8622b --> u_e_f0d110c72d81897ca1607d01
+  f_c7bdd2256f4d10102bf8622b --> s_a9bd77f265ffd35e649e6aea
+  f_c7bdd2256f4d10102bf8622b --> u_e_f642d0f54da13fb657f0c1a5
+  f_c7bdd2256f4d10102bf8622b --> s_a9bd77f265ffd35e649e6aea
+  f_c7bdd2256f4d10102bf8622b --> u_e_f8eb6ab7b22cc770d4a9e7bf
+  f_c7bdd2256f4d10102bf8622b --> u_e_fd1dd0d4010df3776ff1ff6d

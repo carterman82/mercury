@@ -1,0 +1,49 @@
+flowchart LR
+  f_a7924de3b0a3c1d5f7c6fd62["src/main/model-roles.test.ts"]
+  u_e_e88834771ffbd0ca56679b9b["Unresolved: expect"]
+  s_2ec68a3f4e507b649f608d09["src/main/store.ts: Store.settings"]
+  u_e_e8e798038f9b2023b6521d75["Unresolved: expect"]
+  u_e_eb2bc6ffd4b67f5fc30c555d["Unresolved: saved.prepare(&quot;SELECT data FROM settings WHERE key = 'app'&quot;).get"]
+  u_e_ee0b87c1b8c833308cb2ee6c["Unresolved: expect(store.session(session.id).status).toBe"]
+  s_6750cebde8d4589f67083978["chat · 85"]
+  u_e_ee2c67263101ce625f215325["Unresolved: expect(JSON.stringify(input.messages)).toContain"]
+  s_68cdd39b7a2696044da2f450["src/main/runner.ts: Runner.constructor"]
+  u_e_f2a8d4024328e5874f5d0eaa["Unresolved: expect(store.session(session.id).events.some(event =&gt; event.role === role &amp;&amp; event.kind === 'status' &amp;&amp; event.text.includes('API charges apply'))).toBe"]
+  s_bd8d832c8c9c07233640c1df["src/main/runner.ts: Runner.plan"]
+  u_e_f6e02a1c86e86f23a45ef8ba["Unresolved: expect(saved.events.some(event =&gt; event.text === 'The note contains source evidence.\n\nVerification: Read note.txt once through Subagent.')).toBe"]
+  u_e_f6f404eb5b480fa20e4d19aa["Unresolved: JSON.parse"]
+  s_527de7f256747338c4159daf["fixture · 14"]
+  u_e_f738ce80a7d7669354722af5["Unresolved: roots.push"]
+  u_e_f74f814eb638103e49c8da72["Unresolved: expect"]
+  u_e_f8d69f137bc58cac53e7311c["Unresolved: expect(store.session(session.id).changes).toHaveLength"]
+  u_e_f99e985df8de8ca6c0c2f4ba["Unresolved: expect"]
+  s_10b6283226ff498fc18604cc["src/main/store.ts: Store.constructor"]
+  u_e_fb03097594f598f6fef30209["Unresolved: expect"]
+  u_e_fd45f283cfc1afd890d7dd32["Unresolved: db.prepare"]
+  s_b2089dc14f89e79a1685a56d["chat · 176"]
+  u_e_fe20e895ecf056e0cf9bff50["Unresolved: expect"]
+  s_00f342eb304c386f5cbc084b["src/main/runner.ts: Runner.approve"]
+  f_a7924de3b0a3c1d5f7c6fd62 --> u_e_e88834771ffbd0ca56679b9b
+  f_a7924de3b0a3c1d5f7c6fd62 -.-> s_2ec68a3f4e507b649f608d09
+  f_a7924de3b0a3c1d5f7c6fd62 --> u_e_e8e798038f9b2023b6521d75
+  f_a7924de3b0a3c1d5f7c6fd62 --> u_e_eb2bc6ffd4b67f5fc30c555d
+  f_a7924de3b0a3c1d5f7c6fd62 --> u_e_ee0b87c1b8c833308cb2ee6c
+  s_6750cebde8d4589f67083978 --> u_e_ee2c67263101ce625f215325
+  f_a7924de3b0a3c1d5f7c6fd62 -.-> s_68cdd39b7a2696044da2f450
+  f_a7924de3b0a3c1d5f7c6fd62 --> u_e_f2a8d4024328e5874f5d0eaa
+  f_a7924de3b0a3c1d5f7c6fd62 -.-> s_bd8d832c8c9c07233640c1df
+  f_a7924de3b0a3c1d5f7c6fd62 --> u_e_f6e02a1c86e86f23a45ef8ba
+  f_a7924de3b0a3c1d5f7c6fd62 --> u_e_f6f404eb5b480fa20e4d19aa
+  s_527de7f256747338c4159daf --> u_e_f738ce80a7d7669354722af5
+  f_a7924de3b0a3c1d5f7c6fd62 --> u_e_f74f814eb638103e49c8da72
+  f_a7924de3b0a3c1d5f7c6fd62 -.-> s_68cdd39b7a2696044da2f450
+  f_a7924de3b0a3c1d5f7c6fd62 --> s_527de7f256747338c4159daf
+  f_a7924de3b0a3c1d5f7c6fd62 -.-> s_68cdd39b7a2696044da2f450
+  f_a7924de3b0a3c1d5f7c6fd62 --> u_e_f8d69f137bc58cac53e7311c
+  f_a7924de3b0a3c1d5f7c6fd62 --> u_e_f99e985df8de8ca6c0c2f4ba
+  s_527de7f256747338c4159daf -.-> s_10b6283226ff498fc18604cc
+  f_a7924de3b0a3c1d5f7c6fd62 -.-> s_2ec68a3f4e507b649f608d09
+  f_a7924de3b0a3c1d5f7c6fd62 --> u_e_fb03097594f598f6fef30209
+  f_a7924de3b0a3c1d5f7c6fd62 --> u_e_fd45f283cfc1afd890d7dd32
+  s_b2089dc14f89e79a1685a56d --> u_e_fe20e895ecf056e0cf9bff50
+  f_a7924de3b0a3c1d5f7c6fd62 -.-> s_00f342eb304c386f5cbc084b

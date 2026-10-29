@@ -1,0 +1,85 @@
+flowchart LR
+  s_32a5813d88937ce3eb46d2aa["ChatService.send · 57"]
+  s_30f98c4340a2809403395030["src/main/vision.ts: messageTextLength"]
+  s_1bc16026f3d796f1536aab53["ChatService.send.executeCall · 219"]
+  s_6e27c048e152267e5b5b020c["ChatService.save · 47"]
+  u_e_a109bb7b74cee0a63b746c61["Unresolved: Math.floor"]
+  s_b65287cfa41a37c8668126f4["src/main/chat-generation.ts: generateChatTurn"]
+  u_e_a24b7711b9303815a81c3c9d["Unresolved: Set"]
+  s_387dba90328ba3ef979d2769["src/main/delegation.ts: resolveCandidates"]
+  u_e_a2d21155ddea876ae874d640["Unresolved: (source.target.images ??= []).push"]
+  s_1afc7ca6c5674db16242b7be["ChatService.send.readForSubagent · 123"]
+  u_e_a5b3e326349e79ba30496dec["Unresolved: permitted.has"]
+  u_e_a7af469f958c852fc693e912["Unresolved: workers.find"]
+  u_e_a848c6ce1449cdf3000038b2["Unresolved: Math.max"]
+  s_ee16044c443df2e620bb6769["src/main/delegation.ts: delegateTask"]
+  s_f6bcba4f2929ce5d267e1ebd["ChatService.send.worker.execute · 164"]
+  u_e_ae65649ec11534dce0502f00["Unresolved: (response.sourceEvidence ??= []).push"]
+  s_3bfae78335b8653387c4a3bc["ChatService.send.runProject.onSession · 303"]
+  u_e_b0ffb165b6258db22e4c204a["Unresolved: response.content.trim"]
+  u_e_b1e19e3a5685dfc90856b779["Unresolved: Error"]
+  u_e_b26311ea91920a2ca57554a6["Unresolved: Error"]
+  s_5174fb21053db4c7eaf6c74c["ChatService.send.runProject · 300"]
+  s_b657f58aafe836c524bd6ba0["ChatService.send.worker.onNotice · 164"]
+  s_705e4c2a3a5a2ab12cc50b12["ChatService.send.addNotice · 100"]
+  u_e_b3abface316e25fd880f0c06["Unresolved: message.slice"]
+  u_e_b40b431663d3a74b674b7c05["Unresolved: JSON.stringify(output).slice"]
+  s_0f8ad9d3a55c193159f80d53["ChatService.send.runProject.execute · 314"]
+  u_e_b58f1d45c69e64e4e5d81451["Unresolved: visualResults.flatMap"]
+  s_56670fb4a7d01fc26fb1560e["src/main/source-memory.ts: recallContext"]
+  u_e_b5b4be31379e46f9ece34fdb["Unresolved: Error"]
+  u_e_b67a7d405dc48313e4e3a14d["Unresolved: Error"]
+  u_e_b790619c9d6fa23bac49879b["Unresolved: JSON.stringify"]
+  f_b947c19795d7096a571ac57f["src/main/chat.ts"]
+  u_e_b819b094f89e83035ffb3a70["Unresolved: z.string"]
+  s_d89799869e4af9d949650e25["src/main/source-memory.ts: sourceEvidence"]
+  s_60c896f3250fe893ef6ec761["src/main/store.ts: Store.project"]
+  s_27d57e46c896b911ef85fa5e["ChatService.send.worker · 147"]
+  u_e_ba24abc0680b87028c1d3c98["Unresolved: Math.min"]
+  u_e_ba32fa4798c84c15067dcb73["Unresolved: JSON.stringify"]
+  u_e_badae0bfbeb4c61132e33ea5["Unresolved: Math.min"]
+  u_e_bb0a0ad67313f9f66ad8fbd5["Unresolved: messages.map"]
+  u_e_bba924d8e450d52604ebab85["Unresolved: z.number().int"]
+  u_e_bcd26afce884007062bd9206["Unresolved: findings.slice"]
+  u_e_bd32b23d3c8d43cb21cf4584["Unresolved: analyses.get"]
+  u_e_bd598aa969698031c37e9b9f["Unresolved: Error"]
+  s_32a5813d88937ce3eb46d2aa --> s_30f98c4340a2809403395030
+  s_1bc16026f3d796f1536aab53 -.-> s_6e27c048e152267e5b5b020c
+  s_32a5813d88937ce3eb46d2aa --> u_e_a109bb7b74cee0a63b746c61
+  s_32a5813d88937ce3eb46d2aa --> s_b65287cfa41a37c8668126f4
+  s_1bc16026f3d796f1536aab53 -.-> s_6e27c048e152267e5b5b020c
+  s_32a5813d88937ce3eb46d2aa --> u_e_a24b7711b9303815a81c3c9d
+  s_1bc16026f3d796f1536aab53 --> s_387dba90328ba3ef979d2769
+  s_32a5813d88937ce3eb46d2aa --> u_e_a2d21155ddea876ae874d640
+  s_1bc16026f3d796f1536aab53 --> s_30f98c4340a2809403395030
+  s_1afc7ca6c5674db16242b7be --> u_e_a5b3e326349e79ba30496dec
+  s_32a5813d88937ce3eb46d2aa --> u_e_a7af469f958c852fc693e912
+  s_32a5813d88937ce3eb46d2aa --> u_e_a848c6ce1449cdf3000038b2
+  s_1bc16026f3d796f1536aab53 --> s_ee16044c443df2e620bb6769
+  s_f6bcba4f2929ce5d267e1ebd --> s_1afc7ca6c5674db16242b7be
+  s_1bc16026f3d796f1536aab53 --> u_e_ae65649ec11534dce0502f00
+  s_3bfae78335b8653387c4a3bc -.-> s_6e27c048e152267e5b5b020c
+  s_32a5813d88937ce3eb46d2aa --> u_e_b0ffb165b6258db22e4c204a
+  s_32a5813d88937ce3eb46d2aa --> u_e_b1e19e3a5685dfc90856b779
+  s_1bc16026f3d796f1536aab53 --> u_e_b26311ea91920a2ca57554a6
+  s_32a5813d88937ce3eb46d2aa --> s_5174fb21053db4c7eaf6c74c
+  s_b657f58aafe836c524bd6ba0 --> s_705e4c2a3a5a2ab12cc50b12
+  s_32a5813d88937ce3eb46d2aa --> u_e_b3abface316e25fd880f0c06
+  s_1bc16026f3d796f1536aab53 --> u_e_b40b431663d3a74b674b7c05
+  s_32a5813d88937ce3eb46d2aa -.-> s_6e27c048e152267e5b5b020c
+  s_0f8ad9d3a55c193159f80d53 --> u_e_b58f1d45c69e64e4e5d81451
+  s_1bc16026f3d796f1536aab53 --> s_56670fb4a7d01fc26fb1560e
+  s_32a5813d88937ce3eb46d2aa --> u_e_b5b4be31379e46f9ece34fdb
+  s_32a5813d88937ce3eb46d2aa --> u_e_b67a7d405dc48313e4e3a14d
+  s_1bc16026f3d796f1536aab53 --> u_e_b790619c9d6fa23bac49879b
+  f_b947c19795d7096a571ac57f --> u_e_b819b094f89e83035ffb3a70
+  s_1bc16026f3d796f1536aab53 --> s_d89799869e4af9d949650e25
+  s_32a5813d88937ce3eb46d2aa -.-> s_60c896f3250fe893ef6ec761
+  s_27d57e46c896b911ef85fa5e --> u_e_ba24abc0680b87028c1d3c98
+  s_1bc16026f3d796f1536aab53 --> u_e_ba32fa4798c84c15067dcb73
+  s_32a5813d88937ce3eb46d2aa --> u_e_badae0bfbeb4c61132e33ea5
+  s_32a5813d88937ce3eb46d2aa --> u_e_bb0a0ad67313f9f66ad8fbd5
+  f_b947c19795d7096a571ac57f --> u_e_bba924d8e450d52604ebab85
+  s_32a5813d88937ce3eb46d2aa --> u_e_bcd26afce884007062bd9206
+  s_32a5813d88937ce3eb46d2aa --> u_e_bd32b23d3c8d43cb21cf4584
+  s_32a5813d88937ce3eb46d2aa --> u_e_bd598aa969698031c37e9b9f

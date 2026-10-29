@@ -1,0 +1,25 @@
+flowchart LR
+  f_b947c19795d7096a571ac57f["src/main/chat.ts"]
+  u_e_f7693d9af73236327657833c["Unresolved: z.string"]
+  s_1bc16026f3d796f1536aab53["ChatService.send.executeCall · 219"]
+  u_e_fa471b5a0aaf7ee134e0e527["Unresolved: ['create_document', 'create_spreadsheet', 'create_presentation', 'create_graphic', 'create_archive'].includes"]
+  s_32a5813d88937ce3eb46d2aa["ChatService.send · 57"]
+  u_e_fcae92283fe228e03a92fe36["Unresolved: Math.min"]
+  u_e_fceb6607710156a7ae4fc5c5["Unresolved: Math.min"]
+  u_e_fde410bb466708d04a6c4a75["Unresolved: (response.files ??= []).push"]
+  s_6e27c048e152267e5b5b020c["ChatService.save · 47"]
+  u_e_fdf66c3047cc2cf4360fccb2["Unresolved: this.notify"]
+  u_e_fe9e7b7a74453d3be3fc03d9["Unresolved: Number.isFinite"]
+  u_e_fea1e82521bb8531ba30b1cb["Unresolved: Math.max"]
+  s_72e582247916ebc50956475d["src/main/store.ts: Store.chat"]
+  s_d89799869e4af9d949650e25["src/main/source-memory.ts: sourceEvidence"]
+  f_b947c19795d7096a571ac57f --> u_e_f7693d9af73236327657833c
+  s_1bc16026f3d796f1536aab53 --> u_e_fa471b5a0aaf7ee134e0e527
+  s_32a5813d88937ce3eb46d2aa --> u_e_fcae92283fe228e03a92fe36
+  s_32a5813d88937ce3eb46d2aa --> u_e_fceb6607710156a7ae4fc5c5
+  s_1bc16026f3d796f1536aab53 --> u_e_fde410bb466708d04a6c4a75
+  s_6e27c048e152267e5b5b020c --> u_e_fdf66c3047cc2cf4360fccb2
+  s_32a5813d88937ce3eb46d2aa --> u_e_fe9e7b7a74453d3be3fc03d9
+  s_32a5813d88937ce3eb46d2aa --> u_e_fea1e82521bb8531ba30b1cb
+  s_32a5813d88937ce3eb46d2aa -.-> s_72e582247916ebc50956475d
+  s_32a5813d88937ce3eb46d2aa --> s_d89799869e4af9d949650e25

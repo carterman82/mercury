@@ -1,4 +1,4 @@
-import { afterEach, expect, it } from 'vitest';
+import { afterEach, expect, it, vi } from 'vitest';
 import { promises as fs } from 'node:fs';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -15,6 +15,7 @@ import type { ChatInput, ModelProvider } from './providers';
 import type { ChatThread } from '../shared/types';
 import { projectTestRuntime } from './project-test-runtime';
 import { ProjectWorkers } from './project-workers';
+import { ProjectMaps } from './project-maps';
 
 const cleanups: (() => Promise<void>)[] = [];
 const profile = { provider: 'ollama' as const, connectionId: 'fixture', model: 'main', contextLimit: 16000 };
@@ -53,6 +54,38 @@ it('reads and edits the assigned project with hashes and preserves newer user co
   await projects.execute(chat, 'edit_project_file', { path: 'note.txt', expectedHash: read.hash, content: 'new' }, controller.signal);
   expect(await fs.readFile(path.join(root, 'note.txt'), 'utf8')).toBe('new');
   await expect(projects.execute(chat, 'edit_project_file', { path: 'note.txt', expectedHash: read.hash, content: 'stale' }, controller.signal)).rejects.toThrow(/changed/);
+});
+
+it('skips startup rebuilds and writes changed diagrams only after the response before committing', async () => {
+  const { directory, root, store, chat, approvals, controller } = await fixture(3, true);
+  const refresh = vi.fn();
+  const updateChanged = vi.fn(async (_root: string, paths: string[]) => {
+    expect(paths).toEqual(['note.txt']);
+    await fs.mkdir(path.join(root, '.mercury/architecture/generated'), { recursive: true });
+    await fs.writeFile(path.join(root, '.mercury/architecture/generated/note.mmd'), 'flowchart LR\nNote --> Content');
+  });
+  const maps = { hasExistingDiagrams: vi.fn(async () => true), refresh, updateChanged } as unknown as ProjectMaps;
+  const projects = new ProjectTools(store, approvals, new ProjectWorktreeService(path.join(directory, 'fast-workspaces')), undefined, { maps });
+  await projects.prepare(chat, controller.signal);
+  expect(refresh).not.toHaveBeenCalled();
+  await projects.execute(chat, 'edit_project_file', { path: 'note.txt', expectedHash: hash('old'), content: 'updated' }, controller.signal);
+  expect(updateChanged).not.toHaveBeenCalled();
+  await projects.commitResponse(chat, controller.signal);
+  expect(updateChanged).toHaveBeenCalledTimes(1);
+  const git = (...args: string[]) => promisify(execFile)('git', ['-C', root, ...args], { windowsHide: true });
+  expect((await git('show', 'HEAD:.mercury/architecture/generated/note.mmd')).stdout).toContain('Note --> Content');
+  expect((await git('show', 'HEAD:note.txt')).stdout).toBe('updated');
+});
+
+it('initializes missing diagrams once and skips initialization on the next response', async () => {
+  const { directory, store, chat, approvals, controller } = await fixture(3, true);
+  let present = false;
+  const refresh = vi.fn(async () => { present = true; });
+  const maps = { hasExistingDiagrams: vi.fn(async () => present), refresh } as unknown as ProjectMaps;
+  const projects = new ProjectTools(store, approvals, new ProjectWorktreeService(path.join(directory, 'initial-workspaces')), undefined, { maps });
+  await projects.prepare(chat, controller.signal);
+  await projects.prepare(chat, controller.signal);
+  expect(refresh).toHaveBeenCalledTimes(1);
 });
 
 it('requires an exact outside read in level 1, and denies instead of reading when rejected', async () => {

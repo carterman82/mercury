@@ -1,0 +1,82 @@
+flowchart LR
+  f_7adaa52a2eacb085ba5e07e6["src/main/main.ts"]
+  u_e_d5db90f5c167825196103f47["Unresolved: z.string().uuid().parse"]
+  u_e_d60681dfae4eb9a8a52dfbf6["Unresolved: profileSchema.refine"]
+  s_5489336cf59f0cba96ed0ca3["src/main/store.ts: Store.saveSettings"]
+  u_e_d60d73ab67cf2105a61936c2["Unresolved: store.settings().connections.some"]
+  u_e_d679811cc49ba36ee6748cdb["Unresolved: z.string().min"]
+  s_72e582247916ebc50956475d["src/main/store.ts: Store.chat"]
+  u_e_d6b3606b930e534b4ee8f35b["Unresolved: z.string"]
+  s_809f4650e4c38ce4a8c61300["src/main/store.ts: Store.secret"]
+  u_e_d795dbbcbb1641d113df9378["Unresolved: randomUUID"]
+  u_e_d89bd6c68fc1e53fbeff3800["Unresolved: z.string().max(4096).optional"]
+  s_2ec68a3f4e507b649f608d09["src/main/store.ts: Store.settings"]
+  s_2073cef49155568250259f0b["authenticated · 66"]
+  u_e_d9d33c237d85ef61c5e865b9["Unresolved: Error"]
+  u_e_d9e57ed8c911a328108936bb["Unresolved: z.number().int().min(1).max(100000).optional"]
+  u_e_da7b8aa76a731c8163fb42b5["Unresolved: z.number().int().min(1).max"]
+  s_55e1798bdaeb3dd1d59c4d45["handle · 69"]
+  u_e_dadf7838b73fd17047983f1e["Unresolved: z.number().int().min"]
+  s_230e9bae79d19652d9f9d529["checkModels · 134"]
+  u_e_db31442d0d01b0df58ac483e["Unresolved: window.isDestroyed"]
+  s_117d0dff359e419304775e2e["src/main/store.ts: Store.discoveryCache"]
+  u_e_db8a8eb49503234dd8beb044["Unresolved: z.string().uuid"]
+  u_e_dbc719ac03c51239ce93e1ac["Unresolved: z.boolean().optional"]
+  u_e_dce970bfb30c9ba24959c29e["Unresolved: z.string().uuid().parse"]
+  u_e_dd62dda84b342aa2d4e08002["Unresolved: z.string"]
+  s_93c5a2928e2481c48726e9dc["src/main/project-agent-runtime.ts: ClaudeProjectRuntime.constructor"]
+  u_e_df9cc4bae7ac07a57c75212b["Unresolved: z.string().max(100).optional"]
+  u_e_e082691409266b6270eedc0b["Unresolved: z.string().uuid"]
+  u_e_e1c48bb4830506515fa5e25d["Unresolved: randomUUID"]
+  u_e_e2040cbcb46f081dacec831e["Unresolved: z.enum"]
+  u_e_e20bcddd87a3c218946e690d["Unresolved: z.boolean"]
+  s_73e7048833e8acab6c0295be["src/main/discovery-cache.ts: DiscoveryCache.constructor"]
+  u_e_e27eb7301a90a1721f7f96a8["Unresolved: settings.connections.some"]
+  u_e_e2901853abd4c6cf370a0a26["Unresolved: z.string().uuid().parse"]
+  u_e_e33f60951ebfb63f85863cd9["Unresolved: window.loadURL"]
+  s_0bed746db8ebdece8972ffd6["writeSecret · 88"]
+  u_e_e35a394f79b5a1c38d4dfbf4["Unresolved: safeStorage.encryptString(value).toString"]
+  u_e_e375a140b240cfc66c3217e4["Unresolved: z.number"]
+  u_e_e470fa3deb000ba27248b5eb["Unresolved: window.webContents.send"]
+  s_e52ce9f5f217961588f250f5["noChat · 64"]
+  u_e_e579b27835a611f4769318fd["Unresolved: Error"]
+  f_7adaa52a2eacb085ba5e07e6 --> u_e_d5db90f5c167825196103f47
+  f_7adaa52a2eacb085ba5e07e6 --> u_e_d60681dfae4eb9a8a52dfbf6
+  f_7adaa52a2eacb085ba5e07e6 -.-> s_5489336cf59f0cba96ed0ca3
+  f_7adaa52a2eacb085ba5e07e6 --> u_e_d60d73ab67cf2105a61936c2
+  f_7adaa52a2eacb085ba5e07e6 --> u_e_d679811cc49ba36ee6748cdb
+  f_7adaa52a2eacb085ba5e07e6 -.-> s_72e582247916ebc50956475d
+  f_7adaa52a2eacb085ba5e07e6 --> u_e_d6b3606b930e534b4ee8f35b
+  f_7adaa52a2eacb085ba5e07e6 -.-> s_809f4650e4c38ce4a8c61300
+  f_7adaa52a2eacb085ba5e07e6 --> u_e_d795dbbcbb1641d113df9378
+  f_7adaa52a2eacb085ba5e07e6 --> u_e_d89bd6c68fc1e53fbeff3800
+  f_7adaa52a2eacb085ba5e07e6 -.-> s_2ec68a3f4e507b649f608d09
+  s_2073cef49155568250259f0b --> u_e_d9d33c237d85ef61c5e865b9
+  f_7adaa52a2eacb085ba5e07e6 --> u_e_d9e57ed8c911a328108936bb
+  f_7adaa52a2eacb085ba5e07e6 --> u_e_da7b8aa76a731c8163fb42b5
+  f_7adaa52a2eacb085ba5e07e6 --> s_55e1798bdaeb3dd1d59c4d45
+  f_7adaa52a2eacb085ba5e07e6 --> u_e_dadf7838b73fd17047983f1e
+  s_230e9bae79d19652d9f9d529 --> u_e_db31442d0d01b0df58ac483e
+  f_7adaa52a2eacb085ba5e07e6 -.-> s_117d0dff359e419304775e2e
+  f_7adaa52a2eacb085ba5e07e6 --> u_e_db8a8eb49503234dd8beb044
+  f_7adaa52a2eacb085ba5e07e6 --> u_e_dbc719ac03c51239ce93e1ac
+  f_7adaa52a2eacb085ba5e07e6 --> u_e_dce970bfb30c9ba24959c29e
+  f_7adaa52a2eacb085ba5e07e6 --> u_e_dd62dda84b342aa2d4e08002
+  f_7adaa52a2eacb085ba5e07e6 -.-> s_93c5a2928e2481c48726e9dc
+  f_7adaa52a2eacb085ba5e07e6 --> u_e_df9cc4bae7ac07a57c75212b
+  f_7adaa52a2eacb085ba5e07e6 --> s_55e1798bdaeb3dd1d59c4d45
+  f_7adaa52a2eacb085ba5e07e6 --> u_e_e082691409266b6270eedc0b
+  f_7adaa52a2eacb085ba5e07e6 --> u_e_e1c48bb4830506515fa5e25d
+  f_7adaa52a2eacb085ba5e07e6 --> u_e_e2040cbcb46f081dacec831e
+  f_7adaa52a2eacb085ba5e07e6 --> u_e_e20bcddd87a3c218946e690d
+  f_7adaa52a2eacb085ba5e07e6 -.-> s_73e7048833e8acab6c0295be
+  f_7adaa52a2eacb085ba5e07e6 --> u_e_e27eb7301a90a1721f7f96a8
+  f_7adaa52a2eacb085ba5e07e6 --> u_e_e2901853abd4c6cf370a0a26
+  f_7adaa52a2eacb085ba5e07e6 --> s_55e1798bdaeb3dd1d59c4d45
+  f_7adaa52a2eacb085ba5e07e6 --> u_e_e33f60951ebfb63f85863cd9
+  s_0bed746db8ebdece8972ffd6 --> u_e_e35a394f79b5a1c38d4dfbf4
+  f_7adaa52a2eacb085ba5e07e6 --> u_e_e375a140b240cfc66c3217e4
+  s_55e1798bdaeb3dd1d59c4d45 --> s_2073cef49155568250259f0b
+  f_7adaa52a2eacb085ba5e07e6 --> u_e_e470fa3deb000ba27248b5eb
+  f_7adaa52a2eacb085ba5e07e6 -.-> s_2ec68a3f4e507b649f608d09
+  s_e52ce9f5f217961588f250f5 --> u_e_e579b27835a611f4769318fd

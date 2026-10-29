@@ -1,0 +1,89 @@
+flowchart LR
+  s_1ab8ee924402b155716dc65a["CodexService.constructor · 104"]
+  s_841b224ff8cc59bb04c96c9d["executable · 77"]
+  s_c179b2e8d7342b9106c336c7["CodexService.signIn · 125"]
+  u_e_02983f108ac23b36c503b78c["Unresolved: setTimeout"]
+  s_c588882baf829613d44ceebf["CodexService.client · 115"]
+  u_e_040cef3da0475654ca2eb9ac["Unresolved: signal?.removeEventListener"]
+  f_e5ea88a7231b09d6b2746a78["src/main/codex.ts"]
+  u_e_04794b64f891e0e73edda109["Unresolved: z.string"]
+  s_b606f8d0567d60afb4c31c0d["CodexService.discover · 163"]
+  s_126c45b521ff4d1cbed86bc5["CodexRpc.initialize · 63"]
+  s_2ea453327bdf6d850c8cf635["CodexRpc.request · 53"]
+  u_e_09f6f23ee6f3caa403c78827["Unresolved: this.pending.set"]
+  u_e_09f8d8cf6cb7696b6373750a["Unresolved: z.array"]
+  u_e_0b3e21372fe53a8729c5452e["Unresolved: Promise.reject"]
+  s_a387591332662f85ace23601["CodexService.chat · 180"]
+  u_e_0bab4eedc0903201dda84686["Unresolved: (message.images ?? []).map"]
+  u_e_0bcd1b150446372877c0d251["Unresolved: this.openBrowser"]
+  u_e_0e075c5cc00c1a21e3229ea3["Unresolved: Error"]
+  u_e_1125027b89ed9ae36a5c3a8d["Unresolved: Set"]
+  s_e310a919014e61ee9a938559["CodexRpc.close · 67"]
+  u_e_1322772ea2dd4219c07f8806["Unresolved: listener"]
+  s_26ff0c0b1783288d5357bebb["CodexRpc.constructor · 19"]
+  s_af373591c0570e8d2b30a3a6["CodexRpc.send · 50"]
+  u_e_14e0860d93b11cedafb69ab8["Unresolved: z.string().max"]
+  u_e_14ed3edb1d5bab90ce0048ba["Unresolved: path.join"]
+  u_e_15da44d46d4dce14df8694fd["Unresolved: readdir(bundled).catch"]
+  u_e_1719f0e61c4760a24938dc63["Unresolved: z.object({ name: z.string().min(1), arguments: z.string().max(300_000) }).strict"]
+  u_e_181cc6d6dae9a08419b5e7ff["Unresolved: Promise"]
+  u_e_1926e4f4cfecf7756fd4d9dc["Unresolved: rpc.request('turn/start', { threadId, input: [{ type: 'text', text: JSON.stringify({ conversation: messages, offeredTools: tools }) }, ...images], outputSchema }).catch"]
+  u_e_197f2a2b070b3b9d450bf3fb["Unresolved: line.trim"]
+  u_e_1a1777acdf0509a531297221["Unresolved: Error"]
+  u_e_1b4eb10253cf6c0ac7da5303["Unresolved: z.array(z.object({ name: z.string().min(1), arguments: z.string().max(300_000) }).strict()).max"]
+  u_e_1c217aa1ee6b51b63d602191["Unresolved: Error"]
+  u_e_1c807d6ddb368abc91da24a8["Unresolved: path.join"]
+  u_e_1ec1e192b4e60ef244a1873c["Unresolved: this.pending.delete"]
+  u_e_1ff242e53df8cb63240b0a0a["Unresolved: child.stderr.on"]
+  u_e_1ff5246ad44da346a2f9f8f2["Unresolved: model.inputModalities?.includes"]
+  u_e_248e583399ef190314f5897a["Unresolved: input.onToolProgress"]
+  u_e_24eec12834e94cc21018e950["Unresolved: tools.some"]
+  u_e_2638a459a2bf5af6af819253["Unresolved: request.resolve"]
+  u_e_27ca90d3dd8c81139e86a0f3["Unresolved: rpc.close"]
+  u_e_288e790ff3d9ff425fc9ef1e["Unresolved: Error"]
+  u_e_2ad9c9864d75c62880b1e0f4["Unresolved: Set"]
+  s_937010e03fd54e2cb195f572["CodexService.signIn.cancel · 141"]
+  u_e_2b02ae35f560dcdf111be74d["Unresolved: Error"]
+  u_e_2c7a2e9c66bbf37a4d496815["Unresolved: input.signal.removeEventListener"]
+  u_e_2d5067de041eef073656414a["Unresolved: input.messages.map"]
+  s_c13d4922588147a5bd6f7cb9["CodexService.signIn.finish · 140"]
+  s_1ab8ee924402b155716dc65a --> s_841b224ff8cc59bb04c96c9d
+  s_c179b2e8d7342b9106c336c7 --> u_e_02983f108ac23b36c503b78c
+  s_c588882baf829613d44ceebf --> u_e_040cef3da0475654ca2eb9ac
+  f_e5ea88a7231b09d6b2746a78 --> u_e_04794b64f891e0e73edda109
+  s_b606f8d0567d60afb4c31c0d -.-> s_c588882baf829613d44ceebf
+  s_126c45b521ff4d1cbed86bc5 -.-> s_2ea453327bdf6d850c8cf635
+  s_2ea453327bdf6d850c8cf635 --> u_e_09f6f23ee6f3caa403c78827
+  f_e5ea88a7231b09d6b2746a78 --> u_e_09f8d8cf6cb7696b6373750a
+  s_2ea453327bdf6d850c8cf635 --> u_e_0b3e21372fe53a8729c5452e
+  s_a387591332662f85ace23601 --> u_e_0bab4eedc0903201dda84686
+  s_c179b2e8d7342b9106c336c7 --> u_e_0bcd1b150446372877c0d251
+  s_2ea453327bdf6d850c8cf635 --> u_e_0e075c5cc00c1a21e3229ea3
+  f_e5ea88a7231b09d6b2746a78 --> u_e_1125027b89ed9ae36a5c3a8d
+  s_e310a919014e61ee9a938559 --> u_e_1322772ea2dd4219c07f8806
+  s_26ff0c0b1783288d5357bebb -.-> s_af373591c0570e8d2b30a3a6
+  f_e5ea88a7231b09d6b2746a78 --> u_e_14e0860d93b11cedafb69ab8
+  s_841b224ff8cc59bb04c96c9d --> u_e_14ed3edb1d5bab90ce0048ba
+  s_841b224ff8cc59bb04c96c9d --> u_e_15da44d46d4dce14df8694fd
+  f_e5ea88a7231b09d6b2746a78 --> u_e_1719f0e61c4760a24938dc63
+  s_a387591332662f85ace23601 --> u_e_181cc6d6dae9a08419b5e7ff
+  s_a387591332662f85ace23601 --> u_e_1926e4f4cfecf7756fd4d9dc
+  s_26ff0c0b1783288d5357bebb --> u_e_197f2a2b070b3b9d450bf3fb
+  s_a387591332662f85ace23601 --> u_e_1a1777acdf0509a531297221
+  s_126c45b521ff4d1cbed86bc5 -.-> s_af373591c0570e8d2b30a3a6
+  f_e5ea88a7231b09d6b2746a78 --> u_e_1b4eb10253cf6c0ac7da5303
+  s_a387591332662f85ace23601 --> u_e_1c217aa1ee6b51b63d602191
+  s_841b224ff8cc59bb04c96c9d --> u_e_1c807d6ddb368abc91da24a8
+  s_2ea453327bdf6d850c8cf635 --> u_e_1ec1e192b4e60ef244a1873c
+  s_26ff0c0b1783288d5357bebb --> u_e_1ff242e53df8cb63240b0a0a
+  s_b606f8d0567d60afb4c31c0d --> u_e_1ff5246ad44da346a2f9f8f2
+  s_a387591332662f85ace23601 --> u_e_248e583399ef190314f5897a
+  s_a387591332662f85ace23601 --> u_e_24eec12834e94cc21018e950
+  s_26ff0c0b1783288d5357bebb --> u_e_2638a459a2bf5af6af819253
+  s_a387591332662f85ace23601 --> u_e_27ca90d3dd8c81139e86a0f3
+  s_c179b2e8d7342b9106c336c7 --> u_e_288e790ff3d9ff425fc9ef1e
+  s_b606f8d0567d60afb4c31c0d --> u_e_2ad9c9864d75c62880b1e0f4
+  s_937010e03fd54e2cb195f572 --> u_e_2b02ae35f560dcdf111be74d
+  s_a387591332662f85ace23601 --> u_e_2c7a2e9c66bbf37a4d496815
+  s_a387591332662f85ace23601 --> u_e_2d5067de041eef073656414a
+  s_c179b2e8d7342b9106c336c7 --> s_c13d4922588147a5bd6f7cb9

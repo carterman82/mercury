@@ -1,0 +1,84 @@
+flowchart LR
+  s_36f2bee38b20cd143406a4e3["Workspace.list.walk · 53"]
+  s_dbafb8571053ccc3bf08ef15["Workspace.resolve · 22"]
+  u_e_b6cfd2ae9aa42d917cd621c8["Unresolved: Error"]
+  u_e_b995b5af63594461c37b3341["Unresolved: path.resolve"]
+  s_3416ba8d5bced309d41195a8["Workspace.createPdf · 115"]
+  u_e_ba7965ff79d55b701157de13["Unresolved: fs.readFile"]
+  s_1bf203f3a677de8fed1cd884["Workspace.edit · 101"]
+  u_e_bd96c4719bc8f1b7b4437b05["Unresolved: path.extname(relative).toLowerCase"]
+  s_eef34a052b825553f331042c["src/main/project-tools.ts: ProjectTools.execute.commandState"]
+  s_a63e5a1513d2fc01d0c902f5["Workspace.read · 68"]
+  s_2cd77cc2c4c686a531035a8e["Workspace.search · 87"]
+  u_e_bf487412a3b4d8e32955e1a3["Unresolved: fs.readFile"]
+  s_71fd89b480fab8b8c0a93b37["src/main/runner.ts: Runner.useTool"]
+  s_e33d2fd514298beee022604f["Workspace.list.skip · 49"]
+  s_6c57fb22fa612eeba88295b5["Workspace.list · 45"]
+  s_a26c220bf37ee317ae6ace1e["src/main/project-tools.ts: ProjectTools.execute"]
+  s_2a61ae8c7364769b9cb7e3c8["Workspace.constructor · 16"]
+  u_e_c5ed450bbeddf78a878844d9["Unresolved: Buffer.byteLength"]
+  u_e_c838d75de0cc42e0ee2d22f3["Unresolved: lines.forEach"]
+  u_e_c91431df534045c3918d2431["Unresolved: path.join"]
+  u_e_c9da1ca494122f0abd746872["Unresolved: query.toLowerCase"]
+  u_e_cc1a14eba508e33220a7d41e["Unresolved: Date.now"]
+  u_e_d21f64c127e81726da85b2ef["Unresolved: Error"]
+  u_e_d29d4b980323f7d8b314b329["Unresolved: fs.lstat"]
+  u_e_d55542de229e59002fa74057["Unresolved: p.slice"]
+  u_e_d6d1ce427eb41eea17d4c88e["Unresolved: path.extname"]
+  u_e_d89f8c93ae404e96f2c5a74c["Unresolved: Math.max"]
+  u_e_db314309f6d029d642e6f59b["Unresolved: Math.max"]
+  u_e_dbae66365722277be9e44384["Unresolved: line.toLowerCase().includes"]
+  u_e_de277032ef7a75e0521c99e2["Unresolved: fs.stat"]
+  u_e_de2b0de30fd56bd5f7f532b0["Unresolved: fs.rm(temporary, { force: true }).catch"]
+  u_e_de8d92c35bf3e49a1b2cee3d["Unresolved: stat.isFile"]
+  u_e_e0285c168cbb71215009ab36["Unresolved: fs.readFile"]
+  u_e_e563b8b1fb8bf8401cbfe4e9["Unresolved: fs.rm(temporary, { force: true }).catch"]
+  u_e_e679c3823c62ef66f944ca73["Unresolved: ignore.split"]
+  u_e_e6f66f6fccc0e2e29176c477["Unresolved: relative.split"]
+  u_e_e7aa06b40451682eaceb8250["Unresolved: patterns.some"]
+  s_6aa60aeb10ffaed53f6b83ab["hash · 10"]
+  u_e_e7e32ae996368546f5600480["Unresolved: createHash('sha256').update"]
+  s_5cc50dd5256707bcf046fa0e["src/main/runner.ts: Runner.projectContext"]
+  u_e_e8d194df52de50fcca38f59b["Unresolved: path.extname"]
+  u_e_ea48b9ad25c4f0d219d11310["Unresolved: fs.readFile"]
+  u_e_eb67057364e7423e11e47091["Unresolved: (await fs.readFile(filename, 'utf8')).split"]
+  s_36f2bee38b20cd143406a4e3 --> s_36f2bee38b20cd143406a4e3
+  s_dbafb8571053ccc3bf08ef15 --> u_e_b6cfd2ae9aa42d917cd621c8
+  s_dbafb8571053ccc3bf08ef15 --> u_e_b995b5af63594461c37b3341
+  s_3416ba8d5bced309d41195a8 --> u_e_ba7965ff79d55b701157de13
+  s_1bf203f3a677de8fed1cd884 --> u_e_bd96c4719bc8f1b7b4437b05
+  s_eef34a052b825553f331042c -.-> s_a63e5a1513d2fc01d0c902f5
+  s_2cd77cc2c4c686a531035a8e --> u_e_bf487412a3b4d8e32955e1a3
+  s_71fd89b480fab8b8c0a93b37 -.-> s_3416ba8d5bced309d41195a8
+  s_1bf203f3a677de8fed1cd884 -.-> s_dbafb8571053ccc3bf08ef15
+  s_36f2bee38b20cd143406a4e3 --> s_e33d2fd514298beee022604f
+  s_6c57fb22fa612eeba88295b5 --> s_36f2bee38b20cd143406a4e3
+  s_a26c220bf37ee317ae6ace1e -.-> s_2a61ae8c7364769b9cb7e3c8
+  s_1bf203f3a677de8fed1cd884 --> u_e_c5ed450bbeddf78a878844d9
+  s_2cd77cc2c4c686a531035a8e --> u_e_c838d75de0cc42e0ee2d22f3
+  s_6c57fb22fa612eeba88295b5 --> u_e_c91431df534045c3918d2431
+  s_2cd77cc2c4c686a531035a8e --> u_e_c9da1ca494122f0abd746872
+  s_3416ba8d5bced309d41195a8 --> u_e_cc1a14eba508e33220a7d41e
+  s_3416ba8d5bced309d41195a8 --> u_e_d21f64c127e81726da85b2ef
+  s_dbafb8571053ccc3bf08ef15 --> u_e_d29d4b980323f7d8b314b329
+  s_e33d2fd514298beee022604f --> u_e_d55542de229e59002fa74057
+  s_2cd77cc2c4c686a531035a8e -.-> s_dbafb8571053ccc3bf08ef15
+  s_3416ba8d5bced309d41195a8 --> u_e_d6d1ce427eb41eea17d4c88e
+  s_a63e5a1513d2fc01d0c902f5 --> u_e_d89f8c93ae404e96f2c5a74c
+  s_a63e5a1513d2fc01d0c902f5 --> u_e_db314309f6d029d642e6f59b
+  s_2cd77cc2c4c686a531035a8e --> u_e_dbae66365722277be9e44384
+  s_2cd77cc2c4c686a531035a8e --> u_e_de277032ef7a75e0521c99e2
+  s_1bf203f3a677de8fed1cd884 --> u_e_de2b0de30fd56bd5f7f532b0
+  s_a63e5a1513d2fc01d0c902f5 --> u_e_de8d92c35bf3e49a1b2cee3d
+  s_6c57fb22fa612eeba88295b5 --> u_e_e0285c168cbb71215009ab36
+  s_eef34a052b825553f331042c -.-> s_6c57fb22fa612eeba88295b5
+  s_3416ba8d5bced309d41195a8 --> u_e_e563b8b1fb8bf8401cbfe4e9
+  s_6c57fb22fa612eeba88295b5 --> u_e_e679c3823c62ef66f944ca73
+  s_dbafb8571053ccc3bf08ef15 --> u_e_e6f66f6fccc0e2e29176c477
+  s_e33d2fd514298beee022604f --> u_e_e7aa06b40451682eaceb8250
+  s_6aa60aeb10ffaed53f6b83ab --> u_e_e7e32ae996368546f5600480
+  s_5cc50dd5256707bcf046fa0e -.-> s_6c57fb22fa612eeba88295b5
+  s_1bf203f3a677de8fed1cd884 --> u_e_e8d194df52de50fcca38f59b
+  s_71fd89b480fab8b8c0a93b37 -.-> s_2cd77cc2c4c686a531035a8e
+  s_a63e5a1513d2fc01d0c902f5 --> u_e_ea48b9ad25c4f0d219d11310
+  s_2cd77cc2c4c686a531035a8e --> u_e_eb67057364e7423e11e47091

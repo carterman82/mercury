@@ -1,0 +1,21 @@
+flowchart LR
+  f_f48d2abcfd8974b4b7654c99["src/main/chat-browser.test.ts"]
+  u_e_ee99709ec2a836b7f1c10f0b["Unresolved: expect"]
+  s_904f5fdf8649605a49583c6b["src/main/chat-browser.ts: ChatBrowser.close"]
+  s_bea7fde3b939ab3a2283075b["src/main/chat-browser.ts: ChatBrowser.click"]
+  u_e_f4f26fc282ecbd32d068bb09["Unresolved: Error"]
+  u_e_f545db93783fa4c5891ff336["Unresolved: process.cwd"]
+  s_6d2de09a43552387966259c9["src/main/web-policy.ts: WebPolicy.constructor"]
+  u_e_f7f33f5f8cb6e963f8a4b863["Unresolved: expect"]
+  u_e_fa89704c293d3a7fe4d6e171["Unresolved: expect.poll(async () =&gt; (await browser!.read('game', 0, signal)).frames.some(frame =&gt; frame.url === base + '/game')).toBe"]
+  u_e_fd97da30ae8be3ef426442f3["Unresolved: server.address"]
+  f_f48d2abcfd8974b4b7654c99 --> u_e_ee99709ec2a836b7f1c10f0b
+  f_f48d2abcfd8974b4b7654c99 -.-> s_904f5fdf8649605a49583c6b
+  f_f48d2abcfd8974b4b7654c99 -.-> s_bea7fde3b939ab3a2283075b
+  f_f48d2abcfd8974b4b7654c99 --> u_e_f4f26fc282ecbd32d068bb09
+  f_f48d2abcfd8974b4b7654c99 --> u_e_f545db93783fa4c5891ff336
+  f_f48d2abcfd8974b4b7654c99 -.-> s_bea7fde3b939ab3a2283075b
+  f_f48d2abcfd8974b4b7654c99 -.-> s_6d2de09a43552387966259c9
+  f_f48d2abcfd8974b4b7654c99 --> u_e_f7f33f5f8cb6e963f8a4b863
+  f_f48d2abcfd8974b4b7654c99 --> u_e_fa89704c293d3a7fe4d6e171
+  f_f48d2abcfd8974b4b7654c99 --> u_e_fd97da30ae8be3ef426442f3

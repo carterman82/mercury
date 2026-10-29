@@ -1,0 +1,67 @@
+flowchart LR
+  f_043ce7934c391edd7ecedc8f["src/main/runner.ts"]
+  u_e_de19f95fbb07ce3748400159["Unresolved: z.object"]
+  s_5cc50dd5256707bcf046fa0e["Runner.projectContext · 82"]
+  u_e_df1d78ecc1412c0bb00a9527["Unresolved: `Files (first 150):\n${files.join('\n')}\n\n${excerpts.join('\n\n')}`.slice"]
+  s_bd8d832c8c9c07233640c1df["Runner.plan · 206"]
+  u_e_e194b1b58317e40d20343b5a["Unresolved: Error"]
+  s_00f342eb304c386f5cbc084b["Runner.approve · 246"]
+  s_c450172edbdf8b6c170a1ad1["Runner.event · 52"]
+  u_e_e35773f065652de889d4d947["Unresolved: z.object"]
+  s_fe8d6416406bc5c4386e636c["Runner.agent · 156"]
+  u_e_e417b2a2eac97c030adcdd56["Unresolved: z.literal"]
+  s_c7893b0794a6d482882c01c1["Runner.savePlan · 238"]
+  u_e_e78b6c55b6d3bfed979953db["Unresolved: ['awaiting_review', 'awaiting_input', 'interrupted', 'failed'].includes"]
+  s_d618efa03496f6d59c9ea799["Runner.getWorkspace · 56"]
+  u_e_e792d077425a9f4e62acbd0a["Unresolved: z.object"]
+  s_6c57fb22fa612eeba88295b5["src/main/workspace.ts: Workspace.list"]
+  s_71fd89b480fab8b8c0a93b37["Runner.useTool · 91"]
+  u_e_e94fee83efcf87292625f52a["Unresolved: randomUUID"]
+  u_e_e955c1292ef803679a855287["Unresolved: z.string().min"]
+  s_2cd77cc2c4c686a531035a8e["src/main/workspace.ts: Workspace.search"]
+  s_7da90b41405a14dc0a0514fe["src/main/store.ts: Store.session"]
+  u_e_ec90a9053c294a5e334cc1e3["Unresolved: readTools.filter"]
+  s_b89422a5501cb81045afe451["Runner.implement · 272"]
+  u_e_ed1070ee392d191e8f22c25e["Unresolved: z.literal"]
+  u_e_ef37fd20cc31a3194b42d4c5["Unresolved: Error"]
+  u_e_ef6a5494842bf216caff1794["Unresolved: z.string"]
+  u_e_f214b4c54327ee4a9e01d4ef["Unresolved: z.object"]
+  u_e_f2e30bd08aaa9af37ab94600["Unresolved: z.discriminatedUnion"]
+  u_e_f47b74b0dccdfb9d0efd2f2d["Unresolved: z.object"]
+  s_d89799869e4af9d949650e25["src/main/source-memory.ts: sourceEvidence"]
+  u_e_fd0f538b28b20c567773df64["Unresolved: this.onChange"]
+  u_e_fd28c53ccf88d79906626b93["Unresolved: String"]
+  u_e_fd3ffb45b3095361f2053da5["Unresolved: (session.sourceEvidence ??= projectEvidence(session)).push"]
+  s_2748c59a0ec42ca8f343eb6b["Runner.resume · 282"]
+  s_93604e555eec39abded3b7cd["Runner.save · 51"]
+  f_043ce7934c391edd7ecedc8f --> u_e_de19f95fbb07ce3748400159
+  s_5cc50dd5256707bcf046fa0e --> u_e_df1d78ecc1412c0bb00a9527
+  s_bd8d832c8c9c07233640c1df --> u_e_e194b1b58317e40d20343b5a
+  s_00f342eb304c386f5cbc084b -.-> s_c450172edbdf8b6c170a1ad1
+  f_043ce7934c391edd7ecedc8f --> u_e_e35773f065652de889d4d947
+  s_fe8d6416406bc5c4386e636c -.-> s_c450172edbdf8b6c170a1ad1
+  f_043ce7934c391edd7ecedc8f --> u_e_e417b2a2eac97c030adcdd56
+  s_c7893b0794a6d482882c01c1 --> u_e_e78b6c55b6d3bfed979953db
+  s_bd8d832c8c9c07233640c1df -.-> s_d618efa03496f6d59c9ea799
+  f_043ce7934c391edd7ecedc8f --> u_e_e792d077425a9f4e62acbd0a
+  s_5cc50dd5256707bcf046fa0e -.-> s_6c57fb22fa612eeba88295b5
+  s_71fd89b480fab8b8c0a93b37 -.-> s_c450172edbdf8b6c170a1ad1
+  s_c450172edbdf8b6c170a1ad1 --> u_e_e94fee83efcf87292625f52a
+  f_043ce7934c391edd7ecedc8f --> u_e_e955c1292ef803679a855287
+  s_71fd89b480fab8b8c0a93b37 -.-> s_2cd77cc2c4c686a531035a8e
+  s_bd8d832c8c9c07233640c1df -.-> s_7da90b41405a14dc0a0514fe
+  s_71fd89b480fab8b8c0a93b37 --> u_e_ec90a9053c294a5e334cc1e3
+  s_b89422a5501cb81045afe451 -.-> s_d618efa03496f6d59c9ea799
+  f_043ce7934c391edd7ecedc8f --> u_e_ed1070ee392d191e8f22c25e
+  s_fe8d6416406bc5c4386e636c --> u_e_ef37fd20cc31a3194b42d4c5
+  f_043ce7934c391edd7ecedc8f --> u_e_ef6a5494842bf216caff1794
+  f_043ce7934c391edd7ecedc8f --> u_e_f214b4c54327ee4a9e01d4ef
+  f_043ce7934c391edd7ecedc8f --> u_e_f2e30bd08aaa9af37ab94600
+  f_043ce7934c391edd7ecedc8f --> u_e_f47b74b0dccdfb9d0efd2f2d
+  s_71fd89b480fab8b8c0a93b37 --> s_d89799869e4af9d949650e25
+  s_71fd89b480fab8b8c0a93b37 -.-> s_c450172edbdf8b6c170a1ad1
+  s_fe8d6416406bc5c4386e636c --> u_e_fd0f538b28b20c567773df64
+  s_fe8d6416406bc5c4386e636c --> u_e_fd28c53ccf88d79906626b93
+  s_71fd89b480fab8b8c0a93b37 --> u_e_fd3ffb45b3095361f2053da5
+  s_2748c59a0ec42ca8f343eb6b -.-> s_93604e555eec39abded3b7cd
+  s_71fd89b480fab8b8c0a93b37 -.-> s_c450172edbdf8b6c170a1ad1

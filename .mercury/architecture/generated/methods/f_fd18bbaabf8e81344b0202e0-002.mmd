@@ -1,0 +1,75 @@
+flowchart LR
+  f_fd18bbaabf8e81344b0202e0["src/main/chatgpt-auth.test.ts"]
+  u_e_800e35fc75a96307e7ae88b8["Unresolved: expect(url.searchParams.get('state')).not.toBe"]
+  u_e_8386a6f8bde1404f2b01cba9["Unresolved: expect(fetch.mock.calls[0][1].body.get('client_id')).toBe"]
+  u_e_85db2edb0060629acb651102["Unresolved: expect"]
+  u_e_864ee81ca98f6667819dbf0c["Unresolved: JSON.stringify"]
+  s_6aca7c4292882e725e428e04["src/main/chatgpt-auth.ts: authFailure"]
+  u_e_8ac6751b409b6cf281127209["Unresolved: expect(secrets.has('account')).toBe"]
+  u_e_8b86ad23b640b46beaafbe0c["Unresolved: expect(auth.token('account')).rejects.toThrow"]
+  u_e_8beadec0dacecf1ce026c101["Unresolved: secrets.delete"]
+  u_e_8f171c6e5a4aa49d95c9275a["Unresolved: expect"]
+  u_e_8fadf19221bef55c6c381f90["Unresolved: secrets.get"]
+  u_e_90484e7d1e116c0b15e675ec["Unresolved: expect(validateIdentity(`${header}.${payload}.invalid`, 'client', 'correct')).rejects.toThrow"]
+  u_e_9079d4e0b28a292db16d380a["Unresolved: JSON.stringify"]
+  u_e_91293295f4e89ae4ae329647["Unresolved: URL"]
+  u_e_91744dae693fc7103f9b18db["Unresolved: expect"]
+  s_0015652f222d8b5c36181c26["src/main/chatgpt-auth.ts: ChatGPTAuth.signIn"]
+  u_e_926bb1bf1bc710abd60bc697["Unresolved: secrets.get"]
+  u_e_934937609c55676fd0ab3227["Unresolved: expect"]
+  u_e_94d94b89ed25dcbfc81a5a32["Unresolved: expect"]
+  s_bc074a0048dfeee6249562e3["src/main/chatgpt-auth.ts: ChatGPTAuth.constructor"]
+  u_e_959dbd4418704f793075f8d8["Unresolved: url.searchParams.get"]
+  s_50827e6571f6698d7bf96eaf["src/main/chatgpt-auth.ts: validateIdentity"]
+  u_e_9c78a80e26147fb827ad1f49["Unresolved: expect"]
+  u_e_9de083f474729987b157a5bb["Unresolved: expect(url.origin).toBe"]
+  u_e_9dffa8a122068b8f56e51c34["Unresolved: Promise.all"]
+  u_e_9fe45b19d42d7589ff3b426c["Unresolved: Response"]
+  s_efbcee914e33d5ba1337f1a2["credentials · 6"]
+  u_e_a585a6980fb9b702e6e82045["Unresolved: URL"]
+  u_e_a7247d1162e408e1990667af["Unresolved: secrets.set"]
+  s_dca2c6e63c2c9b567fd6b28b["src/main/chatgpt-auth.ts: ChatGPTAuth.token"]
+  u_e_aa224615152a52bca9a8751b["Unresolved: Buffer.from(JSON.stringify({ iss: 'https://auth.openai.com', aud: 'client', sub: 'user', exp: Date.now() / 1000 + 3600, nonce: 'correct' })).toString"]
+  u_e_ab24454f64c07d14a5388c07["Unresolved: expect(auth.signIn()).rejects.toThrow"]
+  u_e_ac18f5edaff17ddad6fc5741["Unresolved: url.searchParams.get"]
+  u_e_b0e14494d1b7e0abf8ba1248["Unresolved: expect"]
+  f_fd18bbaabf8e81344b0202e0 --> u_e_800e35fc75a96307e7ae88b8
+  f_fd18bbaabf8e81344b0202e0 --> u_e_8386a6f8bde1404f2b01cba9
+  f_fd18bbaabf8e81344b0202e0 --> u_e_85db2edb0060629acb651102
+  f_fd18bbaabf8e81344b0202e0 --> u_e_864ee81ca98f6667819dbf0c
+  f_fd18bbaabf8e81344b0202e0 --> s_6aca7c4292882e725e428e04
+  f_fd18bbaabf8e81344b0202e0 --> u_e_8ac6751b409b6cf281127209
+  f_fd18bbaabf8e81344b0202e0 --> u_e_8b86ad23b640b46beaafbe0c
+  f_fd18bbaabf8e81344b0202e0 --> u_e_8beadec0dacecf1ce026c101
+  f_fd18bbaabf8e81344b0202e0 --> u_e_8f171c6e5a4aa49d95c9275a
+  f_fd18bbaabf8e81344b0202e0 --> u_e_8fadf19221bef55c6c381f90
+  f_fd18bbaabf8e81344b0202e0 --> u_e_90484e7d1e116c0b15e675ec
+  f_fd18bbaabf8e81344b0202e0 --> u_e_9079d4e0b28a292db16d380a
+  f_fd18bbaabf8e81344b0202e0 --> u_e_91293295f4e89ae4ae329647
+  f_fd18bbaabf8e81344b0202e0 --> u_e_91744dae693fc7103f9b18db
+  f_fd18bbaabf8e81344b0202e0 -.-> s_0015652f222d8b5c36181c26
+  f_fd18bbaabf8e81344b0202e0 --> u_e_926bb1bf1bc710abd60bc697
+  f_fd18bbaabf8e81344b0202e0 -.-> s_0015652f222d8b5c36181c26
+  f_fd18bbaabf8e81344b0202e0 --> u_e_934937609c55676fd0ab3227
+  f_fd18bbaabf8e81344b0202e0 --> u_e_94d94b89ed25dcbfc81a5a32
+  f_fd18bbaabf8e81344b0202e0 -.-> s_bc074a0048dfeee6249562e3
+  f_fd18bbaabf8e81344b0202e0 --> u_e_959dbd4418704f793075f8d8
+  f_fd18bbaabf8e81344b0202e0 --> s_50827e6571f6698d7bf96eaf
+  f_fd18bbaabf8e81344b0202e0 --> u_e_9c78a80e26147fb827ad1f49
+  f_fd18bbaabf8e81344b0202e0 --> u_e_9de083f474729987b157a5bb
+  f_fd18bbaabf8e81344b0202e0 --> u_e_9dffa8a122068b8f56e51c34
+  f_fd18bbaabf8e81344b0202e0 --> u_e_9fe45b19d42d7589ff3b426c
+  f_fd18bbaabf8e81344b0202e0 --> s_efbcee914e33d5ba1337f1a2
+  f_fd18bbaabf8e81344b0202e0 -.-> s_0015652f222d8b5c36181c26
+  f_fd18bbaabf8e81344b0202e0 -.-> s_bc074a0048dfeee6249562e3
+  f_fd18bbaabf8e81344b0202e0 --> s_efbcee914e33d5ba1337f1a2
+  f_fd18bbaabf8e81344b0202e0 --> u_e_a585a6980fb9b702e6e82045
+  f_fd18bbaabf8e81344b0202e0 --> u_e_a7247d1162e408e1990667af
+  f_fd18bbaabf8e81344b0202e0 -.-> s_dca2c6e63c2c9b567fd6b28b
+  f_fd18bbaabf8e81344b0202e0 --> u_e_aa224615152a52bca9a8751b
+  f_fd18bbaabf8e81344b0202e0 --> u_e_ab24454f64c07d14a5388c07
+  f_fd18bbaabf8e81344b0202e0 --> u_e_ac18f5edaff17ddad6fc5741
+  f_fd18bbaabf8e81344b0202e0 -.-> s_0015652f222d8b5c36181c26
+  f_fd18bbaabf8e81344b0202e0 --> u_e_b0e14494d1b7e0abf8ba1248
+  f_fd18bbaabf8e81344b0202e0 -.-> s_bc074a0048dfeee6249562e3
+  f_fd18bbaabf8e81344b0202e0 -.-> s_dca2c6e63c2c9b567fd6b28b

@@ -1,0 +1,43 @@
+flowchart LR
+  s_4c0bd5c5f10539380404d198["ReasoningStream.push · 7"]
+  u_e_0fdb00ab125148b9419eb7b5["Unresolved: this.buffer.slice"]
+  u_e_1b0f886a6659a52db822c01b["Unresolved: start.startsWith"]
+  u_e_21e7e39451d81dd733588dc1["Unresolved: '&lt;think&gt;'.startsWith"]
+  s_9bd065f97be99a0c31453b50["src/main/providers.ts: LocalProviders.chatOnce"]
+  u_e_2b012c063c94aa810024409f["Unresolved: this.answer"]
+  u_e_54209f5b4d60fc4c237e33cb["Unresolved: this.buffer.indexOf"]
+  u_e_88ede722de67aeca55c15fef["Unresolved: this.thinking"]
+  u_e_968313f61bab72f04c410da9["Unresolved: this.answer"]
+  u_e_9d07ebd1e7dc746ca8197108["Unresolved: this.buffer.trimStart"]
+  s_25b9174c258fac25b6c3feaf["ReasoningStream.constructor · 6"]
+  u_e_a3c6638e3ef4b2440e97785e["Unresolved: this.answer"]
+  s_a43ae915adc56e93abb4154e["ReasoningStream.finish · 34"]
+  u_e_a829c64ee5ed8934139eef06["Unresolved: this.buffer.slice"]
+  u_e_aed997756da330a52ff55c57["Unresolved: this.buffer.slice"]
+  u_e_b2746e9ac69e53732b1b93de["Unresolved: (this.phase === 'thinking' ? this.thinking : this.answer)"]
+  u_e_b28eef545400f4e16e5dbcf8["Unresolved: start.slice"]
+  u_e_bf4a39146dd2c7d17ef28e2d["Unresolved: this.buffer.slice"]
+  u_e_cffc42575e703c44efaf0f08["Unresolved: this.buffer.slice"]
+  u_e_e65006e95c740923742fdb5c["Unresolved: '&lt;/think&gt;'.startsWith"]
+  u_e_f5b3bddc286cccd11400d2be["Unresolved: this.thinking"]
+  s_4c0bd5c5f10539380404d198 --> u_e_0fdb00ab125148b9419eb7b5
+  s_4c0bd5c5f10539380404d198 --> u_e_1b0f886a6659a52db822c01b
+  s_4c0bd5c5f10539380404d198 --> u_e_21e7e39451d81dd733588dc1
+  s_9bd065f97be99a0c31453b50 -.-> s_4c0bd5c5f10539380404d198
+  s_4c0bd5c5f10539380404d198 --> u_e_2b012c063c94aa810024409f
+  s_4c0bd5c5f10539380404d198 --> u_e_54209f5b4d60fc4c237e33cb
+  s_4c0bd5c5f10539380404d198 --> u_e_88ede722de67aeca55c15fef
+  s_4c0bd5c5f10539380404d198 --> u_e_968313f61bab72f04c410da9
+  s_4c0bd5c5f10539380404d198 --> u_e_9d07ebd1e7dc746ca8197108
+  s_9bd065f97be99a0c31453b50 -.-> s_25b9174c258fac25b6c3feaf
+  s_4c0bd5c5f10539380404d198 --> u_e_a3c6638e3ef4b2440e97785e
+  s_9bd065f97be99a0c31453b50 -.-> s_4c0bd5c5f10539380404d198
+  s_9bd065f97be99a0c31453b50 -.-> s_a43ae915adc56e93abb4154e
+  s_4c0bd5c5f10539380404d198 --> u_e_a829c64ee5ed8934139eef06
+  s_4c0bd5c5f10539380404d198 --> u_e_aed997756da330a52ff55c57
+  s_a43ae915adc56e93abb4154e --> u_e_b2746e9ac69e53732b1b93de
+  s_4c0bd5c5f10539380404d198 --> u_e_b28eef545400f4e16e5dbcf8
+  s_4c0bd5c5f10539380404d198 --> u_e_bf4a39146dd2c7d17ef28e2d
+  s_4c0bd5c5f10539380404d198 --> u_e_cffc42575e703c44efaf0f08
+  s_4c0bd5c5f10539380404d198 --> u_e_e65006e95c740923742fdb5c
+  s_4c0bd5c5f10539380404d198 --> u_e_f5b3bddc286cccd11400d2be

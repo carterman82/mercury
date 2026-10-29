@@ -870,11 +870,88 @@ export class ProjectMaps {
       note: 'Historical static map results. Check freshness/source before editing; unresolved relationships are not proof of no dependency.',
     };
   }
-  async readDiagram(root: string, relative: string): Promise<{ path: string; content: string }> {
+  /** Read only existing diagram files; never scan source or load/rebuild graph.json. */
+  async hasExistingDiagrams(root: string): Promise<boolean> {
+    const canonical = await fs.realpath(root);
+    const system = await mapPath(canonical, 'system.mmd');
+    if (await fs.stat(system).then(stat => stat.isFile(), (error: NodeJS.ErrnoException) => { if (error.code === 'ENOENT') return false; throw error; })) return true;
+    const directory = path.dirname(system);
+    const visit = async (folder: string): Promise<boolean> => {
+      const entries = await fs.readdir(folder, { withFileTypes: true }).catch((error: NodeJS.ErrnoException) => { if (error.code === 'ENOENT') return []; throw error; });
+      for (const entry of entries) {
+        if (entry.isSymbolicLink()) continue;
+        if (entry.isFile() && entry.name.endsWith('.mmd')) return true;
+        if (entry.isDirectory() && await visit(path.join(folder, entry.name))) return true;
+      }
+      return false;
+    };
+    return visit(directory);
+  }
+
+  /** Analyze only the changed files. Shared overview maps remain historical. */
+  async updateChanged(root: string, paths: string[], signal?: AbortSignal): Promise<void> {
+    const canonical = await fs.realpath(root);
+    for (const input of [...new Set(paths)]) {
+      signal?.throwIfAborted();
+      const relative = portable(input);
+      const language = languageFor(relative);
+      if (!language || path.isAbsolute(relative) || relative.split('/').some(part => part === '..' || skippedDirectories.has(part.toLowerCase()))) continue;
+      const absolute = path.resolve(canonical, relative);
+      if (!within(canonical, absolute)) continue;
+      const id = dependencyFileId(relative);
+      const directory = path.dirname(await mapPath(canonical, `generated/methods/${id}-000.mmd`));
+      const oldParts = (await fs.readdir(directory).catch((error: NodeJS.ErrnoException) => { if (error.code === 'ENOENT') return []; throw error; })).filter(name => name.startsWith(id + '-') && name.endsWith('.mmd'));
+      const stat = await fs.lstat(absolute).catch((error: NodeJS.ErrnoException) => { if (error.code === 'ENOENT') return null; throw error; });
+      const generated = new Set<string>();
+      if (stat) {
+        if (!stat.isFile() || stat.isSymbolicLink() || await fs.realpath(absolute) !== absolute || stat.size > MAX_FILE_BYTES) continue;
+        const data = await fs.readFile(absolute);
+        if (data.includes(0)) continue;
+        const source: MapSource = { path: relative, absolute, language, content: data.toString('utf8'), fingerprint: hash(data) };
+        const units = ['typescript', 'javascript'].includes(language)
+          ? new TypeScriptDependencyAnalyzer().analyze(canonical, [source], signal)
+          : language === 'configuration' ? [] : [await this.tree.analyze(source, signal)];
+        const linked = link([source], units);
+        const nodes = [{ id, text: relative }, ...linked.symbols.map(symbol => ({ id: symbol.id, text: `${symbol.qualifiedName} · ${symbol.line}` }))];
+        const parts = diagramParts(nodes, linked.edges);
+        for (let index = 0; index < parts.length; index++) {
+          const name = `${id}-${String(index).padStart(3, '0')}.mmd`;
+          generated.add(name);
+          await writeMap(canonical, `generated/methods/${name}`, `%% Incremental map for ${relative.replace(/[\r\n]/g, ' ')}; cross-file resolution is partial. Shared overviews may be older.\n${parts[index]}`);
+        }
+      }
+      for (const name of oldParts) if (!generated.has(name)) await fs.unlink(await mapPath(canonical, `generated/methods/${name}`));
+      this.graphs.delete(canonical);
+    }
+  }
+
+  async existingDiagrams(root: string): Promise<string[]> {
+    const canonical = await fs.realpath(root);
+    const directory = path.dirname(await mapPath(canonical, 'system.mmd'));
+    const diagrams: string[] = [];
+    const visit = async (relative: string): Promise<void> => {
+      const entries = await fs.readdir(path.join(directory, relative), { withFileTypes: true }).catch((error: NodeJS.ErrnoException) => {
+        if (error.code === 'ENOENT') return [];
+        throw error;
+      });
+      for (const entry of entries) {
+        if (entry.isSymbolicLink()) continue;
+        const name = path.posix.join(relative, entry.name);
+        if (entry.isDirectory()) await visit(name);
+        else if (entry.isFile() && name.endsWith('.mmd')) {
+          await mapPath(canonical, name);
+          diagrams.push(name);
+        }
+      }
+    };
+    await visit('');
+    return diagrams.sort();
+  }
+  async readDiagram(root: string, relative: string, forReport = false): Promise<{ path: string; content: string }> {
     if (!relative.endsWith('.mmd')) throw new Error('Only Mermaid diagrams can be previewed.');
     const canonical = await fs.realpath(root),
       filename = await mapPath(canonical, relative);
-    if ((await fs.stat(filename)).size > 256000) throw new Error('Diagram exceeds the preview limit.');
+    if (!forReport && (await fs.stat(filename)).size > 256000) throw new Error('Diagram exceeds the preview limit.');
     return { path: relative, content: await fs.readFile(filename, 'utf8') };
   }
 }

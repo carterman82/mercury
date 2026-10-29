@@ -1,0 +1,84 @@
+flowchart LR
+  s_fee8a52a1ac517616edbeaba["notify · 131"]
+  s_b5db7032b7db5b45c38d4ae4["src/main/chat.ts: ChatService.stop"]
+  s_30a43682f3643a117d5db12e["chat · 197"]
+  u_e_f06412c2aac4627c73b9f0d3["Unresolved: expect(JSON.stringify(input.messages)).toContain"]
+  f_73733141b5006bf59ff4980b["src/main/chat.test.ts"]
+  u_e_f0874810c0708b68ee6d8ce7["Unresolved: expect(reads).not.toHaveBeenCalled"]
+  u_e_f09eeb5ed60b2cf7a6bc8488["Unresolved: expect"]
+  u_e_f293fdfb2f4c2a8763c9d25a["Unresolved: uploads.map"]
+  s_db313b5e1575d3a5cf0d33d0["fixture · 15"]
+  u_e_f2b44c53c93b3e1d820f9bf9["Unresolved: vi.spyOn"]
+  u_e_f2f715cd63eed817e3547f67["Unresolved: chat.messages.at"]
+  s_a6d03b5c63d46923d241f4a6["chat · 287"]
+  u_e_f317e951e5c8a977c5aeaf78["Unresolved: JSON.stringify"]
+  u_e_f36d6c3f598fcd11308699b2["Unresolved: vi.unstubAllGlobals"]
+  s_72e582247916ebc50956475d["src/main/store.ts: Store.chat"]
+  u_e_f3ddbf0f12cfd149634ca0c8["Unresolved: expect(requests).toHaveLength"]
+  u_e_f437d091bb20671f88506b4f["Unresolved: store.chat(id).messages.at"]
+  u_e_f44c059ab4baea7fc9f4a764["Unresolved: expect"]
+  u_e_f47d680508e570ab7ed8468d["Unresolved: store.chat(id).messages.at"]
+  u_e_f49e19e2d34ae542e93ff3de["Unresolved: expect(store.chat(id).messages.at(-1)?.content).toBe"]
+  u_e_f4a4ad55f6396fe02a8588d9["Unresolved: expect"]
+  u_e_f4fccb1ee724e568ca31d1ed["Unresolved: expect"]
+  s_97296b2c63904530a4108892["chat · 563"]
+  u_e_f50a65bb08cd7b821894a5fd["Unresolved: 'I will provide the final answer now. One last check before I respond. I should send the finished file to the user. '.repeat"]
+  s_f95ad6e3b385c0fbee0dc62e["src/main/store.ts: Store.chats"]
+  u_e_f5ac83eedf27f0a3e750aafa["Unresolved: expect.any"]
+  u_e_f63901341b01a975578389e6["Unresolved: expect(followup).toHaveBeenCalledTimes"]
+  u_e_f6545f3bd491e60620cc236b["Unresolved: it"]
+  s_1bb13e95c6f46fdad9618644["chat · 238"]
+  u_e_f71b55699dc0aea1844c20df["Unresolved: JSON.stringify"]
+  s_32a5813d88937ce3eb46d2aa["src/main/chat.ts: ChatService.send"]
+  u_e_f78e3436fe2fed79ddfe35de["Unresolved: expect(store.chat(id).status).toBe"]
+  u_e_f7d62b0d91d391ad3cd81ace["Unresolved: expect(service.send(id, profile, 'Concurrent')).rejects.toThrow"]
+  u_e_f858c15190386d9e3abc675b["Unresolved: expect"]
+  u_e_f91b39fa77879be62c3578fc["Unresolved: 'x'.repeat"]
+  s_b12ed33770ce75dda195b1a4["uploadSources · 208"]
+  u_e_f9b4245f3b15a299cf04828f["Unresolved: expect(store.chat(id).messages.at(-1)?.notice).toBe"]
+  u_e_f9ce06af99b215b8571f49f6["Unresolved: vi.fn"]
+  u_e_fa4038e9dbbf04166be8c4b5["Unresolved: expect"]
+  s_5fa0518f5f75a9ed0f51f4b2["src/main/chat.ts: ChatService.constructor"]
+  u_e_fa8da2eb395219e60bfcbecb["Unresolved: expect"]
+  u_e_faf8b10eb2078249580cb5c6["Unresolved: mkdtempSync"]
+  u_e_fb214093beb1280178874b6f["Unresolved: expect.objectContaining"]
+  s_fee8a52a1ac517616edbeaba -.-> s_b5db7032b7db5b45c38d4ae4
+  s_30a43682f3643a117d5db12e --> u_e_f06412c2aac4627c73b9f0d3
+  f_73733141b5006bf59ff4980b --> u_e_f0874810c0708b68ee6d8ce7
+  f_73733141b5006bf59ff4980b --> u_e_f09eeb5ed60b2cf7a6bc8488
+  f_73733141b5006bf59ff4980b --> u_e_f293fdfb2f4c2a8763c9d25a
+  f_73733141b5006bf59ff4980b --> s_db313b5e1575d3a5cf0d33d0
+  f_73733141b5006bf59ff4980b --> u_e_f2b44c53c93b3e1d820f9bf9
+  f_73733141b5006bf59ff4980b --> u_e_f2f715cd63eed817e3547f67
+  s_a6d03b5c63d46923d241f4a6 --> u_e_f317e951e5c8a977c5aeaf78
+  f_73733141b5006bf59ff4980b --> u_e_f36d6c3f598fcd11308699b2
+  f_73733141b5006bf59ff4980b -.-> s_72e582247916ebc50956475d
+  f_73733141b5006bf59ff4980b --> u_e_f3ddbf0f12cfd149634ca0c8
+  s_fee8a52a1ac517616edbeaba --> u_e_f437d091bb20671f88506b4f
+  f_73733141b5006bf59ff4980b --> u_e_f44c059ab4baea7fc9f4a764
+  f_73733141b5006bf59ff4980b --> u_e_f47d680508e570ab7ed8468d
+  f_73733141b5006bf59ff4980b --> u_e_f49e19e2d34ae542e93ff3de
+  s_a6d03b5c63d46923d241f4a6 --> u_e_f4a4ad55f6396fe02a8588d9
+  f_73733141b5006bf59ff4980b --> u_e_f4fccb1ee724e568ca31d1ed
+  s_97296b2c63904530a4108892 --> u_e_f50a65bb08cd7b821894a5fd
+  f_73733141b5006bf59ff4980b -.-> s_f95ad6e3b385c0fbee0dc62e
+  f_73733141b5006bf59ff4980b --> s_db313b5e1575d3a5cf0d33d0
+  f_73733141b5006bf59ff4980b --> u_e_f5ac83eedf27f0a3e750aafa
+  f_73733141b5006bf59ff4980b --> s_db313b5e1575d3a5cf0d33d0
+  f_73733141b5006bf59ff4980b --> u_e_f63901341b01a975578389e6
+  f_73733141b5006bf59ff4980b --> u_e_f6545f3bd491e60620cc236b
+  s_1bb13e95c6f46fdad9618644 --> u_e_f71b55699dc0aea1844c20df
+  f_73733141b5006bf59ff4980b -.-> s_32a5813d88937ce3eb46d2aa
+  f_73733141b5006bf59ff4980b --> u_e_f78e3436fe2fed79ddfe35de
+  f_73733141b5006bf59ff4980b --> u_e_f7d62b0d91d391ad3cd81ace
+  s_30a43682f3643a117d5db12e --> u_e_f858c15190386d9e3abc675b
+  f_73733141b5006bf59ff4980b --> u_e_f91b39fa77879be62c3578fc
+  f_73733141b5006bf59ff4980b --> s_b12ed33770ce75dda195b1a4
+  f_73733141b5006bf59ff4980b --> u_e_f9b4245f3b15a299cf04828f
+  f_73733141b5006bf59ff4980b --> u_e_f9ce06af99b215b8571f49f6
+  f_73733141b5006bf59ff4980b --> u_e_fa4038e9dbbf04166be8c4b5
+  f_73733141b5006bf59ff4980b -.-> s_32a5813d88937ce3eb46d2aa
+  f_73733141b5006bf59ff4980b -.-> s_5fa0518f5f75a9ed0f51f4b2
+  s_1bb13e95c6f46fdad9618644 --> u_e_fa8da2eb395219e60bfcbecb
+  s_db313b5e1575d3a5cf0d33d0 --> u_e_faf8b10eb2078249580cb5c6
+  f_73733141b5006bf59ff4980b --> u_e_fb214093beb1280178874b6f

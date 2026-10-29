@@ -1,0 +1,84 @@
+flowchart LR
+  s_afc08212b1d4a49eb88c7d7b["WebPolicy.fetch · 21"]
+  u_e_0a244d53820251c8a1be8cfd["Unresolved: TransformStream"]
+  s_52fdbca89a27eb954908ba41["WebPolicy.fetch.transform · 26"]
+  u_e_0d2740fdd833c7467dec3400["Unresolved: Error"]
+  u_e_205b7534b78bc1cdf4ea5757["Unresolved: AbortSignal.timeout"]
+  s_f31ec72d318f5e404d179202["src/main/chat-browser.ts: ChatBrowser.screenshot"]
+  s_875c6cfa12c48a333e0b857e["WebPolicy.check · 11"]
+  u_e_25ca1ac93efb4c648f9447ec["Unresolved: url.hostname.replace(/^\[|\]$/g, '').toLowerCase"]
+  s_7c8bf658a3a91dd59515e961["publicAddress · 4"]
+  u_e_2be432059bd5f324dac2cb21["Unresolved: ipaddr.process"]
+  u_e_2ff40b05cb11f90983c46157["Unresolved: host.endsWith"]
+  u_e_37a76119753bec5230ae9d58["Unresolved: fetch"]
+  u_e_3b345b890d791d59eaa8301f["Unresolved: Error"]
+  u_e_44b559fa925ed83ccdb17e1e["Unresolved: lookup"]
+  s_03ee17365368d55c784e2f20["WebPolicy.json · 29"]
+  u_e_45ed06f12491f76102ecc7c4["Unresolved: Buffer.concat(chunks).toString"]
+  u_e_472855f3182eb6bdf65edd82["Unresolved: host.endsWith"]
+  u_e_49f9b07914e047589924df53["Unresolved: Error"]
+  s_819161220d1da89def8a268c["src/main/chat-plugins.ts: ChatPlugins.withClient"]
+  u_e_4dda3f8c09662c02b19d30f5["Unresolved: reader.cancel"]
+  u_e_4ff53a83333ab00a09b5083e["Unresolved: response.body?.getReader"]
+  s_8e87c8abec358cf8d840188e["src/main/chat-browser.ts: ChatBrowser.open"]
+  u_e_5ead07924b59e867b86746ad["Unresolved: host.includes"]
+  s_92bb86967ca03ba9d3b2f524["src/main/chat-plugins.ts: ChatPlugins.withClient.fetch"]
+  u_e_5fb62eccacd477a82cc45e88["Unresolved: String"]
+  s_513847c4d4487ca41941ce78["src/main/chat-browser.ts: ChatBrowser.controlled"]
+  u_e_681134081c89c58f6aa0b61f["Unresolved: Error"]
+  s_b70fc9f324519456a80b5f7c["src/main/chat-plugins.ts: ChatPlugins.discover"]
+  u_e_76f4b875bd2dd802f91a2368["Unresolved: AbortSignal.any"]
+  u_e_77a551f0f5a6e198df928d64["Unresolved: AbortSignal.timeout"]
+  u_e_798277519880b3853f83a722["Unresolved: JSON.parse"]
+  u_e_7cd577966443bf86d1f715b7["Unresolved: chunks.push"]
+  u_e_800ab8abf5c07458c77ed5d7["Unresolved: address.replace"]
+  s_6e856b10678f7f82b4aa2f92["src/main/web-search.ts: WebSearch.request"]
+  u_e_9c1ac523d76552d8121c7386["Unresolved: ipaddr.process(address.replace(/^\[|\]$/g, '')).range"]
+  s_29444cb4ef16edf588a6fa55["src/main/chat-browser.ts: ChatBrowser.enableControls"]
+  s_8d3ea567cff795446a267621["src/main/chat-browser.ts: ChatBrowser.read"]
+  u_e_a706cce0afae59ae674dd8cb["Unresolved: reader.cancel().catch"]
+  u_e_a8249b876295917a822b4772["Unresolved: Error"]
+  s_84612f2b87ad44de53091bd5["src/main/plugin-search.test.ts: fixture"]
+  s_6d2de09a43552387966259c9["WebPolicy.constructor · 10"]
+  s_cd65ef8be6a9544634c93c5b["src/main/chat-plugins.test.ts: fixture"]
+  u_e_c083a82fd0ff31c7abb79fe6["Unresolved: reader.read"]
+  s_afc08212b1d4a49eb88c7d7b --> u_e_0a244d53820251c8a1be8cfd
+  s_52fdbca89a27eb954908ba41 --> u_e_0d2740fdd833c7467dec3400
+  s_afc08212b1d4a49eb88c7d7b --> u_e_205b7534b78bc1cdf4ea5757
+  s_f31ec72d318f5e404d179202 -.-> s_875c6cfa12c48a333e0b857e
+  s_875c6cfa12c48a333e0b857e --> u_e_25ca1ac93efb4c648f9447ec
+  s_7c8bf658a3a91dd59515e961 --> u_e_2be432059bd5f324dac2cb21
+  s_875c6cfa12c48a333e0b857e --> u_e_2ff40b05cb11f90983c46157
+  s_afc08212b1d4a49eb88c7d7b --> u_e_37a76119753bec5230ae9d58
+  s_875c6cfa12c48a333e0b857e --> u_e_3b345b890d791d59eaa8301f
+  s_875c6cfa12c48a333e0b857e --> u_e_44b559fa925ed83ccdb17e1e
+  s_03ee17365368d55c784e2f20 --> u_e_45ed06f12491f76102ecc7c4
+  s_875c6cfa12c48a333e0b857e --> u_e_472855f3182eb6bdf65edd82
+  s_03ee17365368d55c784e2f20 --> u_e_49f9b07914e047589924df53
+  s_819161220d1da89def8a268c -.-> s_875c6cfa12c48a333e0b857e
+  s_03ee17365368d55c784e2f20 --> u_e_4dda3f8c09662c02b19d30f5
+  s_03ee17365368d55c784e2f20 --> u_e_4ff53a83333ab00a09b5083e
+  s_8e87c8abec358cf8d840188e -.-> s_875c6cfa12c48a333e0b857e
+  s_875c6cfa12c48a333e0b857e --> u_e_5ead07924b59e867b86746ad
+  s_92bb86967ca03ba9d3b2f524 -.-> s_afc08212b1d4a49eb88c7d7b
+  s_afc08212b1d4a49eb88c7d7b --> u_e_5fb62eccacd477a82cc45e88
+  s_513847c4d4487ca41941ce78 -.-> s_875c6cfa12c48a333e0b857e
+  s_875c6cfa12c48a333e0b857e --> u_e_681134081c89c58f6aa0b61f
+  s_b70fc9f324519456a80b5f7c -.-> s_03ee17365368d55c784e2f20
+  s_03ee17365368d55c784e2f20 --> u_e_76f4b875bd2dd802f91a2368
+  s_03ee17365368d55c784e2f20 --> u_e_77a551f0f5a6e198df928d64
+  s_03ee17365368d55c784e2f20 --> u_e_798277519880b3853f83a722
+  s_03ee17365368d55c784e2f20 --> u_e_7cd577966443bf86d1f715b7
+  s_7c8bf658a3a91dd59515e961 --> u_e_800ab8abf5c07458c77ed5d7
+  s_afc08212b1d4a49eb88c7d7b -.-> s_875c6cfa12c48a333e0b857e
+  s_6e856b10678f7f82b4aa2f92 -.-> s_afc08212b1d4a49eb88c7d7b
+  s_7c8bf658a3a91dd59515e961 --> u_e_9c1ac523d76552d8121c7386
+  s_29444cb4ef16edf588a6fa55 -.-> s_875c6cfa12c48a333e0b857e
+  s_8d3ea567cff795446a267621 -.-> s_875c6cfa12c48a333e0b857e
+  s_03ee17365368d55c784e2f20 --> u_e_a706cce0afae59ae674dd8cb
+  s_875c6cfa12c48a333e0b857e --> u_e_a8249b876295917a822b4772
+  s_8d3ea567cff795446a267621 -.-> s_875c6cfa12c48a333e0b857e
+  s_84612f2b87ad44de53091bd5 -.-> s_6d2de09a43552387966259c9
+  s_8e87c8abec358cf8d840188e -.-> s_875c6cfa12c48a333e0b857e
+  s_cd65ef8be6a9544634c93c5b -.-> s_6d2de09a43552387966259c9
+  s_03ee17365368d55c784e2f20 --> u_e_c083a82fd0ff31c7abb79fe6

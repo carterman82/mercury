@@ -1,0 +1,82 @@
+flowchart LR
+  s_1e93ecf12139cf2cfed6c7cd["binaryInspection · 92"]
+  u_e_91b3d5be46b89e5ce9e52bec["Unresolved: ascii.slice"]
+  u_e_94af8bcbdc030d8092698a57["Unresolved: bytes.subarray(0, 512_000).toString('latin1').match(/[\x20-\x7e]{8,}/g)?.slice"]
+  s_bdb2bef9f8b6d08cea700533["rtfText · 69"]
+  u_e_963e874ccf63fe48bf1cde2c["Unresolved: source.slice"]
+  u_e_99422512a4f1e6d63f6229c3["Unresolved: ['tab', 'cell'].includes"]
+  s_a67af7b5057f4e522f585793["decodeEntities · 32"]
+  u_e_9a5a5c003a2709a0fb477227["Unresolved: String.fromCodePoint"]
+  s_7147917f0d086205dd9ee9dc["inspectCompressedText · 106"]
+  u_e_a3c2f6d4e67a4037ae636aeb["Unresolved: unpacked.subarray(offset, offset + 100).toString"]
+  s_88cb7a9fe0411cfa85536e84["xmlDocumentText.visit · 42"]
+  u_e_a79d8b1d4e580051b0b9cbff["Unresolved: tag.split"]
+  u_e_a84af0c1e95b196733edebbc["Unresolved: tag.split(':').at"]
+  u_e_aa54eba66e2a73365de661c7["Unresolved: entries.join"]
+  s_6d63673f2deb6b0e1258b4dd["xmlDocumentText · 38"]
+  u_e_b2436cbecf55e2bcc9ce48cf["Unresolved: visit(parser.parse(source)).replace"]
+  u_e_b306e00a1c4dc06cd5fefd42["Unresolved: /&lt;!DOCTYPE|&lt;!ENTITY/i.test"]
+  u_e_b84578ec766c5f81f04bc612["Unresolved: /[{}\\]/.test"]
+  s_a9bd77f265ffd35e649e6aea["src/main/native-files.ts: nativeFileMime"]
+  s_94eb37e2afd017d4331b307f["decodeText · 54"]
+  s_ff0ef2dcd6aeb7fc03f073d7["src/main/file-formats.ts: FileFormats.inspect"]
+  u_e_bb876842530fd3b1e2a8977f["Unresolved: gunzipSync"]
+  u_e_bc29db127a5ed77c3bfac9da["Unresolved: unpacked.subarray"]
+  s_a09efff11943e6c563bf5ebf["src/main/chat-files.ts: ChatFiles.import"]
+  s_d6fbfb7b4116d97c27f32b80["boundedInspection · 12"]
+  u_e_c03c15ec123f2da69f43788a["Unresolved: bytes.subarray"]
+  u_e_c14b555ecfc8f622ee70e822["Unresolved: unpacked.subarray(offset, offset + 100).toString('utf8').replace"]
+  u_e_c4c4586bff78a9ec06f3a810["Unresolved: unpacked.subarray(offset + 124, offset + 136).toString"]
+  u_e_c6c5f6dddd07d45132ba1c10["Unresolved: String"]
+  u_e_c9261ecf674d62aea00fe749["Unresolved: Object.entries(node).map(([tag, children]) =&gt; {     if (tag === '#text') return decodeEntities(String(children));     if (!Array.isArray(children)) return '';     const local = tag.split(':').at(-1);     if (local === 'br') return '\n';     if (local === 'tab') return '\t';     const suffix = ['p', "]
+  u_e_db9cb691bfa57433b23ae9b4["Unresolved: TextDecoder"]
+  u_e_dbf4fe490537d1bcbaac7f63["Unresolved: entity.startsWith"]
+  u_e_ddc359689ad145490303d1ca["Unresolved: Math.min"]
+  s_0eccde2bfa0d43fb0700b836["inspectZip · 18"]
+  u_e_e6e64a7f42d968f827dd291d["Unresolved: parser.parse"]
+  u_e_e8a8a81eac74efb6b76f4cd8["Unresolved: /^'([0-9a-f]{2})/i.exec"]
+  u_e_e9ac4c00208f613fcf388378["Unresolved: value.slice"]
+  u_e_edf4dc9bcd50eb1193799618["Unresolved: String.fromCharCode"]
+  u_e_f2e3c88c013368b7ba3c6c44["Unresolved: strFromU8"]
+  u_e_f34fe0ce7d9bca53ae5dd9ad["Unresolved: ascii.startsWith"]
+  u_e_f51f6fadff8c80bbe1bda814["Unresolved: ascii.startsWith"]
+  s_1e93ecf12139cf2cfed6c7cd --> u_e_91b3d5be46b89e5ce9e52bec
+  s_1e93ecf12139cf2cfed6c7cd --> u_e_94af8bcbdc030d8092698a57
+  s_bdb2bef9f8b6d08cea700533 --> u_e_963e874ccf63fe48bf1cde2c
+  s_bdb2bef9f8b6d08cea700533 --> u_e_99422512a4f1e6d63f6229c3
+  s_a67af7b5057f4e522f585793 --> u_e_9a5a5c003a2709a0fb477227
+  s_7147917f0d086205dd9ee9dc --> u_e_a3c2f6d4e67a4037ae636aeb
+  s_88cb7a9fe0411cfa85536e84 --> u_e_a79d8b1d4e580051b0b9cbff
+  s_88cb7a9fe0411cfa85536e84 --> u_e_a84af0c1e95b196733edebbc
+  s_7147917f0d086205dd9ee9dc --> u_e_aa54eba66e2a73365de661c7
+  s_6d63673f2deb6b0e1258b4dd --> u_e_b2436cbecf55e2bcc9ce48cf
+  s_6d63673f2deb6b0e1258b4dd --> u_e_b306e00a1c4dc06cd5fefd42
+  s_7147917f0d086205dd9ee9dc --> s_1e93ecf12139cf2cfed6c7cd
+  s_bdb2bef9f8b6d08cea700533 --> u_e_b84578ec766c5f81f04bc612
+  s_a9bd77f265ffd35e649e6aea --> s_94eb37e2afd017d4331b307f
+  s_ff0ef2dcd6aeb7fc03f073d7 --> s_1e93ecf12139cf2cfed6c7cd
+  s_ff0ef2dcd6aeb7fc03f073d7 --> s_6d63673f2deb6b0e1258b4dd
+  s_88cb7a9fe0411cfa85536e84 --> s_88cb7a9fe0411cfa85536e84
+  s_7147917f0d086205dd9ee9dc --> u_e_bb876842530fd3b1e2a8977f
+  s_7147917f0d086205dd9ee9dc --> u_e_bc29db127a5ed77c3bfac9da
+  s_a09efff11943e6c563bf5ebf --> s_d6fbfb7b4116d97c27f32b80
+  s_94eb37e2afd017d4331b307f --> u_e_c03c15ec123f2da69f43788a
+  s_ff0ef2dcd6aeb7fc03f073d7 --> s_d6fbfb7b4116d97c27f32b80
+  s_7147917f0d086205dd9ee9dc --> u_e_c14b555ecfc8f622ee70e822
+  s_7147917f0d086205dd9ee9dc --> u_e_c4c4586bff78a9ec06f3a810
+  s_88cb7a9fe0411cfa85536e84 --> u_e_c6c5f6dddd07d45132ba1c10
+  s_88cb7a9fe0411cfa85536e84 --> u_e_c9261ecf674d62aea00fe749
+  s_ff0ef2dcd6aeb7fc03f073d7 --> s_6d63673f2deb6b0e1258b4dd
+  s_bdb2bef9f8b6d08cea700533 --> u_e_db9cb691bfa57433b23ae9b4
+  s_a67af7b5057f4e522f585793 --> u_e_dbf4fe490537d1bcbaac7f63
+  s_bdb2bef9f8b6d08cea700533 --> u_e_ddc359689ad145490303d1ca
+  s_ff0ef2dcd6aeb7fc03f073d7 --> s_0eccde2bfa0d43fb0700b836
+  s_6d63673f2deb6b0e1258b4dd --> u_e_e6e64a7f42d968f827dd291d
+  s_bdb2bef9f8b6d08cea700533 --> u_e_e8a8a81eac74efb6b76f4cd8
+  s_1e93ecf12139cf2cfed6c7cd --> u_e_e9ac4c00208f613fcf388378
+  s_ff0ef2dcd6aeb7fc03f073d7 --> s_0eccde2bfa0d43fb0700b836
+  s_bdb2bef9f8b6d08cea700533 --> u_e_edf4dc9bcd50eb1193799618
+  s_7147917f0d086205dd9ee9dc --> s_94eb37e2afd017d4331b307f
+  s_6d63673f2deb6b0e1258b4dd --> u_e_f2e3c88c013368b7ba3c6c44
+  s_1e93ecf12139cf2cfed6c7cd --> u_e_f34fe0ce7d9bca53ae5dd9ad
+  s_1e93ecf12139cf2cfed6c7cd --> u_e_f51f6fadff8c80bbe1bda814

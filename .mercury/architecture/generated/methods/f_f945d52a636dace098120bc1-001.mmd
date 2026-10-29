@@ -1,0 +1,34 @@
+flowchart LR
+  s_273b7d7d1b5d687488fdbcb1["makePdf · 31"]
+  u_e_ad32be60e7a2d4b5aef6803c["Unresolved: content.replace"]
+  s_7f3461fae9605a90596eb58d["extractPdfText · 4"]
+  u_e_b21d09fbfb25930dd0523569["Unresolved: text.join('\n').trim"]
+  u_e_b5ebde5ebd1727dfa8fe2911["Unresolved: source.startsWith"]
+  u_e_c754875f51ff5de1f1e720e4["Unresolved: content.replace(/\r/g, '').split('\n').flatMap"]
+  u_e_cb048fe326523e6ec65b6ac6["Unresolved: String(offset).padStart"]
+  u_e_cc40ea9998305a3b59a46d7a["Unresolved: offsets.slice(1).map(offset =&gt; `${String(offset).padStart(10, '0')} 00000 n \n`).join"]
+  u_e_d1b4f3143605cd4cb7fbcfca["Unresolved: stream.matchAll"]
+  u_e_d9160d213a103edcbe232db7["Unresolved: content.replace(/\r/g, '').split"]
+  u_e_ddfcaea2b90bb1e9139308d2["Unresolved: String"]
+  s_d1197e0859550b1446fcdcb8["extractPdfText.unescape · 16"]
+  u_e_e2163f2c7a52273a233f6374["Unresolved: String.fromCharCode"]
+  u_e_e560447fe6ac06c51abf9391["Unresolved: chunks.map((_, i) =&gt; `${4 + i * 2} 0 R`).join"]
+  s_a63e5a1513d2fc01d0c902f5["src/main/workspace.ts: Workspace.read"]
+  u_e_f5f30755fb05a89aab29bcee["Unresolved: values.map"]
+  u_e_f6f3ff2228fee98295110744["Unresolved: Buffer.byteLength"]
+  s_3416ba8d5bced309d41195a8["src/main/workspace.ts: Workspace.createPdf"]
+  s_273b7d7d1b5d687488fdbcb1 --> u_e_ad32be60e7a2d4b5aef6803c
+  s_7f3461fae9605a90596eb58d --> u_e_b21d09fbfb25930dd0523569
+  s_7f3461fae9605a90596eb58d --> u_e_b5ebde5ebd1727dfa8fe2911
+  s_273b7d7d1b5d687488fdbcb1 --> u_e_c754875f51ff5de1f1e720e4
+  s_273b7d7d1b5d687488fdbcb1 --> u_e_cb048fe326523e6ec65b6ac6
+  s_273b7d7d1b5d687488fdbcb1 --> u_e_cc40ea9998305a3b59a46d7a
+  s_7f3461fae9605a90596eb58d --> u_e_d1b4f3143605cd4cb7fbcfca
+  s_273b7d7d1b5d687488fdbcb1 --> u_e_d9160d213a103edcbe232db7
+  s_273b7d7d1b5d687488fdbcb1 --> u_e_ddfcaea2b90bb1e9139308d2
+  s_d1197e0859550b1446fcdcb8 --> u_e_e2163f2c7a52273a233f6374
+  s_273b7d7d1b5d687488fdbcb1 --> u_e_e560447fe6ac06c51abf9391
+  s_a63e5a1513d2fc01d0c902f5 --> s_7f3461fae9605a90596eb58d
+  s_7f3461fae9605a90596eb58d --> u_e_f5f30755fb05a89aab29bcee
+  s_273b7d7d1b5d687488fdbcb1 --> u_e_f6f3ff2228fee98295110744
+  s_3416ba8d5bced309d41195a8 --> s_273b7d7d1b5d687488fdbcb1

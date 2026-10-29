@@ -1,0 +1,81 @@
+flowchart LR
+  f_a7924de3b0a3c1d5f7c6fd62["src/main/model-roles.test.ts"]
+  s_00f342eb304c386f5cbc084b["src/main/runner.ts: Runner.approve"]
+  u_e_28180caccdbeb07fb6727295["Unresolved: expect(store.settings().subagentModel).toBeNull"]
+  u_e_289a0f2ae986314cc044e976["Unresolved: expect"]
+  s_86f024fd6484279d58d3029e["src/main/store.ts: Store.close"]
+  s_6750cebde8d4589f67083978["chat · 85"]
+  u_e_2a391b4d81136ce29cb18475["Unresolved: JSON.stringify"]
+  s_7da90b41405a14dc0a0514fe["src/main/store.ts: Store.session"]
+  s_527de7f256747338c4159daf["fixture · 14"]
+  s_b7f92a06f494dc98fe01d966["src/main/store.ts: Store.saveSession"]
+  u_e_31f9936e54f2f21383fad39e["Unresolved: event.text.includes"]
+  s_bd8d832c8c9c07233640c1df["src/main/runner.ts: Runner.plan"]
+  u_e_37c8aa6e2234a02e58ad11ce["Unresolved: store.session(session.id).events.some"]
+  u_e_37db1f2c8a0dc9d7162db2ac["Unresolved: db.prepare('UPDATE sessions SET data = ? WHERE id = ?').run"]
+  s_b2089dc14f89e79a1685a56d["chat · 176"]
+  u_e_38b46c7fca80b5ba3f2f51cf["Unresolved: expect(JSON.stringify(input.messages)).toContain"]
+  u_e_39318a795a33d8af534311e8["Unresolved: expect"]
+  s_ac12614a5616b501166ebc74["chat · 146"]
+  u_e_3e91f1f955b6f8eeab6cb059["Unresolved: expect(JSON.stringify(input.messages)).toContain"]
+  u_e_3fc7b8992c576ad1ca9d3858["Unresolved: readFileSync"]
+  s_2ec68a3f4e507b649f608d09["src/main/store.ts: Store.settings"]
+  u_e_462e6900b9719f5e73e4efaf["Unresolved: saved.prepare"]
+  u_e_464e81407c13ba01462a35f3["Unresolved: store.session(session.id).events.some"]
+  u_e_4655563b55b449f7e987d3e9["Unresolved: expect"]
+  u_e_4666a7453000da65dd0a40d3["Unresolved: expect"]
+  u_e_4a4e97a5bfef818b8efbe858["Unresolved: expect"]
+  u_e_4de81f651c14373b0b484a38["Unresolved: stores.indexOf"]
+  s_5f239fb455f6d83a40be69c3["chat · 49"]
+  u_e_4f2f75228bbb35bb5f6b0f9a["Unresolved: expect"]
+  s_2748c59a0ec42ca8f343eb6b["src/main/runner.ts: Runner.resume"]
+  u_e_4fcfab3168a31e64d39a5742["Unresolved: saved.close"]
+  u_e_51a6c4ad3232499b3c9c6f26["Unresolved: expect"]
+  u_e_52ea6011656d5b0e97f2fd93["Unresolved: expect"]
+  u_e_560540c7361e8740511a691e["Unresolved: it"]
+  u_e_562b384ec729dbba6abf6deb["Unresolved: expect(store.session(session.id).events.some(event =&gt; event.kind === 'error' &amp;&amp; event.text.includes('two continuation attempts'))).toBe"]
+  u_e_58ec18924ef186fb99c8885d["Unresolved: store.session(session.id).subagentCandidates?.map"]
+  u_e_598ae8096bbc7b0bbc646305["Unresolved: JSON.stringify"]
+  u_e_5995d6e02724f6ca22b7b1dc["Unresolved: expect"]
+  u_e_5a7f067b6cf032eebd3a6d3c["Unresolved: db.close"]
+  u_e_5ad082d9d50afb7d8b2142c9["Unresolved: expect"]
+  f_a7924de3b0a3c1d5f7c6fd62 -.-> s_00f342eb304c386f5cbc084b
+  f_a7924de3b0a3c1d5f7c6fd62 --> u_e_28180caccdbeb07fb6727295
+  f_a7924de3b0a3c1d5f7c6fd62 --> u_e_289a0f2ae986314cc044e976
+  f_a7924de3b0a3c1d5f7c6fd62 -.-> s_86f024fd6484279d58d3029e
+  s_6750cebde8d4589f67083978 --> u_e_2a391b4d81136ce29cb18475
+  f_a7924de3b0a3c1d5f7c6fd62 -.-> s_7da90b41405a14dc0a0514fe
+  s_527de7f256747338c4159daf -.-> s_b7f92a06f494dc98fe01d966
+  f_a7924de3b0a3c1d5f7c6fd62 -.-> s_7da90b41405a14dc0a0514fe
+  f_a7924de3b0a3c1d5f7c6fd62 --> u_e_31f9936e54f2f21383fad39e
+  f_a7924de3b0a3c1d5f7c6fd62 -.-> s_bd8d832c8c9c07233640c1df
+  f_a7924de3b0a3c1d5f7c6fd62 --> u_e_37c8aa6e2234a02e58ad11ce
+  f_a7924de3b0a3c1d5f7c6fd62 --> u_e_37db1f2c8a0dc9d7162db2ac
+  s_b2089dc14f89e79a1685a56d --> u_e_38b46c7fca80b5ba3f2f51cf
+  f_a7924de3b0a3c1d5f7c6fd62 --> u_e_39318a795a33d8af534311e8
+  s_ac12614a5616b501166ebc74 --> u_e_3e91f1f955b6f8eeab6cb059
+  f_a7924de3b0a3c1d5f7c6fd62 -.-> s_bd8d832c8c9c07233640c1df
+  f_a7924de3b0a3c1d5f7c6fd62 --> u_e_3fc7b8992c576ad1ca9d3858
+  f_a7924de3b0a3c1d5f7c6fd62 -.-> s_bd8d832c8c9c07233640c1df
+  f_a7924de3b0a3c1d5f7c6fd62 -.-> s_7da90b41405a14dc0a0514fe
+  f_a7924de3b0a3c1d5f7c6fd62 -.-> s_2ec68a3f4e507b649f608d09
+  f_a7924de3b0a3c1d5f7c6fd62 --> u_e_462e6900b9719f5e73e4efaf
+  f_a7924de3b0a3c1d5f7c6fd62 --> u_e_464e81407c13ba01462a35f3
+  f_a7924de3b0a3c1d5f7c6fd62 --> u_e_4655563b55b449f7e987d3e9
+  f_a7924de3b0a3c1d5f7c6fd62 --> u_e_4666a7453000da65dd0a40d3
+  f_a7924de3b0a3c1d5f7c6fd62 -.-> s_7da90b41405a14dc0a0514fe
+  f_a7924de3b0a3c1d5f7c6fd62 --> u_e_4a4e97a5bfef818b8efbe858
+  f_a7924de3b0a3c1d5f7c6fd62 --> u_e_4de81f651c14373b0b484a38
+  s_5f239fb455f6d83a40be69c3 --> u_e_4f2f75228bbb35bb5f6b0f9a
+  f_a7924de3b0a3c1d5f7c6fd62 -.-> s_2748c59a0ec42ca8f343eb6b
+  f_a7924de3b0a3c1d5f7c6fd62 --> u_e_4fcfab3168a31e64d39a5742
+  f_a7924de3b0a3c1d5f7c6fd62 --> u_e_51a6c4ad3232499b3c9c6f26
+  f_a7924de3b0a3c1d5f7c6fd62 -.-> s_bd8d832c8c9c07233640c1df
+  f_a7924de3b0a3c1d5f7c6fd62 --> u_e_52ea6011656d5b0e97f2fd93
+  f_a7924de3b0a3c1d5f7c6fd62 --> u_e_560540c7361e8740511a691e
+  f_a7924de3b0a3c1d5f7c6fd62 --> u_e_562b384ec729dbba6abf6deb
+  f_a7924de3b0a3c1d5f7c6fd62 --> u_e_58ec18924ef186fb99c8885d
+  s_6750cebde8d4589f67083978 --> u_e_598ae8096bbc7b0bbc646305
+  f_a7924de3b0a3c1d5f7c6fd62 --> u_e_5995d6e02724f6ca22b7b1dc
+  f_a7924de3b0a3c1d5f7c6fd62 --> u_e_5a7f067b6cf032eebd3a6d3c
+  s_6750cebde8d4589f67083978 --> u_e_5ad082d9d50afb7d8b2142c9

@@ -1,0 +1,34 @@
+flowchart LR
+  s_f76d9d7468789b9acd6b7bfe["src/main/chat-plugins.ts: ChatPlugins.call"]
+  s_e19aa7e1d2410fdf33fbbaf7["ChatApprovals.request · 19"]
+  u_e_ba6958947acacae549864e06["Unresolved: this.pending.set"]
+  s_2ece7ccb7e1bc25e8bfb4727["src/main/main.ts: snapshot"]
+  s_beed92d893890df621163b64["ChatApprovals.snapshot · 8"]
+  s_cd65ef8be6a9544634c93c5b["src/main/chat-plugins.test.ts: fixture"]
+  s_acb24e947bac7f66a6786f3f["ChatApprovals.constructor · 7"]
+  u_e_e497fef9ebaca4264455856a["Unresolved: signal.throwIfAborted"]
+  s_19dae8bd8baca127f73df842["ChatApprovals.request.done · 26"]
+  u_e_e915d1712a86f502f89512af["Unresolved: this.changed"]
+  s_72d5b28c496227db76dd9030["src/main/chat-plugins.ts: ChatPlugins.beginTurn"]
+  s_bb14d07e342142c7ecae66de["ChatApprovals.beginTurn · 9"]
+  u_e_f2b9654e731df906c9907b06["Unresolved: Error"]
+  u_e_f80ed2d7116ef6b15e51123d["Unresolved: Promise.resolve"]
+  s_5ab552e009d618b0e63f9974["src/main/chat-plugins.test.ts: approval"]
+  u_e_fc29dccbe5961e38a27a2848["Unresolved: this.unrestrictedChat"]
+  s_ba5a3a3c03e377bf5d50e5f1["ChatApprovals.cancelChat · 13"]
+  u_e_fec47ecccc97c9a1a01f438d["Unresolved: request.answer"]
+  u_e_fed44467ef56805ef33942f9["Unresolved: Promise"]
+  s_f76d9d7468789b9acd6b7bfe -.-> s_e19aa7e1d2410fdf33fbbaf7
+  s_e19aa7e1d2410fdf33fbbaf7 --> u_e_ba6958947acacae549864e06
+  s_2ece7ccb7e1bc25e8bfb4727 -.-> s_beed92d893890df621163b64
+  s_cd65ef8be6a9544634c93c5b -.-> s_acb24e947bac7f66a6786f3f
+  s_e19aa7e1d2410fdf33fbbaf7 --> u_e_e497fef9ebaca4264455856a
+  s_19dae8bd8baca127f73df842 --> u_e_e915d1712a86f502f89512af
+  s_72d5b28c496227db76dd9030 -.-> s_bb14d07e342142c7ecae66de
+  s_19dae8bd8baca127f73df842 --> u_e_f2b9654e731df906c9907b06
+  s_e19aa7e1d2410fdf33fbbaf7 --> u_e_f80ed2d7116ef6b15e51123d
+  s_5ab552e009d618b0e63f9974 -.-> s_beed92d893890df621163b64
+  s_5ab552e009d618b0e63f9974 -.-> s_beed92d893890df621163b64
+  s_e19aa7e1d2410fdf33fbbaf7 --> u_e_fc29dccbe5961e38a27a2848
+  s_ba5a3a3c03e377bf5d50e5f1 --> u_e_fec47ecccc97c9a1a01f438d
+  s_e19aa7e1d2410fdf33fbbaf7 --> u_e_fed44467ef56805ef33942f9

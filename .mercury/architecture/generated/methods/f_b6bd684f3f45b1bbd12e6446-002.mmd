@@ -1,0 +1,48 @@
+flowchart LR
+  s_736e6a586bec09bab8e8cd59["ChatFiles.createStandard · 59"]
+  s_de9b2f73b06a25a85802ae9a["ChatFiles.validateName · 47"]
+  u_e_bdfc0cb0ab128c10eab0ad04["Unresolved: allowed.has"]
+  s_a09efff11943e6c563bf5ebf["ChatFiles.import · 33"]
+  s_d6fbfb7b4116d97c27f32b80["src/main/file-inspection.ts: boundedInspection"]
+  s_d0eea3d2f63f9893f0688208["ChatFiles.create · 50"]
+  u_e_c28c7b566de893a2127d81a4["Unresolved: name.toLowerCase"]
+  s_1bc16026f3d796f1536aab53["src/main/chat.ts: ChatService.send.executeCall"]
+  s_5520d1a72f620b2fd4be7ff2["ChatFiles.browserImage · 20"]
+  s_377882a31711102b846e0ea1["ChatFiles.get · 16"]
+  u_e_c9195922ac7f3134998ef44f["Unresolved: JSON.parse"]
+  u_e_ce4df2970c6f2d6e19cfe310["Unresolved: bytes.subarray"]
+  s_3bd57ffc79ab5aa46a18925f["ChatFiles.store · 23"]
+  s_b12ed33770ce75dda195b1a4["src/main/chat.test.ts: uploadSources"]
+  u_e_d9e9cdb813befd7760f2fa4b["Unresolved: Error"]
+  u_e_dfbd7f159e1f434502a2e966["Unresolved: fs.readFile"]
+  s_1afc7ca6c5674db16242b7be["src/main/chat.ts: ChatService.send.readForSubagent"]
+  u_e_ea24632e983575dbbdecd45f["Unresolved: String(error).slice"]
+  u_e_ecb29dfa7a02595a31c771d8["Unresolved: Error"]
+  s_32a5813d88937ce3eb46d2aa["src/main/chat.ts: ChatService.send"]
+  s_cd1863b7fbad0d7082156c1f["ChatFiles.text · 18"]
+  s_aecb3fdd25443684fc19ed87["src/main/file-formats.ts: FileFormats.archive"]
+  u_e_f767d480d61e712930485952["Unresolved: fs.readFile"]
+  u_e_f9d93637c1fdf0bc2659bcee["Unresolved: this.renderPdf"]
+  s_702caf43abde67fe87671fd6["ChatFiles.bytes · 17"]
+  s_736e6a586bec09bab8e8cd59 -.-> s_de9b2f73b06a25a85802ae9a
+  s_736e6a586bec09bab8e8cd59 --> u_e_bdfc0cb0ab128c10eab0ad04
+  s_a09efff11943e6c563bf5ebf --> s_d6fbfb7b4116d97c27f32b80
+  s_d0eea3d2f63f9893f0688208 --> u_e_c28c7b566de893a2127d81a4
+  s_1bc16026f3d796f1536aab53 -.-> s_5520d1a72f620b2fd4be7ff2
+  s_377882a31711102b846e0ea1 --> u_e_c9195922ac7f3134998ef44f
+  s_a09efff11943e6c563bf5ebf --> u_e_ce4df2970c6f2d6e19cfe310
+  s_d0eea3d2f63f9893f0688208 -.-> s_3bd57ffc79ab5aa46a18925f
+  s_b12ed33770ce75dda195b1a4 -.-> s_a09efff11943e6c563bf5ebf
+  s_3bd57ffc79ab5aa46a18925f --> u_e_d9e9cdb813befd7760f2fa4b
+  s_a09efff11943e6c563bf5ebf --> u_e_dfbd7f159e1f434502a2e966
+  s_5520d1a72f620b2fd4be7ff2 -.-> s_3bd57ffc79ab5aa46a18925f
+  s_1afc7ca6c5674db16242b7be -.-> s_377882a31711102b846e0ea1
+  s_a09efff11943e6c563bf5ebf --> u_e_ea24632e983575dbbdecd45f
+  s_1bc16026f3d796f1536aab53 -.-> s_d0eea3d2f63f9893f0688208
+  s_d0eea3d2f63f9893f0688208 --> u_e_ecb29dfa7a02595a31c771d8
+  s_32a5813d88937ce3eb46d2aa -.-> s_cd1863b7fbad0d7082156c1f
+  s_736e6a586bec09bab8e8cd59 -.-> s_aecb3fdd25443684fc19ed87
+  s_cd1863b7fbad0d7082156c1f --> u_e_f767d480d61e712930485952
+  s_d0eea3d2f63f9893f0688208 --> u_e_f9d93637c1fdf0bc2659bcee
+  s_cd1863b7fbad0d7082156c1f -.-> s_377882a31711102b846e0ea1
+  s_702caf43abde67fe87671fd6 -.-> s_377882a31711102b846e0ea1

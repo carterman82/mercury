@@ -1,0 +1,92 @@
+flowchart LR
+  s_a26c220bf37ee317ae6ace1e["ProjectTools.execute · 200"]
+  s_78a69a1e3b734dd28de66abb["ProjectTools.execute.resolve · 217"]
+  s_eef34a052b825553f331042c["ProjectTools.execute.commandState · 255"]
+  u_e_ad1780d41fb4f594e65dff77["Unresolved: schemas[name as keyof typeof schemas].parse"]
+  s_6a832b2be24b4daba416b3a6["ProjectTools.serial · 193"]
+  u_e_ae088af618d26f8af19ef2fa["Unresolved: this.writes.set"]
+  s_69f8583bf37b29bb18fcda99["ProjectTools.getWorkspace · 118"]
+  u_e_ae5c1306424ce120c0ca3b08["Unresolved: Error"]
+  s_2b1f9bd16affc873dfbfa64d["ProjectTools.prepareWorker · 124"]
+  u_e_ae5cdc9a78d0fe2536d262c4["Unresolved: value.split"]
+  f_648573674bad009d008b25d9["src/main/project-tools.ts"]
+  u_e_b006abd86efead36b953a19c["Unresolved: z.toJSONSchema"]
+  u_e_b02b574a82feb629f0fb16e1["Unresolved: z.number().int().nonnegative"]
+  u_e_b0505429d6141bcde783f46b["Unresolved: z.string().min(1).max(32768).refine"]
+  u_e_b05a050f6b04a6eb0beb03d0["Unresolved: path.parse"]
+  u_e_b250d453c90893a15a4e6e9c["Unresolved: Math.min"]
+  u_e_b46ce86a27598c0aaa699882["Unresolved: z.string"]
+  s_14d3f9cf1cd18c784f7de11b["ProjectTools.withWorkspaceWrite · 137"]
+  u_e_b66e51f3ca1a37567f48930f["Unresolved: z.array(filename).max"]
+  u_e_b748891e82a55047c4fde893["Unresolved: this.commandResults.set"]
+  u_e_b76e88cce5970335f2971117["Unresolved: z.object({ path: filename.optional() }).strict"]
+  u_e_b79b6022b27d96f048a30590["Unresolved: Math.max"]
+  s_19088dc301adb7ae3c49f114["ProjectTools.reportDiagrams · 110"]
+  s_f92784ad5857f1f99c885c38["src/main/project-maps.ts: ProjectMaps.existingDiagrams"]
+  u_e_b8475ecea7cfb171182ea2de["Unresolved: Promise.resolve"]
+  u_e_b88bea573843058728714a7d["Unresolved: path.isAbsolute"]
+  u_e_bab975b63b54caf7563bb960["Unresolved: preview.some"]
+  u_e_bb70507cbb6085dc177e270b["Unresolved: ['list_project_files', 'read_project_file', 'search_project_files'].includes"]
+  u_e_bc21f0ab91581210e81c9198["Unresolved: Error"]
+  u_e_bcf69ead0c5f9a748fc04ade["Unresolved: this.writes.get"]
+  s_a4975f36a3f9faff23f0687c["within · 49"]
+  u_e_bdeee3137401be12a447ec8a["Unresolved: path.isAbsolute"]
+  u_e_be6d6e6c8f2e06f0b44a3e31["Unresolved: z.number().int"]
+  u_e_bf0f0f78b50ba6ae01a6cc26["Unresolved: write.forEach"]
+  s_a63e5a1513d2fc01d0c902f5["src/main/workspace.ts: Workspace.read"]
+  u_e_bf765fc5ddd96731e353c6d4["Unresolved: z.object({}).strict"]
+  s_40dce2feb020a80807e21cef["src/main/project-worktrees.ts: ProjectWorktreeService.integrate"]
+  u_e_c3c1579d969d6513a99ad850["Unresolved: this.commandResults.get"]
+  u_e_c3d56b148cd14b4d3c8eebd1["Unresolved: Promise.all"]
+  s_96a56210be25ff9c6e2f096c["ProjectTools.prepare · 78"]
+  u_e_c444fe271736adb1cfd9f8af["Unresolved: Error"]
+  s_fecfabfb552f421a10a78b87["ProjectTools.ensureWorkspace · 95"]
+  s_180d971dfc3d69363dce371d["ProjectTools.workspace · 123"]
+  s_774743cf30be211635853d0f["src/main/project-workers.ts: ProjectWorkers.run.execute"]
+  s_2a61ae8c7364769b9cb7e3c8["src/main/workspace.ts: Workspace.constructor"]
+  s_11e8c8809c629b79241c80a5["ProjectTools.context · 157"]
+  s_1b86a4837dbf11d0ad688ef1["ProjectTools.checkWorkerWrite · 150"]
+  s_465e98f8ae25af889dd15f68["ProjectTools.checkWorkerWrite.normalize · 154"]
+  s_f27f8fdef451d7bb05c5048b["ProjectTools.authorize · 161"]
+  s_e2d23644676d3f99a2a33f68["src/main/project-policy.ts: assessProjectAction"]
+  s_8b7188ffef6e68b4568ea83d["src/main/project-context.ts: ProjectNotes.read"]
+  s_a26c220bf37ee317ae6ace1e --> s_78a69a1e3b734dd28de66abb
+  s_a26c220bf37ee317ae6ace1e --> s_eef34a052b825553f331042c
+  s_a26c220bf37ee317ae6ace1e --> u_e_ad1780d41fb4f594e65dff77
+  s_6a832b2be24b4daba416b3a6 --> u_e_ae088af618d26f8af19ef2fa
+  s_69f8583bf37b29bb18fcda99 --> u_e_ae5c1306424ce120c0ca3b08
+  s_2b1f9bd16affc873dfbfa64d --> u_e_ae5cdc9a78d0fe2536d262c4
+  f_648573674bad009d008b25d9 --> u_e_b006abd86efead36b953a19c
+  f_648573674bad009d008b25d9 --> u_e_b02b574a82feb629f0fb16e1
+  f_648573674bad009d008b25d9 --> u_e_b0505429d6141bcde783f46b
+  s_a26c220bf37ee317ae6ace1e --> u_e_b05a050f6b04a6eb0beb03d0
+  s_a26c220bf37ee317ae6ace1e --> u_e_b250d453c90893a15a4e6e9c
+  f_648573674bad009d008b25d9 --> u_e_b46ce86a27598c0aaa699882
+  s_a26c220bf37ee317ae6ace1e -.-> s_14d3f9cf1cd18c784f7de11b
+  f_648573674bad009d008b25d9 --> u_e_b66e51f3ca1a37567f48930f
+  s_2b1f9bd16affc873dfbfa64d --> u_e_b748891e82a55047c4fde893
+  f_648573674bad009d008b25d9 --> u_e_b76e88cce5970335f2971117
+  s_a26c220bf37ee317ae6ace1e --> u_e_b79b6022b27d96f048a30590
+  s_19088dc301adb7ae3c49f114 -.-> s_f92784ad5857f1f99c885c38
+  s_6a832b2be24b4daba416b3a6 --> u_e_b8475ecea7cfb171182ea2de
+  s_2b1f9bd16affc873dfbfa64d --> u_e_b88bea573843058728714a7d
+  s_a26c220bf37ee317ae6ace1e --> u_e_bab975b63b54caf7563bb960
+  f_648573674bad009d008b25d9 --> u_e_bb70507cbb6085dc177e270b
+  s_a26c220bf37ee317ae6ace1e --> u_e_bc21f0ab91581210e81c9198
+  s_6a832b2be24b4daba416b3a6 --> u_e_bcf69ead0c5f9a748fc04ade
+  s_a4975f36a3f9faff23f0687c --> u_e_bdeee3137401be12a447ec8a
+  f_648573674bad009d008b25d9 --> u_e_be6d6e6c8f2e06f0b44a3e31
+  s_a26c220bf37ee317ae6ace1e --> u_e_bf0f0f78b50ba6ae01a6cc26
+  s_eef34a052b825553f331042c -.-> s_a63e5a1513d2fc01d0c902f5
+  f_648573674bad009d008b25d9 --> u_e_bf765fc5ddd96731e353c6d4
+  s_a26c220bf37ee317ae6ace1e -.-> s_40dce2feb020a80807e21cef
+  s_a26c220bf37ee317ae6ace1e --> u_e_c3c1579d969d6513a99ad850
+  s_a26c220bf37ee317ae6ace1e --> u_e_c3d56b148cd14b4d3c8eebd1
+  s_96a56210be25ff9c6e2f096c --> u_e_c444fe271736adb1cfd9f8af
+  s_fecfabfb552f421a10a78b87 -.-> s_180d971dfc3d69363dce371d
+  s_774743cf30be211635853d0f -.-> s_a26c220bf37ee317ae6ace1e
+  s_a26c220bf37ee317ae6ace1e -.-> s_2a61ae8c7364769b9cb7e3c8
+  s_a26c220bf37ee317ae6ace1e -.-> s_11e8c8809c629b79241c80a5
+  s_1b86a4837dbf11d0ad688ef1 --> s_465e98f8ae25af889dd15f68
+  s_f27f8fdef451d7bb05c5048b --> s_e2d23644676d3f99a2a33f68
+  s_96a56210be25ff9c6e2f096c -.-> s_8b7188ffef6e68b4568ea83d

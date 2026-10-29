@@ -1,0 +1,18 @@
+flowchart LR
+  f_b2b43ed08524d24c267f7501["src/main/core.test.ts"]
+  u_e_fa5a3f4bb1b8aa1d35fd193a["Unresolved: expect"]
+  u_e_fb2888c598036cb0d191900f["Unresolved: path.join"]
+  s_5489336cf59f0cba96ed0ca3["src/main/store.ts: Store.saveSettings"]
+  u_e_fba0a4fdf587e806686ed373["Unresolved: rmSync"]
+  s_5fd1e367b857a454a8adf410["src/main/plugins.ts: discoverPlugins"]
+  u_e_fc4dea9ea2fe2caf8e3c2444["Unresolved: expect(store.session(session.id).status).toBe"]
+  u_e_fdbec4c7878ffd502d93dd5b["Unresolved: it"]
+  s_a63e5a1513d2fc01d0c902f5["src/main/workspace.ts: Workspace.read"]
+  f_b2b43ed08524d24c267f7501 --> u_e_fa5a3f4bb1b8aa1d35fd193a
+  f_b2b43ed08524d24c267f7501 --> u_e_fb2888c598036cb0d191900f
+  f_b2b43ed08524d24c267f7501 -.-> s_5489336cf59f0cba96ed0ca3
+  f_b2b43ed08524d24c267f7501 --> u_e_fba0a4fdf587e806686ed373
+  f_b2b43ed08524d24c267f7501 --> s_5fd1e367b857a454a8adf410
+  f_b2b43ed08524d24c267f7501 --> u_e_fc4dea9ea2fe2caf8e3c2444
+  f_b2b43ed08524d24c267f7501 --> u_e_fdbec4c7878ffd502d93dd5b
+  f_b2b43ed08524d24c267f7501 -.-> s_a63e5a1513d2fc01d0c902f5

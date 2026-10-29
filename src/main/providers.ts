@@ -12,9 +12,11 @@ import { isSubscription, openAIRoutes } from '../shared/openai-routing';
 
 export interface ChatResult { text: string; reasoning?: string; tools: ToolRequest[]; usage?: { input?: number; output?: number }; }
 export interface ProviderToolChoice { type: 'auto' | 'any' | 'tool' | 'none'; name?: string; disable_parallel_tool_use?: boolean; }
-export interface ChatInput { profile: ModelProfile; agentLease?: symbol; messages: unknown[]; tools?: unknown[]; signal: AbortSignal; maxOutputTokens?: number; toolChoice?: ProviderToolChoice; disableThinking?: boolean; onRoutingNotice?: (notice: string) => void; onRequestState?: (state: 'queued' | 'running') => void; onImageFallback?: (reason?: string) => void; onFileFallback?: (reason?: string) => void; onText?: (delta: string) => void; onReasoning?: (delta: string) => void; onToolProgress?: () => void; }
+export interface ChatInput { profile: ModelProfile; agentLease?: symbol; messages: unknown[]; tools?: unknown[]; signal: AbortSignal; inactivityMs?: number; maxOutputTokens?: number; toolChoice?: ProviderToolChoice; disableThinking?: boolean; onRoutingNotice?: (notice: string) => void; onRequestState?: (state: 'queued' | 'running') => void; onImageFallback?: (reason?: string) => void; onFileFallback?: (reason?: string) => void; onText?: (delta: string) => void; onReasoning?: (delta: string) => void; onToolProgress?: () => void; }
 export interface NativeMessagesInput { profile: ModelProfile; body: Record<string, unknown>; headers?: Record<string, string>; signal: AbortSignal; agentLease?: symbol; onRoutingNotice?: ChatInput['onRoutingNotice']; onRequestState?: ChatInput['onRequestState']; }
+export interface ChatInput { reportMode?: boolean; }
 export interface ModelProvider {
+  loadedContextLimit?(profile: ModelProfile, signal: AbortSignal): Promise<number | null>;
   reserveAgent?(profiles: ModelProfile[], avoid?: ModelProfile): AgentLease;
   discover(connection: ModelConnection): Promise<ModelInfo[]>;
   chat(input: ChatInput): Promise<ChatResult>;
@@ -73,6 +75,15 @@ export async function* streamLines(response: Response, signal: AbortSignal): Asy
 }
 
 export class LocalProviders implements ModelProvider {
+  async loadedContextLimit(profile: ModelProfile, signal: AbortSignal): Promise<number | null> {
+    if (profile.provider !== 'lmstudio') return null;
+    try {
+      const response = await requestJson(`${this.url(profile)}/api/v1/models`, { headers: this.headers(profile.connectionId), signal: AbortSignal.any([signal, AbortSignal.timeout(15000)]) });
+      const model = response.models?.find((item: any) => item.key === profile.model || item.loaded_instances?.some((instance: any) => instance.id === profile.model));
+      const limits = (model?.loaded_instances ?? []).map((instance: any) => instance.config?.context_length).filter((limit: any) => Number.isSafeInteger(limit) && limit > 0);
+      return limits.length ? Math.min(...limits) : null;
+    } catch { signal.throwIfAborted(); return null; }
+  }
   private cloudModels: ModelInfo[] = [];
   private textOnlyModels = new Map<string, number>();
   private modelMetadata = new Map<string, { parallel?: number; vision?: boolean; canonical: string; checkedAt?: number }>();
@@ -422,9 +433,21 @@ export class LocalProviders implements ModelProvider {
       catch (error) { this.connectionFailed(); throw error; }
     }
     const base = this.url(input.profile);
+    if (input.reportMode && input.profile.provider === 'lmstudio' && !input.tools?.length) {
+      const messages = input.messages as { role: string; content: string }[];
+      const response = await requestJson(`${base}/api/v1/chat`, {
+        method: 'POST', headers: { 'content-type': 'application/json', ...this.headers(input.profile.connectionId) },
+        signal: AbortSignal.any([input.signal, AbortSignal.timeout(input.inactivityMs ?? 600000)]),
+        body: JSON.stringify({ model: input.profile.model, system_prompt: messages.filter(message => message.role === 'system').map(message => message.content).join('\n'), input: messages.filter(message => message.role !== 'system').map(message => message.content).join('\n'), reasoning: 'off', store: false, integrations: [], max_output_tokens: input.maxOutputTokens }),
+      });
+      if (input.maxOutputTokens && response.stats?.total_output_tokens >= input.maxOutputTokens - 1) throw new Error('The report reached its output token limit before finishing.');
+      const text = (response.output ?? []).filter((item: any) => item.type === 'message').map((item: any) => item.content).join('\n');
+      input.onText?.(text);
+      return { text, tools: [] };
+    }
     const isOllama = input.profile.provider === 'ollama';
     const controller = new AbortController();
-    const idle = new InactivityWatchdog(120_000, new ThinkingLimitError('timeout'));
+    const idle = new InactivityWatchdog(input.inactivityMs ?? 120_000, new ThinkingLimitError('timeout'));
     const idleAbort = () => controller.abort(idle.signal.reason);
     idle.signal.addEventListener('abort', idleAbort, { once: true });
     const abort = () => controller.abort(input.signal.reason);
@@ -433,7 +456,7 @@ export class LocalProviders implements ModelProvider {
     const tools = input.tools?.length ? { tools: input.tools } : {};
     const body = isOllama
       ? { model: input.profile.model, messages: localImageMessages(input.messages, true), ...tools, stream: true, ...(input.disableThinking ? { think: /gpt-oss/i.test(input.profile.model) ? 'low' : false } : {}), options: { num_ctx: input.profile.contextLimit, ...(input.maxOutputTokens ? { num_predict: input.maxOutputTokens } : {}) } }
-      : { model: input.profile.model, messages: localImageMessages(input.messages, false), ...tools, stream: true, ...(input.maxOutputTokens ? { max_tokens: input.maxOutputTokens } : {}), ...(input.toolChoice ? { tool_choice: input.toolChoice.type === 'tool' ? { type: 'function', function: { name: input.toolChoice.name } } : input.toolChoice.type === 'any' ? 'required' : input.toolChoice.type, ...(input.toolChoice.disable_parallel_tool_use !== undefined ? { parallel_tool_calls: !input.toolChoice.disable_parallel_tool_use } : {}) } : {}) };
+      : { model: input.profile.model, messages: localImageMessages(input.messages, false), ...tools, stream: true, ...(input.disableThinking ? { reasoning: { effort: 'none' } } : {}), ...(input.maxOutputTokens ? { max_tokens: input.maxOutputTokens } : {}), ...(input.toolChoice ? { tool_choice: input.toolChoice.type === 'tool' ? { type: 'function', function: { name: input.toolChoice.name } } : input.toolChoice.type === 'any' ? 'required' : input.toolChoice.type, ...(input.toolChoice.disable_parallel_tool_use !== undefined ? { parallel_tool_calls: !input.toolChoice.disable_parallel_tool_use } : {}) } : {}) };
     try {
       const response = await fetch(isOllama ? `${base}/api/chat` : `${base}/v1/chat/completions`, {
         method: 'POST', headers: { 'content-type': 'application/json', ...this.headers(input.profile.connectionId) }, body: JSON.stringify(body), signal: controller.signal, redirect: 'error',

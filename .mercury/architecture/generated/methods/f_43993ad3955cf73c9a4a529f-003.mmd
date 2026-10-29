@@ -1,0 +1,43 @@
+flowchart LR
+  f_43993ad3955cf73c9a4a529f["src/main/project-policy.test.ts"]
+  s_baa6cf57ae4a7200bc72a010["src/main/project-policy.ts: OneShotProjectGrants.consume"]
+  u_e_cb2fc4e9541673a4903939cb["Unresolved: expect(grants.consume(id, context, command)).toBe"]
+  u_e_cfa9375262fbcfa07d14a517["Unresolved: expect(assessProjectAction(context, { kind: 'read', paths: ['relative'] }).status).toBe"]
+  s_434b5124f189fce3883debff["src/main/project-policy.ts: OneShotProjectGrants.issue"]
+  u_e_d61b5b82b9f2b7634537c1b1["Unresolved: expect(grants.consume(restarted, context, read)).toBe"]
+  s_420a6667f9d16798afc6a039["src/main/project-policy.ts: OneShotProjectGrants.constructor"]
+  u_e_dd7dffe518637e2a6cd4cf80["Unresolved: it"]
+  u_e_df9a10aabe632b797293d7d1["Unresolved: expect(assessProjectAction({ ...context, revision: NaN }, read).status).toBe"]
+  u_e_e044f9cfa9b0e9f869fb2aa3["Unresolved: expect"]
+  u_e_e1ce0f38c70eb5314776ca0f["Unresolved: path.resolve"]
+  u_e_e43af677eaac939e7f62a909["Unresolved: expect(assessProjectAction(context, { ...command, paths: [outside] }, { isolationAvailable: true, boundedLowRisk: true }).status).toBe"]
+  u_e_e4a6498d902785c7b66444da["Unresolved: expect(assessProjectAction(context, { kind: 'plugin' }, { isolationAvailable: true }).status).toBe"]
+  u_e_e6004276344c412ec9a87c9d["Unresolved: expect"]
+  u_e_e93c014a49b9d828ff10711a["Unresolved: expect"]
+  u_e_ee64750f2861be2e2f50151b["Unresolved: expect(() =&gt; new OneShotProjectGrants(Date.now, 0)).toThrow"]
+  s_e2d23644676d3f99a2a33f68["src/main/project-policy.ts: assessProjectAction"]
+  u_e_f6781ee37278f2852ec91aa3["Unresolved: expect(assessProjectAction(context, { kind: 'read', paths: [outside] }).status).toBe"]
+  u_e_f9a50fd36c7a1e587332f2eb["Unresolved: it"]
+  u_e_fbd629f823e4a9c34b8c9008["Unresolved: expect(assessProjectAction({ ...context, mode }, { kind: 'write', paths: [inside], destructive: true }).status).toBe"]
+  u_e_ff2826b576f6bfdb8f86cb41["Unresolved: expect"]
+  f_43993ad3955cf73c9a4a529f -.-> s_baa6cf57ae4a7200bc72a010
+  f_43993ad3955cf73c9a4a529f --> u_e_cb2fc4e9541673a4903939cb
+  f_43993ad3955cf73c9a4a529f --> u_e_cfa9375262fbcfa07d14a517
+  f_43993ad3955cf73c9a4a529f -.-> s_434b5124f189fce3883debff
+  f_43993ad3955cf73c9a4a529f --> u_e_d61b5b82b9f2b7634537c1b1
+  f_43993ad3955cf73c9a4a529f -.-> s_420a6667f9d16798afc6a039
+  f_43993ad3955cf73c9a4a529f --> u_e_dd7dffe518637e2a6cd4cf80
+  f_43993ad3955cf73c9a4a529f --> u_e_df9a10aabe632b797293d7d1
+  f_43993ad3955cf73c9a4a529f --> u_e_e044f9cfa9b0e9f869fb2aa3
+  f_43993ad3955cf73c9a4a529f --> u_e_e1ce0f38c70eb5314776ca0f
+  f_43993ad3955cf73c9a4a529f --> u_e_e43af677eaac939e7f62a909
+  f_43993ad3955cf73c9a4a529f --> u_e_e4a6498d902785c7b66444da
+  f_43993ad3955cf73c9a4a529f --> u_e_e6004276344c412ec9a87c9d
+  f_43993ad3955cf73c9a4a529f -.-> s_434b5124f189fce3883debff
+  f_43993ad3955cf73c9a4a529f --> u_e_e93c014a49b9d828ff10711a
+  f_43993ad3955cf73c9a4a529f --> u_e_ee64750f2861be2e2f50151b
+  f_43993ad3955cf73c9a4a529f --> s_e2d23644676d3f99a2a33f68
+  f_43993ad3955cf73c9a4a529f --> u_e_f6781ee37278f2852ec91aa3
+  f_43993ad3955cf73c9a4a529f --> u_e_f9a50fd36c7a1e587332f2eb
+  f_43993ad3955cf73c9a4a529f --> u_e_fbd629f823e4a9c34b8c9008
+  f_43993ad3955cf73c9a4a529f --> u_e_ff2826b576f6bfdb8f86cb41

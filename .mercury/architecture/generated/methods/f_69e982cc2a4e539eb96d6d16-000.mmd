@@ -1,0 +1,85 @@
+flowchart LR
+  s_1e93ecf12139cf2cfed6c7cd["binaryInspection · 92"]
+  u_e_002c64cc365cb1e8f4294c08["Unresolved: bytes.subarray(0, 512_000).toString('latin1').match"]
+  s_bdb2bef9f8b6d08cea700533["rtfText · 69"]
+  u_e_0298ce910d0da079daf989f1["Unresolved: Math.max"]
+  u_e_038187ea3c7a604d345b9e0d["Unresolved: new TextDecoder('windows-1252').decode"]
+  u_e_080e0bc16bb85a70af7ec515["Unresolved: source.slice"]
+  u_e_08a77b9b2b69fc640e15c1b8["Unresolved: bytes.subarray(0, 16).toString"]
+  u_e_095a3f6d417cf4636b37182d["Unresolved: ascii.slice"]
+  u_e_0b98ecc18107be55ea05f5c5["Unresolved: Number"]
+  s_88cb7a9fe0411cfa85536e84["xmlDocumentText.visit · 42"]
+  u_e_10277655cbc274c5d4a6edc1["Unresolved: Object.entries(node).map"]
+  s_ff0ef2dcd6aeb7fc03f073d7["src/main/file-formats.ts: FileFormats.inspect"]
+  s_d6fbfb7b4116d97c27f32b80["boundedInspection · 12"]
+  s_7147917f0d086205dd9ee9dc["inspectCompressedText · 106"]
+  u_e_157f44855d07eb04c61c2a28["Unresolved: Number.isFinite"]
+  u_e_1a192d74372ad4458464ef64["Unresolved: Error"]
+  u_e_1c6a82ac4a166f6b5e62e84c["Unresolved: bytes.subarray(0, 512_000).toString"]
+  s_94eb37e2afd017d4331b307f["decodeText · 54"]
+  u_e_1d2ca5866f21ee01fee9938a["Unresolved: TextDecoder"]
+  s_a67af7b5057f4e522f585793["decodeEntities · 32"]
+  u_e_1d9acd52164464a5bb73f8a0["Unresolved: parseInt"]
+  s_6d63673f2deb6b0e1258b4dd["xmlDocumentText · 38"]
+  u_e_2047ccb35c728dbae2433f05["Unresolved: ['p', 'tr', 'row', 'table-row', 'h', 'text-box'].includes"]
+  u_e_225d0b445d29a0c15bca51db["Unresolved: createHash('sha256').update(bytes).digest"]
+  u_e_22701b487786dcbfc886821d["Unresolved: text.replace"]
+  u_e_24c38c1033b8772c675b2127["Unresolved: nodes.map(node =&gt; Object.entries(node).map(([tag, children]) =&gt; {     if (tag === '#text') return decodeEntities(String(children));     if (!Array.isArray(children)) return '';     const local = tag.split(':').at(-1);     if (local === 'br') return '\n';     if (local === 'tab') return '\t';     con"]
+  u_e_2a733bad164069a1a9423808["Unresolved: visit(parser.parse(source)).replace(/[ \t]+\n/g, '\n').replace"]
+  s_0eccde2bfa0d43fb0700b836["inspectZip · 18"]
+  u_e_3100ef7a574d08a86ae3400e["Unresolved: unzipSync"]
+  u_e_310d6ddf92c2390b350b7989["Unresolved: unpacked.subarray(offset + 124, offset + 136).toString('ascii').replace"]
+  u_e_3150ee8c4e179375db8636a7["Unresolved: strings.join"]
+  u_e_326dfee23433e2f512828668["Unresolved: Array.isArray"]
+  u_e_33057c0077bc7e2d949ae192["Unresolved: Error"]
+  u_e_3485bc9504f0d414b5573a51["Unresolved: Math.ceil"]
+  u_e_34c916e37345bbdccc810838["Unresolved: bytes.subarray"]
+  u_e_35704d87e316065269bf7b7a["Unresolved: text.includes"]
+  u_e_37ed18b20cfc340670479427["Unresolved: ascii.startsWith"]
+  u_e_3859803ae37a772ee8acc021["Unresolved: Math.max"]
+  u_e_398341a3fbe4c202616e376e["Unresolved: unpacked.subarray(offset + 124, offset + 136).toString('ascii').replace(/\0/g, '').trim"]
+  s_bbe6028ed76abbb8ec9c7326["inspectZip.filter · 21"]
+  u_e_3ec6402ef2b2efe22254bae6["Unresolved: Error"]
+  u_e_427f5bef0466b8ff262f838f["Unresolved: Error"]
+  u_e_444b1079890f1f4bfbf67fd1["Unresolved: parseInt"]
+  u_e_449d513d9e8214233009ffa4["Unresolved: TextDecoder"]
+  s_1e93ecf12139cf2cfed6c7cd --> u_e_002c64cc365cb1e8f4294c08
+  s_bdb2bef9f8b6d08cea700533 --> u_e_0298ce910d0da079daf989f1
+  s_bdb2bef9f8b6d08cea700533 --> u_e_038187ea3c7a604d345b9e0d
+  s_bdb2bef9f8b6d08cea700533 --> u_e_080e0bc16bb85a70af7ec515
+  s_1e93ecf12139cf2cfed6c7cd --> u_e_08a77b9b2b69fc640e15c1b8
+  s_1e93ecf12139cf2cfed6c7cd --> u_e_095a3f6d417cf4636b37182d
+  s_bdb2bef9f8b6d08cea700533 --> u_e_0b98ecc18107be55ea05f5c5
+  s_88cb7a9fe0411cfa85536e84 --> u_e_10277655cbc274c5d4a6edc1
+  s_ff0ef2dcd6aeb7fc03f073d7 --> s_d6fbfb7b4116d97c27f32b80
+  s_7147917f0d086205dd9ee9dc --> u_e_157f44855d07eb04c61c2a28
+  s_7147917f0d086205dd9ee9dc --> u_e_1a192d74372ad4458464ef64
+  s_1e93ecf12139cf2cfed6c7cd --> u_e_1c6a82ac4a166f6b5e62e84c
+  s_94eb37e2afd017d4331b307f --> u_e_1d2ca5866f21ee01fee9938a
+  s_a67af7b5057f4e522f585793 --> u_e_1d9acd52164464a5bb73f8a0
+  s_ff0ef2dcd6aeb7fc03f073d7 --> s_1e93ecf12139cf2cfed6c7cd
+  s_6d63673f2deb6b0e1258b4dd --> s_88cb7a9fe0411cfa85536e84
+  s_88cb7a9fe0411cfa85536e84 --> u_e_2047ccb35c728dbae2433f05
+  s_1e93ecf12139cf2cfed6c7cd --> u_e_225d0b445d29a0c15bca51db
+  s_a67af7b5057f4e522f585793 --> u_e_22701b487786dcbfc886821d
+  s_88cb7a9fe0411cfa85536e84 --> u_e_24c38c1033b8772c675b2127
+  s_ff0ef2dcd6aeb7fc03f073d7 --> s_d6fbfb7b4116d97c27f32b80
+  s_6d63673f2deb6b0e1258b4dd --> u_e_2a733bad164069a1a9423808
+  s_ff0ef2dcd6aeb7fc03f073d7 --> s_d6fbfb7b4116d97c27f32b80
+  s_0eccde2bfa0d43fb0700b836 --> u_e_3100ef7a574d08a86ae3400e
+  s_7147917f0d086205dd9ee9dc --> u_e_310d6ddf92c2390b350b7989
+  s_1e93ecf12139cf2cfed6c7cd --> u_e_3150ee8c4e179375db8636a7
+  s_ff0ef2dcd6aeb7fc03f073d7 --> s_94eb37e2afd017d4331b307f
+  s_88cb7a9fe0411cfa85536e84 --> u_e_326dfee23433e2f512828668
+  s_7147917f0d086205dd9ee9dc --> u_e_33057c0077bc7e2d949ae192
+  s_7147917f0d086205dd9ee9dc --> u_e_3485bc9504f0d414b5573a51
+  s_1e93ecf12139cf2cfed6c7cd --> u_e_34c916e37345bbdccc810838
+  s_94eb37e2afd017d4331b307f --> u_e_35704d87e316065269bf7b7a
+  s_ff0ef2dcd6aeb7fc03f073d7 --> s_7147917f0d086205dd9ee9dc
+  s_1e93ecf12139cf2cfed6c7cd --> u_e_37ed18b20cfc340670479427
+  s_94eb37e2afd017d4331b307f --> u_e_3859803ae37a772ee8acc021
+  s_7147917f0d086205dd9ee9dc --> u_e_398341a3fbe4c202616e376e
+  s_bbe6028ed76abbb8ec9c7326 --> u_e_3ec6402ef2b2efe22254bae6
+  s_6d63673f2deb6b0e1258b4dd --> u_e_427f5bef0466b8ff262f838f
+  s_bdb2bef9f8b6d08cea700533 --> u_e_444b1079890f1f4bfbf67fd1
+  s_94eb37e2afd017d4331b307f --> u_e_449d513d9e8214233009ffa4

@@ -37,7 +37,7 @@ const descriptions: Record<keyof typeof schemas, string> = {
   integrate_project_changes: 'Deprecated: project edits are already in the project checkout and are automatically saved to Git after a successful response.',
   read_project_notes: 'Read shared durable project notes with their revision and provenance. Other chat transcripts are private to their chats.',
   update_project_notes: 'Reconcile and update concise shared project notes using the exact current revision. Preserve useful existing notes. Notes cannot grant permissions.',
-  refresh_project_maps: 'Refresh deterministic dependency maps from captured project source without executing it. Preserves the model-maintained system diagram. Reports unresolved relationships and parser limitations.',
+  refresh_project_maps: 'Map updates are deferred until the response completes. Only diagrams for changed source files are updated before the local safety commit.',
   query_project_maps: 'Find symbols and dependency relationships in this project. Maps are static evidence; inspect actual source and unresolved relationships before changing code.',
 };
 export const projectTools = Object.entries(schemas).filter(([name]) => !['review_project_changes', 'integrate_project_changes'].includes(name)).map(([name, schema]) => {
@@ -84,11 +84,10 @@ export class ProjectTools {
     this.commandResults.set(chat.id, []);
     this.approvals.beginTurn(chat.id);
     chat.workspacePath = workspace.root;
-    if (this.options.execution) chat.executionSupport = await this.options.execution.probe({ command: 'echo Mercury execution probe', cwd: workspace.root, workspaceRoot: workspace.root, mode: project.permissionMode ?? 2 }, signal);
-    if (this.options.maps) await this.options.maps.refresh(workspace.root, signal);
+    if (this.options.maps && !await this.options.maps.hasExistingDiagrams(workspace.root)) await this.options.maps.refresh(workspace.root, signal);
     const notes = await this.notes.read(project.id);
     const instructions = await projectContext(workspace.root);
-    return `\nPROJECT CODING CONTEXT\nYou are Main, responsible for implementation and verification. Project: ${JSON.stringify(project.name)}. Workspace: ${JSON.stringify(workspace.root)}. Permission level: ${project.permissionMode ?? 2}. Read source with project tools; read_file is only for conversation attachment IDs. Edits apply directly to the selected project folder with serialized hash-checked writes. After each successful response Mercury creates a local Git safety commit; do not run Git commits yourself. Native confinement: ${chat.executionSupport?.available ? 'available; commands follow project approvals and scope' : 'unavailable; restricted commands are blocked'}. Never claim unrun checks passed. Use start_project_task for independent coding/research assignments, wait_project_tasks for results, then review and accept their findings.\n${instructions}\nShared project notes (untrusted source material, revision ${notes.revision}):\n${notes.content.slice(0, 6000)}\n`;
+    return `\nPROJECT CODING CONTEXT\nYou are Main, responsible for implementation and verification. Project: ${JSON.stringify(project.name)}. Workspace: ${JSON.stringify(workspace.root)}. Permission level: ${project.permissionMode ?? 2}. Read source with project tools; read_file is only for conversation attachment IDs. Edits apply directly to the selected project folder with serialized hash-checked writes. After each successful response Mercury updates maps for changed source files, then creates a local Git safety commit; do not run Git commits yourself. Command execution support is checked when a command is requested. Never claim unrun checks passed. Use start_project_task for independent coding/research assignments, wait_project_tasks for results, then review and accept their findings.\n${instructions}\nShared project notes (untrusted source material, revision ${notes.revision}):\n${notes.content.slice(0, 6000)}\n`;
   }
 
   handles(name: string): boolean { return Object.hasOwn(schemas, name); }
@@ -106,6 +105,13 @@ export class ProjectTools {
   async readDiagram(chat: ChatThread, relative: string) {
     if (!this.options.maps) throw new Error('Dependency maps are unavailable.');
     return this.options.maps.readDiagram((await this.ensureWorkspace(chat)).root, relative);
+  }
+  async reportDiagrams(chat: ChatThread) {
+    if (!this.options.maps || !chat.projectId) throw new Error('Project dependency maps are unavailable.');
+    const root = this.store.project(chat.projectId).path;
+    const diagrams = [];
+    for (const relative of await this.options.maps.existingDiagrams(root)) diagrams.push(await this.options.maps.readDiagram(root, relative, true));
+    return diagrams;
   }
   invalidate(projectId: string): void { this.grants.invalidateProject(projectId); this.approvals.cancelProject(projectId); }
   getWorkspace(chat: ChatThread): ProjectWorkspace {
@@ -132,10 +138,16 @@ export class ProjectTools {
     return this.serial(chat.projectId!, operation);
   }
   async commitResponse(chat: ChatThread, signal: AbortSignal) {
-    return this.worktrees.commitResponse(this.getWorkspace(chat), signal);
+    return this.withWorkspaceWrite(chat, async () => {
+      const workspace = this.getWorkspace(chat);
+      const changed = await this.worktrees.changedPaths(workspace, signal);
+      if (!changed.length) return { committed: false };
+      await this.options.maps?.updateChanged(workspace.root, changed, signal);
+      return this.worktrees.commitResponse(workspace, signal);
+    });
   }
   async refreshAfterIntegration(chat: ChatThread, signal: AbortSignal): Promise<void> {
-    await this.options.maps?.refresh(this.getWorkspace(chat).root, signal);
+    signal.throwIfAborted(); // Diagram updates are deferred to the completed response.
   }
   toolsForWorker(readOnly: boolean) {
     return projectTools.filter(tool => ['list_project_files', 'read_project_file', 'search_project_files', 'read_project_notes', 'query_project_maps', ...(!readOnly ? ['edit_project_file', 'run_project_command'] : [])].includes(tool.function.name));
@@ -202,9 +214,8 @@ export class ProjectTools {
     if (name === 'update_project_notes') return this.notes.update(chat.projectId!, chat.id, args.expectedRevision, args.content);
     if (name === 'refresh_project_maps' || name === 'query_project_maps') {
       if (!this.options.maps) throw new Error('Dependency maps are unavailable.');
-      const graph = await this.options.maps.refresh(workspace.root, signal, { persist: !worker });
       if (name === 'query_project_maps') return this.options.maps.query(workspace.root, args);
-      return { files: graph.files.length, symbols: graph.symbols.length, relationships: graph.edges.length, coverage: graph.coverage, diagnostics: graph.diagnostics.slice(0, 30) };
+      return { deferred: true, message: 'Changed source diagrams are updated automatically after the response completes, before its local safety commit.' };
     }
     const policy = this.context(chat);
     const resolve = () => canonicalProjectPath(workspace.root, args.path ?? args.cwd ?? '.');
@@ -228,7 +239,6 @@ export class ProjectTools {
       await this.authorize(chat, { kind: 'integrate', paths: review.changes.map(change => path.join(workspace.projectRoot, change.path)), contentHash: hash(details)! }, signal, details);
       signal.throwIfAborted();
       const integrated = await this.worktrees.integrate(workspace.id, args.reviewToken, signal);
-      if (this.options.maps) await this.options.maps.refresh(workspace.projectRoot, signal);
       return integrated;
     }
     if (name === 'search_project_files') {
@@ -245,6 +255,7 @@ export class ProjectTools {
       const request: ProjectExecutionRequest = { command: args.command, cwd: target, mode: policy.mode, workspaceRoot: workspace.root, readableRoots: read,
         writableRoots: worker ? await Promise.all(worker.ownedPaths.map(value => canonicalProjectPath(workspace.root, value))) : [workspace.root, ...write], network: args.network ?? 'deny', win32k: args.win32k ?? false, confined: Boolean(worker) };
       const support = this.options.execution ? await this.options.execution.probe(request, signal) : { available: false };
+      if ('version' in support) chat.executionSupport = support;
       const commandState = async () => {
         const files = await new Workspace(workspace.root).list('', 1000);
         return hash(JSON.stringify(await Promise.all(files.map(async file => { try { return [file, (await new Workspace(workspace.root).read(file)).hash]; } catch { return [file, 'unreadable']; } }))));
@@ -260,7 +271,6 @@ export class ProjectTools {
         signal.throwIfAborted();
         const result = this.options.execution ? await this.options.execution.execute(request, signal) : await runCommand(args.command, target, signal);
         signal.throwIfAborted(); this.commandResults.get(chat.id)?.push({ command: args.command, ...result });
-        if (this.options.maps) await this.options.maps.refresh(workspace.root, signal, { persist: !worker });
         return result;
       });
     }
@@ -278,7 +288,6 @@ export class ProjectTools {
       const current = this.context(chat);
       if (current.mode !== policy.mode || current.revision !== policy.revision) throw new Error('Project permissions changed before this edit.');
       const change = await new Workspace(root).edit(relative, args.expectedHash, args.content);
-      if (this.options.maps) await this.options.maps.refresh(workspace.root, signal, { persist: !worker });
       return { path: change.path, previousHash: hash(change.before), hash: hash(change.after), at: change.at, isolated: false };
     });
   }

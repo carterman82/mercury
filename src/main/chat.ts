@@ -105,13 +105,13 @@ export class ChatService {
     try {
       this.capabilities?.beginTurn(chat.id);
       if (chat.projectId) {
-        addNotice('Preparing the project workspace.');
+        addNotice('Checking the project.');
         const projectContext = await this.projects!.prepare(chat, controller.signal);
         const budget = Math.max(0, contextMaximum - messageTextLength(messages) - 2500);
         if (budget < 2000) throw new Error('Not enough model context remains for project instructions. Choose a larger context or start another project chat.');
         messages[0].content += projectContext.slice(0, budget) + (projectContext.length > budget ? '\n[Project context was truncated; read the relevant instruction files and maps with project tools.]' : '');
-        notices.delete('Preparing the project workspace.');
-        addNotice('Project workspace ready.');
+        notices.delete('Checking the project.');
+        addNotice('Project ready.');
         this.save(chat);
       }
       if (attachmentIds.length && !this.files) throw new Error('File uploads are unavailable.');

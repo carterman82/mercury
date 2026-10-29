@@ -1,0 +1,87 @@
+flowchart LR
+  s_3f8ef15a83e913c89fa5c63c["connectChatGPT · 21"]
+  s_00eb14a0b86fc7604f40c0ae["call · 5"]
+  s_c4cf710e47f89d8acaae4ab2["savePlan · 49"]
+  s_ba086a1d13216691f6a00bae["stop · 53"]
+  s_b59ba568f499c558808e842f["disconnectConnection · 31"]
+  s_25cfe0a1634fdb4fcca92957["generateProjectReport · 16"]
+  s_bc6f57a837850736b0ef9a86["addChatFiles · 35"]
+  u_e_197cfbc539b082b72c4193d1["Unresolved: Error"]
+  s_c8071b2f1848dceb60abf765["refreshProjectMaps · 17"]
+  s_22a5476538f15e60fcbdf085["previewChatBrowser · 43"]
+  s_20e82ef23e8af695778a492f["discover · 32"]
+  s_eca706a8f1744b67263b2f5b["updateSettings · 20"]
+  s_99a05b64b7ee3b2b074ab7e3["probe · 34"]
+  s_59605ce97c13ac3b81008c0b["autoDiscover · 33"]
+  s_914d8406a5c0284fb991f772["snapshot · 7"]
+  s_73552f7961c3a8e8aaac7698["updateProjectPermissions · 14"]
+  s_da7ba4d0926ff038bca66b19["sendChat · 44"]
+  f_d06e5afc41c0ad64a5a2a3be["src/main/preload.ts"]
+  u_e_404be659881a767ed71c33b0["Unresolved: contextBridge.exposeInMainWorld"]
+  u_e_428878edfab094b84e118fa7["Unresolved: webUtils.getPathForFile"]
+  s_c00f7b1524ef9553b493f347["readProjectDiagram · 18"]
+  s_11a2002c5a757edc42ef0aaa["previewChatFile · 42"]
+  s_aac1df91a7ee04c4e6407d37["answerCommand · 52"]
+  s_71f414f3f26c1f9373fab27c["exportPlan · 51"]
+  s_ff66426e0e766966aac9f8fc["onUpdate · 8"]
+  u_e_4e4b52a176960e51be174be7["Unresolved: ipcRenderer.removeListener"]
+  s_c7baa56047f5d87866648523["createSession · 19"]
+  s_89f8e701da743a3c88bfaa07["connectCodex · 23"]
+  s_edb8d7a6eb5dc2d517a7755a["answerChatApproval · 46"]
+  u_e_7f11ff6bd0cb3e7597ea9e9a["Unresolved: Error"]
+  u_e_7f758ed9805cb676d3a2c3d5["Unresolved: paths.some"]
+  u_e_7fc2fefd6f552453e7f87090["Unresolved: ipcRenderer.on"]
+  s_e11b735233ae38a2e77ddacf["plan · 48"]
+  s_0a5335c5e6ef5520164fb17f["onDiscovery · 26"]
+  u_e_8cdeb8b63ba1ce37175d2799["Unresolved: ipcRenderer.on"]
+  s_dd07967d8563f1dcf8649f90["resume · 54"]
+  s_d48a0e9c8f8d5ac12b4619d6["saveChatFile · 41"]
+  s_e7110592b3f9289f6ff3776d["approvePlan · 50"]
+  s_2a42faac71d6b8545ec9c549["cancelCodexSignIn · 24"]
+  s_6467606cccde3399fe99186e["cachedDiscovery · 25"]
+  u_e_bdbfef4e7f003fff8d587cb4["Unresolved: ipcRenderer.invoke"]
+  s_b7670053d3a88d1736b25e41["onUpdate.listener · 9"]
+  u_e_bf24c021e3355fe696e4eee3["Unresolved: callback"]
+  s_c07efe72e3cf13171d25630a["onDiscovery.listener · 27"]
+  u_e_d14390a7469250c480660abe["Unresolved: callback"]
+  u_e_d464152bb90ea647e01c515d["Unresolved: files.map"]
+  s_3f8ef15a83e913c89fa5c63c --> s_00eb14a0b86fc7604f40c0ae
+  s_c4cf710e47f89d8acaae4ab2 --> s_00eb14a0b86fc7604f40c0ae
+  s_ba086a1d13216691f6a00bae --> s_00eb14a0b86fc7604f40c0ae
+  s_b59ba568f499c558808e842f --> s_00eb14a0b86fc7604f40c0ae
+  s_25cfe0a1634fdb4fcca92957 --> s_00eb14a0b86fc7604f40c0ae
+  s_bc6f57a837850736b0ef9a86 --> u_e_197cfbc539b082b72c4193d1
+  s_c8071b2f1848dceb60abf765 --> s_00eb14a0b86fc7604f40c0ae
+  s_22a5476538f15e60fcbdf085 --> s_00eb14a0b86fc7604f40c0ae
+  s_20e82ef23e8af695778a492f --> s_00eb14a0b86fc7604f40c0ae
+  s_eca706a8f1744b67263b2f5b --> s_00eb14a0b86fc7604f40c0ae
+  s_99a05b64b7ee3b2b074ab7e3 --> s_00eb14a0b86fc7604f40c0ae
+  s_59605ce97c13ac3b81008c0b --> s_00eb14a0b86fc7604f40c0ae
+  s_914d8406a5c0284fb991f772 --> s_00eb14a0b86fc7604f40c0ae
+  s_73552f7961c3a8e8aaac7698 --> s_00eb14a0b86fc7604f40c0ae
+  s_da7ba4d0926ff038bca66b19 --> s_00eb14a0b86fc7604f40c0ae
+  f_d06e5afc41c0ad64a5a2a3be --> u_e_404be659881a767ed71c33b0
+  s_bc6f57a837850736b0ef9a86 --> u_e_428878edfab094b84e118fa7
+  s_c00f7b1524ef9553b493f347 --> s_00eb14a0b86fc7604f40c0ae
+  s_11a2002c5a757edc42ef0aaa --> s_00eb14a0b86fc7604f40c0ae
+  s_aac1df91a7ee04c4e6407d37 --> s_00eb14a0b86fc7604f40c0ae
+  s_71f414f3f26c1f9373fab27c --> s_00eb14a0b86fc7604f40c0ae
+  s_ff66426e0e766966aac9f8fc --> u_e_4e4b52a176960e51be174be7
+  s_c7baa56047f5d87866648523 --> s_00eb14a0b86fc7604f40c0ae
+  s_89f8e701da743a3c88bfaa07 --> s_00eb14a0b86fc7604f40c0ae
+  s_edb8d7a6eb5dc2d517a7755a --> s_00eb14a0b86fc7604f40c0ae
+  s_bc6f57a837850736b0ef9a86 --> u_e_7f11ff6bd0cb3e7597ea9e9a
+  s_bc6f57a837850736b0ef9a86 --> u_e_7f758ed9805cb676d3a2c3d5
+  s_ff66426e0e766966aac9f8fc --> u_e_7fc2fefd6f552453e7f87090
+  s_e11b735233ae38a2e77ddacf --> s_00eb14a0b86fc7604f40c0ae
+  s_bc6f57a837850736b0ef9a86 --> s_00eb14a0b86fc7604f40c0ae
+  s_0a5335c5e6ef5520164fb17f --> u_e_8cdeb8b63ba1ce37175d2799
+  s_dd07967d8563f1dcf8649f90 --> s_00eb14a0b86fc7604f40c0ae
+  s_d48a0e9c8f8d5ac12b4619d6 --> s_00eb14a0b86fc7604f40c0ae
+  s_e7110592b3f9289f6ff3776d --> s_00eb14a0b86fc7604f40c0ae
+  s_2a42faac71d6b8545ec9c549 --> s_00eb14a0b86fc7604f40c0ae
+  s_6467606cccde3399fe99186e --> s_00eb14a0b86fc7604f40c0ae
+  s_00eb14a0b86fc7604f40c0ae --> u_e_bdbfef4e7f003fff8d587cb4
+  s_b7670053d3a88d1736b25e41 --> u_e_bf24c021e3355fe696e4eee3
+  s_c07efe72e3cf13171d25630a --> u_e_d14390a7469250c480660abe
+  s_bc6f57a837850736b0ef9a86 --> u_e_d464152bb90ea647e01c515d

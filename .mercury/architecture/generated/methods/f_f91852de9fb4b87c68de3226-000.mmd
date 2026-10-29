@@ -1,0 +1,81 @@
+flowchart LR
+  s_d798d9b51113205f5512c340["src/main/providers.ts: LocalProviders.chatWithDocuments"]
+  s_f305f41ac6abe5a08591df17["documentUnsupported · 46"]
+  s_7f0d27b8dae15ee9109991fc["src/main/providers.ts: streamLines"]
+  s_c416703a343c8ea83ddb1f3d["ModelHttpError.constructor · 43"]
+  u_e_0a539ae4227467183a9d0873["Unresolved: /input_file|file_data|document|pdf|file (?:type|format|input)|(?:content|input) (?:type|format)/i.test"]
+  s_32a5813d88937ce3eb46d2aa["src/main/chat.ts: ChatService.send"]
+  s_30f98c4340a2809403395030["messageTextLength · 38"]
+  u_e_2e2e9a372fae5adceedf4a01["Unresolved: /corrupt|malformed|password|encrypted|too large|exceeds|context length|token limit|invalid base64/i.test"]
+  u_e_2f12928cc6b2f2e9eb7afb0e["Unresolved: JSON.stringify"]
+  s_e2ebebf2497febd7d6df5f0a["src/main/cloud-providers.ts: claudeInput"]
+  s_d2c85d5b72047e5597bf6507["visualInputText · 15"]
+  s_3ae6da4f5397b272776ffe21["imageUnsupported · 53"]
+  u_e_33b9ad1c025dad1d93105c7a["Unresolved: /(?:does not|doesn't|do not|cannot|can't|not|no|only|unsupported|unavailable|missing|requires?)/i.test"]
+  u_e_38bcc1058e1dad8586024303["Unresolved: /(?:invalid (?:image|base64)|corrupt|malformed|too large|exceeds|unsupported image format|image format.{0,20}not supported|context length|token limit)/i.test"]
+  s_ca5a9ca12a9ffeafa2b5a10f["src/main/providers.ts: LocalProviders.chatWithImages.fallback"]
+  s_e0d777bbb73812b915795bdd["textOnlyMessages · 21"]
+  u_e_437ed9895dbba41b03160f3a["Unresolved: [400, 415, 422].includes"]
+  s_65b755364d822c2d72cf9834["localImageMessages · 28"]
+  u_e_4ca97885651839d2b9ac354d["Unresolved: images.map"]
+  s_5116ac08a5eeafa568688644["src/main/providers.ts: subscriptionUnavailable"]
+  s_6fceed7b21f95169d965b85b["src/main/cloud-providers.ts: cloudChat"]
+  u_e_594e236cd71652417d4f8a02["Unresolved: images.map"]
+  s_9bd065f97be99a0c31453b50["src/main/providers.ts: LocalProviders.chatOnce"]
+  s_86c6d13949601b7c0054af13["hasDocuments · 5"]
+  u_e_5dbcbae703bb9eb8f90dc83d["Unresolved: messages.some"]
+  s_41e261a50c9adc507c5505a0["hasImages · 17"]
+  u_e_62c6664d9f2466f3c66cbd76["Unresolved: messages.some"]
+  u_e_7f30837d82465dd39ffacff6["Unresolved: super"]
+  s_c745d5ce1ad053a9a63157c5["documentTextMessages · 9"]
+  u_e_9b4a390521a2b6ba6de76aea["Unresolved: JSON.stringify"]
+  s_1bc16026f3d796f1536aab53["src/main/chat.ts: ChatService.send.executeCall"]
+  u_e_a6150eb3de3497ea7d0ec66e["Unresolved: /(?:support.{0,70}(?:image|vision|multimodal)|(?:image|vision|multimodal).{0,70}(?:support|capab|enabled|available)|text.only|only supports? text|(?:missing|requires?|no).{0,40}(?:vision encoder|image encoder|mmproj)|(?:image|vision) (?:input|content|type).{0,30}(?:unsupported|not allowed))/i.test"]
+  s_078cf959df6360ef51700b1b["src/main/cloud-providers.ts: responsesInput"]
+  u_e_ac970f8aca6e28f184f345e1["Unresolved: documents.map((file: ChatDocument) =&gt; JSON.stringify(file.name)).join"]
+  s_ccaaa8b07bab339aef3eb4ab["src/main/providers.ts: LocalProviders.chatWithImages"]
+  u_e_d71de46c2375319e4f032710["Unresolved: messages.map"]
+  s_2e66bc5ad9e4c412bb0ab847["src/main/providers.ts: requestJson"]
+  u_e_e253b0c2c76109a1ebd276e6["Unresolved: messages.map"]
+  u_e_e3c2a269cabfdc6a66c1b8bc["Unresolved: documents.map"]
+  u_e_e753328229fba34f0dc766df["Unresolved: [400, 415, 422, 500].includes"]
+  s_d798d9b51113205f5512c340 --> s_f305f41ac6abe5a08591df17
+  s_7f0d27b8dae15ee9109991fc -.-> s_c416703a343c8ea83ddb1f3d
+  s_f305f41ac6abe5a08591df17 --> u_e_0a539ae4227467183a9d0873
+  s_32a5813d88937ce3eb46d2aa --> s_30f98c4340a2809403395030
+  s_f305f41ac6abe5a08591df17 --> u_e_2e2e9a372fae5adceedf4a01
+  s_30f98c4340a2809403395030 --> u_e_2f12928cc6b2f2e9eb7afb0e
+  s_e2ebebf2497febd7d6df5f0a --> s_d2c85d5b72047e5597bf6507
+  s_3ae6da4f5397b272776ffe21 --> u_e_33b9ad1c025dad1d93105c7a
+  s_3ae6da4f5397b272776ffe21 --> u_e_38bcc1058e1dad8586024303
+  s_ca5a9ca12a9ffeafa2b5a10f --> s_e0d777bbb73812b915795bdd
+  s_f305f41ac6abe5a08591df17 --> u_e_437ed9895dbba41b03160f3a
+  s_65b755364d822c2d72cf9834 --> u_e_4ca97885651839d2b9ac354d
+  s_65b755364d822c2d72cf9834 --> s_d2c85d5b72047e5597bf6507
+  s_5116ac08a5eeafa568688644 --> s_f305f41ac6abe5a08591df17
+  s_6fceed7b21f95169d965b85b -.-> s_c416703a343c8ea83ddb1f3d
+  s_65b755364d822c2d72cf9834 --> u_e_594e236cd71652417d4f8a02
+  s_9bd065f97be99a0c31453b50 -.-> s_c416703a343c8ea83ddb1f3d
+  s_86c6d13949601b7c0054af13 --> u_e_5dbcbae703bb9eb8f90dc83d
+  s_41e261a50c9adc507c5505a0 --> u_e_62c6664d9f2466f3c66cbd76
+  s_c416703a343c8ea83ddb1f3d --> u_e_7f30837d82465dd39ffacff6
+  s_32a5813d88937ce3eb46d2aa --> s_30f98c4340a2809403395030
+  s_9bd065f97be99a0c31453b50 --> s_65b755364d822c2d72cf9834
+  s_c745d5ce1ad053a9a63157c5 --> u_e_9b4a390521a2b6ba6de76aea
+  s_32a5813d88937ce3eb46d2aa --> s_30f98c4340a2809403395030
+  s_1bc16026f3d796f1536aab53 --> s_30f98c4340a2809403395030
+  s_3ae6da4f5397b272776ffe21 --> u_e_a6150eb3de3497ea7d0ec66e
+  s_078cf959df6360ef51700b1b --> s_d2c85d5b72047e5597bf6507
+  s_c745d5ce1ad053a9a63157c5 --> u_e_ac970f8aca6e28f184f345e1
+  s_9bd065f97be99a0c31453b50 --> s_65b755364d822c2d72cf9834
+  s_65b755364d822c2d72cf9834 --> s_d2c85d5b72047e5597bf6507
+  s_ccaaa8b07bab339aef3eb4ab --> s_41e261a50c9adc507c5505a0
+  s_ccaaa8b07bab339aef3eb4ab --> s_3ae6da4f5397b272776ffe21
+  s_e0d777bbb73812b915795bdd --> u_e_d71de46c2375319e4f032710
+  s_d798d9b51113205f5512c340 --> s_86c6d13949601b7c0054af13
+  s_d798d9b51113205f5512c340 --> s_c745d5ce1ad053a9a63157c5
+  s_2e66bc5ad9e4c412bb0ab847 -.-> s_c416703a343c8ea83ddb1f3d
+  s_65b755364d822c2d72cf9834 --> u_e_e253b0c2c76109a1ebd276e6
+  s_c745d5ce1ad053a9a63157c5 --> u_e_e3c2a269cabfdc6a66c1b8bc
+  s_3ae6da4f5397b272776ffe21 --> u_e_e753328229fba34f0dc766df
+  s_32a5813d88937ce3eb46d2aa --> s_30f98c4340a2809403395030

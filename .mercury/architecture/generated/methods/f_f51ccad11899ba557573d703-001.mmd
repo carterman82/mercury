@@ -1,0 +1,87 @@
+flowchart LR
+  s_514816578b33f123b26535b1["ProjectWorktreeService.snapshotEligible · 79"]
+  u_e_5fe35a9191c5ffdfe4e86f26["Unresolved: fs.readFile(path.join(root, relative)).catch"]
+  s_3af592b16a388eaf622df01c["ProjectWorktreeService.eligiblePaths · 71"]
+  s_00f3d7042b6c80fed11e67dc["git · 44"]
+  u_e_62180661063e497980b64957["Unresolved: Promise.reject"]
+  s_3d4087379f83b49a58693ba1["ProjectWorktreeService.prepare · 99"]
+  u_e_6b2e688d3ff3022147e1b83e["Unresolved: Error"]
+  s_274c170a39948835fffee3a6["eligible · 35"]
+  u_e_711ac7154da6575d6078c4bd["Unresolved: /^(?:\.env(?:\..*)?|id_(?:rsa|dsa|ecdsa|ed25519)|credentials(?:\..*)?|secrets?(?:\..*)?)$/i.test"]
+  s_e60c70c57b36040f83583a51["ProjectWorktreeService.ensureRepository · 88"]
+  s_51d8bda9b88b5ac08c27a485["succeeds · 51"]
+  u_e_737384c7bf6b72132457a369["Unresolved: Set"]
+  s_20e1c00c514c57100dc01695["ProjectWorktreeService.commitResponse · 115"]
+  u_e_7d3e53442571a67890b99298["Unresolved: (await git(workspace.projectRoot, ['rev-parse', '--short', 'HEAD'], signal)).trim"]
+  u_e_80dc100c04630c9c1b464387["Unresolved: current.keys"]
+  s_13266608b1f739c5128039c0["ProjectWorktreeService.load · 112"]
+  u_e_83893c427a9c3a52120fbbdd["Unresolved: Error"]
+  u_e_8b376fad73facffe577d427c["Unresolved: (await fs.stat(projectRoot)).isDirectory"]
+  u_e_8f69896ad88b1475e2104b5a["Unresolved: snapshot.set"]
+  u_e_9002cfb30dc5af7464f41030["Unresolved: [...new Set(names)].filter(name =&gt; name &amp;&amp; eligible(name)).sort"]
+  s_fc82724a964bed7a312d3502["aborted · 43"]
+  u_e_934c20a152ed120f0f125998["Unresolved: part.toLowerCase"]
+  u_e_960397a2145c3d77f06cc4bb["Unresolved: input.chatId.trim"]
+  s_d750b252c38592529e6d3256["ProjectWorktreeService.exclusive · 61"]
+  u_e_979a2e606e192d9cacd62d1f["Unresolved: this.pending.get"]
+  u_e_9d0fc86a9910774e9f1c0e69["Unresolved: (await git(root, ['ls-files', '-z', '--cached', '--others', '--exclude-standard'], signal)).split"]
+  f_f51ccad11899ba557573d703["src/main/project-worktrees.ts"]
+  u_e_a07130d388bb04e06650ebd9["Unresolved: Set"]
+  u_e_a2a1318e9a0a468263c69624["Unresolved: Set"]
+  u_e_ae2935bc4c9ad76204f9124b["Unresolved: resolve"]
+  u_e_b1dbc7d39d08d9179187f916["Unresolved: fs.realpath"]
+  u_e_b28bc89867bb04d755d92f76["Unresolved: this.baselines.set"]
+  u_e_b37e54f4b208b1412904a866["Unresolved: excludedDirectories.has"]
+  u_e_b4bd10657377175046763775["Unresolved: this.pending.set"]
+  s_471c33a6b1ad25c8f2bf506d["ProjectWorktreeService.id · 67"]
+  u_e_bc81dbbfa0138077e12ac059["Unresolved: [...new Set([...baseline.keys(), ...current.keys()])].filter(relative =&gt; baseline.get(relative) !== current.get(relative)).sort"]
+  u_e_bf86b7f38a9d5d7331196849["Unresolved: /^\.mercury\/architecture\/(?:generated\/|(?:graph\.json|manifest\.json|index\.md)$)/.test"]
+  s_a26c220bf37ee317ae6ace1e["src/main/project-tools.ts: ProjectTools.execute"]
+  s_40dce2feb020a80807e21cef["ProjectWorktreeService.integrate · 132"]
+  s_5225bdc5e057c559235b942e["ProjectWorktreeService.review · 131"]
+  u_e_bfd6b7ef7fc4d7d886821602["Unresolved: Error"]
+  s_c5a90b570259ae78950d786b["digest · 33"]
+  u_e_c3470edc418a5bfe93d433e4["Unresolved: createHash('sha256').update(data).digest"]
+  u_e_cb044710720ac04f2ef9b8f7["Unresolved: Map"]
+  u_e_cf2dbbb794941657f15f6382["Unresolved: this.baselines.get"]
+  u_e_d4ca12b628a593f73ebe4329["Unresolved: parts.some"]
+  s_514816578b33f123b26535b1 --> u_e_5fe35a9191c5ffdfe4e86f26
+  s_3af592b16a388eaf622df01c --> s_00f3d7042b6c80fed11e67dc
+  s_514816578b33f123b26535b1 --> u_e_62180661063e497980b64957
+  s_3d4087379f83b49a58693ba1 --> u_e_6b2e688d3ff3022147e1b83e
+  s_274c170a39948835fffee3a6 --> u_e_711ac7154da6575d6078c4bd
+  s_e60c70c57b36040f83583a51 --> s_51d8bda9b88b5ac08c27a485
+  s_3af592b16a388eaf622df01c --> u_e_737384c7bf6b72132457a369
+  s_3af592b16a388eaf622df01c --> s_274c170a39948835fffee3a6
+  s_e60c70c57b36040f83583a51 --> s_00f3d7042b6c80fed11e67dc
+  s_20e1c00c514c57100dc01695 --> u_e_7d3e53442571a67890b99298
+  s_20e1c00c514c57100dc01695 --> u_e_80dc100c04630c9c1b464387
+  s_13266608b1f739c5128039c0 --> u_e_83893c427a9c3a52120fbbdd
+  s_3d4087379f83b49a58693ba1 --> u_e_8b376fad73facffe577d427c
+  s_514816578b33f123b26535b1 --> u_e_8f69896ad88b1475e2104b5a
+  s_3af592b16a388eaf622df01c --> u_e_9002cfb30dc5af7464f41030
+  s_3d4087379f83b49a58693ba1 --> s_fc82724a964bed7a312d3502
+  s_274c170a39948835fffee3a6 --> u_e_934c20a152ed120f0f125998
+  s_3d4087379f83b49a58693ba1 --> u_e_960397a2145c3d77f06cc4bb
+  s_20e1c00c514c57100dc01695 --> s_00f3d7042b6c80fed11e67dc
+  s_d750b252c38592529e6d3256 --> u_e_979a2e606e192d9cacd62d1f
+  s_3d4087379f83b49a58693ba1 -.-> s_514816578b33f123b26535b1
+  s_3af592b16a388eaf622df01c --> u_e_9d0fc86a9910774e9f1c0e69
+  f_f51ccad11899ba557573d703 --> u_e_a07130d388bb04e06650ebd9
+  s_20e1c00c514c57100dc01695 --> u_e_a2a1318e9a0a468263c69624
+  s_20e1c00c514c57100dc01695 --> s_00f3d7042b6c80fed11e67dc
+  s_51d8bda9b88b5ac08c27a485 --> s_00f3d7042b6c80fed11e67dc
+  s_00f3d7042b6c80fed11e67dc --> u_e_ae2935bc4c9ad76204f9124b
+  s_e60c70c57b36040f83583a51 --> u_e_b1dbc7d39d08d9179187f916
+  s_3d4087379f83b49a58693ba1 --> u_e_b28bc89867bb04d755d92f76
+  s_274c170a39948835fffee3a6 --> u_e_b37e54f4b208b1412904a866
+  s_d750b252c38592529e6d3256 --> u_e_b4bd10657377175046763775
+  s_3d4087379f83b49a58693ba1 -.-> s_471c33a6b1ad25c8f2bf506d
+  s_20e1c00c514c57100dc01695 --> u_e_bc81dbbfa0138077e12ac059
+  s_274c170a39948835fffee3a6 --> u_e_bf86b7f38a9d5d7331196849
+  s_a26c220bf37ee317ae6ace1e -.-> s_40dce2feb020a80807e21cef
+  s_5225bdc5e057c559235b942e --> u_e_bfd6b7ef7fc4d7d886821602
+  s_c5a90b570259ae78950d786b --> u_e_c3470edc418a5bfe93d433e4
+  s_514816578b33f123b26535b1 --> u_e_cb044710720ac04f2ef9b8f7
+  s_20e1c00c514c57100dc01695 --> u_e_cf2dbbb794941657f15f6382
+  s_274c170a39948835fffee3a6 --> u_e_d4ca12b628a593f73ebe4329

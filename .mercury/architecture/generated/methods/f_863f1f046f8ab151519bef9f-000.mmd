@@ -1,0 +1,66 @@
+flowchart LR
+  s_e7796d77bfb331531b50530b["pluginSearchQueries · 12"]
+  u_e_10829e8c6f657bb9e7e19346["Unresolved: [...new Set([clean, ...domains, ...words.slice(0, related.length ? 2 : 6), ...related])].filter(Boolean).slice"]
+  u_e_15386ff44f6357a53f0ab6f2["Unresolved: clean.replace(/https?:\/\//g, '').split(/[^a-z0-9@._/-]+/).filter"]
+  s_a89d2735464dcd73a6f3c22f["pluginSearchScore · 22"]
+  u_e_1aa46f649b9258774a315fbc["Unresolved: name.split"]
+  u_e_3df0570d811ac2a9a7d15190["Unresolved: words.filter"]
+  u_e_47d111404eec3e66068112a3["Unresolved: service.includes"]
+  u_e_572287968cdae6a8158714a1["Unresolved: family.trigger.test"]
+  u_e_5b0915e0a3d2a48f91e80944["Unresolved: description.includes"]
+  s_b70fc9f324519456a80b5f7c["src/main/chat-plugins.ts: ChatPlugins.discover"]
+  u_e_6474ff7488d6ce17c0ffe25f["Unresolved: families.filter(family =&gt; family.trigger.test(clean)).flatMap"]
+  u_e_71d598c62f0e459d3caedd6e["Unresolved: families.filter"]
+  u_e_7392f63cf7c7ccbce7e2dc19["Unresolved: [...new Set([clean, ...domains, ...words.slice(0, related.length ? 2 : 6), ...related])].filter"]
+  u_e_771d684c5211deded7839a73["Unresolved: stopwords.has"]
+  u_e_925924fbe23518dfdec53378["Unresolved: word.replace"]
+  u_e_93821575a14522d4764e1d6c["Unresolved: name.includes"]
+  u_e_9c41f135a05ab14d17be5b0e["Unresolved: words.filter(word =&gt; word.includes('.')).map"]
+  u_e_9cf42802c2472b5c643d77a4["Unresolved: clean.replace(/https?:\/\//g, '').split"]
+  f_863f1f046f8ab151519bef9f["src/main/plugin-search.ts"]
+  u_e_9ece88f730da32dc36ad796f["Unresolved: Set"]
+  u_e_aaa08b19d9c85e04734e72a7["Unresolved: Set"]
+  u_e_af11949a520f10ff901f8ecc["Unresolved: clean.replace"]
+  u_e_b1a942096dd000f0a3cd524e["Unresolved: query.trim"]
+  u_e_b7f4346cee6c7ba9bc05fafc["Unresolved: query.trim().toLowerCase"]
+  u_e_bb0a9cb112bc45a85c0abeee["Unresolved: words.slice"]
+  u_e_bd6e9fbdd0ff5959546f663e["Unresolved: server.name.toLowerCase"]
+  u_e_bf036c9499d651921b37be99["Unresolved: queries.reduce"]
+  u_e_c3df6f021d61af067b98684d["Unresolved: name.split('/').at"]
+  u_e_c6014007d45a970281327b37["Unresolved: String(server.description ?? '').toLowerCase"]
+  u_e_d928513ebc45c2364d99b232["Unresolved: word.includes"]
+  u_e_da6f0dac9fe461147c35f268["Unresolved: String"]
+  u_e_fdd6220f0333e41ad30ce0be["Unresolved: 'a an and are as at be build can could create development dev find for from help i in is it me my need of on or plugin plugins please relevant search server servers some that the this to tools use want with would'.split"]
+  u_e_fecaa59dfbf9b9598d8be3ff["Unresolved: word.replace(/^www\./, '').split"]
+  s_e7796d77bfb331531b50530b --> u_e_10829e8c6f657bb9e7e19346
+  s_e7796d77bfb331531b50530b --> u_e_15386ff44f6357a53f0ab6f2
+  s_a89d2735464dcd73a6f3c22f --> u_e_1aa46f649b9258774a315fbc
+  s_e7796d77bfb331531b50530b --> u_e_3df0570d811ac2a9a7d15190
+  s_a89d2735464dcd73a6f3c22f --> u_e_47d111404eec3e66068112a3
+  s_e7796d77bfb331531b50530b --> u_e_572287968cdae6a8158714a1
+  s_a89d2735464dcd73a6f3c22f --> u_e_5b0915e0a3d2a48f91e80944
+  s_b70fc9f324519456a80b5f7c --> s_e7796d77bfb331531b50530b
+  s_e7796d77bfb331531b50530b --> u_e_6474ff7488d6ce17c0ffe25f
+  s_b70fc9f324519456a80b5f7c --> s_a89d2735464dcd73a6f3c22f
+  s_b70fc9f324519456a80b5f7c --> s_a89d2735464dcd73a6f3c22f
+  s_e7796d77bfb331531b50530b --> u_e_71d598c62f0e459d3caedd6e
+  s_e7796d77bfb331531b50530b --> u_e_7392f63cf7c7ccbce7e2dc19
+  s_e7796d77bfb331531b50530b --> u_e_771d684c5211deded7839a73
+  s_e7796d77bfb331531b50530b --> u_e_925924fbe23518dfdec53378
+  s_a89d2735464dcd73a6f3c22f --> u_e_93821575a14522d4764e1d6c
+  s_e7796d77bfb331531b50530b --> u_e_9c41f135a05ab14d17be5b0e
+  s_e7796d77bfb331531b50530b --> u_e_9cf42802c2472b5c643d77a4
+  f_863f1f046f8ab151519bef9f --> u_e_9ece88f730da32dc36ad796f
+  s_e7796d77bfb331531b50530b --> u_e_aaa08b19d9c85e04734e72a7
+  s_e7796d77bfb331531b50530b --> u_e_af11949a520f10ff901f8ecc
+  s_e7796d77bfb331531b50530b --> u_e_b1a942096dd000f0a3cd524e
+  s_e7796d77bfb331531b50530b --> u_e_b7f4346cee6c7ba9bc05fafc
+  s_e7796d77bfb331531b50530b --> u_e_bb0a9cb112bc45a85c0abeee
+  s_a89d2735464dcd73a6f3c22f --> u_e_bd6e9fbdd0ff5959546f663e
+  s_a89d2735464dcd73a6f3c22f --> u_e_bf036c9499d651921b37be99
+  s_a89d2735464dcd73a6f3c22f --> u_e_c3df6f021d61af067b98684d
+  s_a89d2735464dcd73a6f3c22f --> u_e_c6014007d45a970281327b37
+  s_e7796d77bfb331531b50530b --> u_e_d928513ebc45c2364d99b232
+  s_a89d2735464dcd73a6f3c22f --> u_e_da6f0dac9fe461147c35f268
+  f_863f1f046f8ab151519bef9f --> u_e_fdd6220f0333e41ad30ce0be
+  s_e7796d77bfb331531b50530b --> u_e_fecaa59dfbf9b9598d8be3ff

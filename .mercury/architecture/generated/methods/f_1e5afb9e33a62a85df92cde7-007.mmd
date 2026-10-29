@@ -1,0 +1,57 @@
+flowchart LR
+  f_1e5afb9e33a62a85df92cde7["src/main/project-maps.test.ts"]
+  s_b002405fa34e411f72a0b0e4["fixture · 8"]
+  u_e_eb3232d6c7819d23634ae01d["Unresolved: fs.writeFile"]
+  u_e_eb6b9ef66ccece6fc23d5997["Unresolved: roots.splice"]
+  u_e_ebebce8e33aa025529da8dda["Unresolved: expect(graph.diagnostics).toEqual"]
+  u_e_eca4d524b306a4cf871a6d27["Unresolved: expect(callsBetween(graph, caller, target)).toHaveLength"]
+  u_e_ecfae05cd309e52e14f3a431["Unresolved: expect(incomplete.diagnostics[0].message).toContain"]
+  u_e_ed50d103bc60fc3f2c50987d["Unresolved: path.dirname"]
+  u_e_ed6aabf53e3abf708191b875["Unresolved: expect(await fs.readFile(graphFile, 'utf8')).toBe"]
+  u_e_ee1c9d9531767cd27a8e0c2b["Unresolved: expect"]
+  s_954253553b9f9d7c495d075a["src/main/project-maps.ts: ProjectMaps.readDiagram"]
+  u_e_f02297f84f09202d31cd9297["Unresolved: Array.from"]
+  s_0c1358d7cae853fb3103c293["src/main/project-maps.ts: ProjectMaps.query"]
+  u_e_f1c36455a657ccc9f3ae6aa0["Unresolved: expect((await maps.refresh(root)).symbols.some((symbol) =&gt; symbol.name === 'ready')).toBe"]
+  s_7ebf741cf452606404f5d8dd["src/main/project-maps.ts: ProjectMaps.status"]
+  u_e_f768ba04ef201285ccce1213["Unresolved: it"]
+  u_e_f848828e994b3d91d4e5904b["Unresolved: expect"]
+  u_e_f92859783a97f0c0d9bbab22["Unresolved: expect"]
+  u_e_f9ef2a57535b1983183e4fee["Unresolved: expect"]
+  u_e_fa3514c60eff26df26ecc192["Unresolved: expect((await maps.status(root)).fresh).toBe"]
+  u_e_fa9e0003b94e465e72d38e7b["Unresolved: expect(callsBetween(graph, caller, target)[0].confidence).toBe"]
+  u_e_fc6ad143366eb57922eb1fb2["Unresolved: expect((await fs.stat(graph)).mtimeMs).toBe"]
+  s_9c3b27d8e01b2fdc48008770["src/main/project-maps.ts: ProjectMaps.constructor"]
+  u_e_fd0e3315f39bcedc5bb8606f["Unresolved: expect(graph.edges.find((edge) =&gt; edge.file === 'main.rs' &amp;&amp; edge.kind === 'calls')).toMatchObject"]
+  u_e_fdbb4f072222c84b43759b44["Unresolved: path.join"]
+  u_e_fe063adadc2c94479f8c4fa9["Unresolved: 'x'.repeat"]
+  u_e_ff6d501079905b851382c7be["Unresolved: path.join"]
+  s_6bebb68c6876fe05dbcd5b96["callsBetween · 20"]
+  u_e_ffa7fcd9cf7311aa3e83389f["Unresolved: graph.symbols.filter"]
+  f_1e5afb9e33a62a85df92cde7 --> s_b002405fa34e411f72a0b0e4
+  f_1e5afb9e33a62a85df92cde7 --> u_e_eb3232d6c7819d23634ae01d
+  f_1e5afb9e33a62a85df92cde7 --> u_e_eb6b9ef66ccece6fc23d5997
+  f_1e5afb9e33a62a85df92cde7 --> u_e_ebebce8e33aa025529da8dda
+  f_1e5afb9e33a62a85df92cde7 --> u_e_eca4d524b306a4cf871a6d27
+  f_1e5afb9e33a62a85df92cde7 --> u_e_ecfae05cd309e52e14f3a431
+  s_b002405fa34e411f72a0b0e4 --> u_e_ed50d103bc60fc3f2c50987d
+  f_1e5afb9e33a62a85df92cde7 --> u_e_ed6aabf53e3abf708191b875
+  f_1e5afb9e33a62a85df92cde7 --> u_e_ee1c9d9531767cd27a8e0c2b
+  f_1e5afb9e33a62a85df92cde7 -.-> s_954253553b9f9d7c495d075a
+  f_1e5afb9e33a62a85df92cde7 --> u_e_f02297f84f09202d31cd9297
+  f_1e5afb9e33a62a85df92cde7 -.-> s_0c1358d7cae853fb3103c293
+  f_1e5afb9e33a62a85df92cde7 --> u_e_f1c36455a657ccc9f3ae6aa0
+  f_1e5afb9e33a62a85df92cde7 -.-> s_7ebf741cf452606404f5d8dd
+  f_1e5afb9e33a62a85df92cde7 --> u_e_f768ba04ef201285ccce1213
+  f_1e5afb9e33a62a85df92cde7 --> u_e_f848828e994b3d91d4e5904b
+  f_1e5afb9e33a62a85df92cde7 --> u_e_f92859783a97f0c0d9bbab22
+  f_1e5afb9e33a62a85df92cde7 --> u_e_f9ef2a57535b1983183e4fee
+  f_1e5afb9e33a62a85df92cde7 --> u_e_fa3514c60eff26df26ecc192
+  f_1e5afb9e33a62a85df92cde7 --> u_e_fa9e0003b94e465e72d38e7b
+  f_1e5afb9e33a62a85df92cde7 --> u_e_fc6ad143366eb57922eb1fb2
+  f_1e5afb9e33a62a85df92cde7 -.-> s_9c3b27d8e01b2fdc48008770
+  f_1e5afb9e33a62a85df92cde7 --> u_e_fd0e3315f39bcedc5bb8606f
+  f_1e5afb9e33a62a85df92cde7 --> u_e_fdbb4f072222c84b43759b44
+  f_1e5afb9e33a62a85df92cde7 --> u_e_fe063adadc2c94479f8c4fa9
+  f_1e5afb9e33a62a85df92cde7 --> u_e_ff6d501079905b851382c7be
+  s_6bebb68c6876fe05dbcd5b96 --> u_e_ffa7fcd9cf7311aa3e83389f

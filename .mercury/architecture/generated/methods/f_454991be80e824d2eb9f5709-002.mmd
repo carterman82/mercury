@@ -1,0 +1,79 @@
+flowchart LR
+  f_454991be80e824d2eb9f5709["src/main/vision.test.ts"]
+  u_e_8321246adbc1bcd9b8c03313["Unresolved: JSON.parse"]
+  u_e_845f27d8652ea86f1f0fd16d["Unresolved: Error"]
+  u_e_8547d906bc10ded95a2544c1["Unresolved: expect"]
+  u_e_877ac1f0b4c5986d410a5684["Unresolved: expect"]
+  u_e_881fc8a96e7b81323fb99e84["Unresolved: JSON.parse"]
+  s_453dfee5f459e22b79b692bf["input · 8"]
+  u_e_8aef4bcebdd2c20be8be72f7["Unresolved: expect"]
+  u_e_8c2aeb793bfe30a4a350ed40["Unresolved: vi.fn().mockImplementation"]
+  u_e_8d7a25587d52e7ec10a6237d["Unresolved: expect(sent.content).toContainEqual"]
+  s_302298dd27d5389003a49333["success · 10"]
+  u_e_924479bd572f88c8df4c9cb7["Unresolved: vi.fn"]
+  u_e_957ba2273759715201be30e3["Unresolved: expect((await providers().chat(input())).text).toBe"]
+  u_e_9793f7c36acc78525e3ba6ff["Unresolved: expect(claudeInput([message]).messages[0].content).toContainEqual"]
+  u_e_9b3af632e9beb90230c1a54b["Unresolved: expect(providers().chat(input())).rejects.toThrow"]
+  u_e_9c1c56eb1d5593990098b1e5["Unresolved: vi.fn().mockResolvedValue"]
+  u_e_9e4ef3e26dd4f88df6e670c3["Unresolved: vi.fn().mockResolvedValueOnce(new Response('{&quot;error&quot;:&quot;model does not support image input&quot;}\n')).mockResolvedValueOnce(success())     .mockResolvedValueOnce"]
+  u_e_9ed3e434beec6fc1edf024d7["Unresolved: expect(fetch).toHaveBeenCalledOnce"]
+  u_e_9f6c23d2802887be141f0d4b["Unresolved: AbortController"]
+  u_e_a270124ce0366dbba27869e1["Unresolved: it"]
+  u_e_a59cd0097600b3ae17d22b99["Unresolved: expect"]
+  u_e_a5b81bdc359a2bea0c7e39b3["Unresolved: expect(notice).toHaveBeenCalledOnce"]
+  s_6866df086f14572fb2b87b99["providers · 9"]
+  u_e_a85de91bb921aaca2401ca31["Unresolved: vi.fn"]
+  u_e_ab554bc14eede3cc0a6a65e9["Unresolved: expect"]
+  s_5a0958b25d6bee1d04d17a2a["src/main/providers.ts: LocalProviders.chat"]
+  u_e_b32b34364b6dbb7d30b66f30["Unresolved: expect(responsesInput([message])[0].content).toContainEqual"]
+  s_3ae6da4f5397b272776ffe21["src/main/vision.ts: imageUnsupported"]
+  u_e_b4d29e266be2f73bdb71e1a4["Unresolved: Response"]
+  u_e_b6a7e5d8fbb5f5ee836db78c["Unresolved: expect(imageUnsupported(new ModelHttpError(400, 'unsupported image format'))).toBe"]
+  u_e_b77158dbdcbd707d1bf8a07e["Unresolved: expect"]
+  u_e_b77edafd5b9a29a05958d7e2["Unresolved: expect(fetch).toHaveBeenCalledTimes"]
+  u_e_b82630cb30a2a1e29d2297d2["Unresolved: it"]
+  u_e_b827975481febb5904c1c004["Unresolved: expect(JSON.parse(fetch.mock.calls[3][1].body).messages[0].images).toHaveLength"]
+  u_e_b850a24107438150bcdee4fc["Unresolved: 'x'.repeat"]
+  u_e_ba7426358707d6a850ea2d47["Unresolved: vi.fn().mockResolvedValue"]
+  s_c416703a343c8ea83ddb1f3d["src/main/vision.ts: ModelHttpError.constructor"]
+  u_e_c3370ae9c52b04e883d2ac3d["Unresolved: vi.stubGlobal"]
+  f_454991be80e824d2eb9f5709 --> u_e_8321246adbc1bcd9b8c03313
+  f_454991be80e824d2eb9f5709 --> u_e_845f27d8652ea86f1f0fd16d
+  f_454991be80e824d2eb9f5709 --> u_e_8547d906bc10ded95a2544c1
+  f_454991be80e824d2eb9f5709 --> u_e_877ac1f0b4c5986d410a5684
+  f_454991be80e824d2eb9f5709 --> u_e_881fc8a96e7b81323fb99e84
+  f_454991be80e824d2eb9f5709 --> s_453dfee5f459e22b79b692bf
+  f_454991be80e824d2eb9f5709 --> u_e_8aef4bcebdd2c20be8be72f7
+  f_454991be80e824d2eb9f5709 --> u_e_8c2aeb793bfe30a4a350ed40
+  f_454991be80e824d2eb9f5709 --> u_e_8d7a25587d52e7ec10a6237d
+  f_454991be80e824d2eb9f5709 --> s_302298dd27d5389003a49333
+  f_454991be80e824d2eb9f5709 --> u_e_924479bd572f88c8df4c9cb7
+  f_454991be80e824d2eb9f5709 --> u_e_957ba2273759715201be30e3
+  f_454991be80e824d2eb9f5709 --> u_e_9793f7c36acc78525e3ba6ff
+  f_454991be80e824d2eb9f5709 --> u_e_9b3af632e9beb90230c1a54b
+  f_454991be80e824d2eb9f5709 --> s_302298dd27d5389003a49333
+  f_454991be80e824d2eb9f5709 --> u_e_9c1c56eb1d5593990098b1e5
+  f_454991be80e824d2eb9f5709 --> u_e_9e4ef3e26dd4f88df6e670c3
+  f_454991be80e824d2eb9f5709 --> u_e_9ed3e434beec6fc1edf024d7
+  s_453dfee5f459e22b79b692bf --> u_e_9f6c23d2802887be141f0d4b
+  f_454991be80e824d2eb9f5709 --> u_e_a270124ce0366dbba27869e1
+  f_454991be80e824d2eb9f5709 --> u_e_a59cd0097600b3ae17d22b99
+  f_454991be80e824d2eb9f5709 --> u_e_a5b81bdc359a2bea0c7e39b3
+  f_454991be80e824d2eb9f5709 --> s_302298dd27d5389003a49333
+  f_454991be80e824d2eb9f5709 --> s_6866df086f14572fb2b87b99
+  f_454991be80e824d2eb9f5709 --> u_e_a85de91bb921aaca2401ca31
+  f_454991be80e824d2eb9f5709 --> u_e_ab554bc14eede3cc0a6a65e9
+  f_454991be80e824d2eb9f5709 -.-> s_5a0958b25d6bee1d04d17a2a
+  f_454991be80e824d2eb9f5709 --> u_e_b32b34364b6dbb7d30b66f30
+  f_454991be80e824d2eb9f5709 --> s_3ae6da4f5397b272776ffe21
+  f_454991be80e824d2eb9f5709 --> u_e_b4d29e266be2f73bdb71e1a4
+  f_454991be80e824d2eb9f5709 --> u_e_b6a7e5d8fbb5f5ee836db78c
+  f_454991be80e824d2eb9f5709 --> u_e_b77158dbdcbd707d1bf8a07e
+  f_454991be80e824d2eb9f5709 --> u_e_b77edafd5b9a29a05958d7e2
+  f_454991be80e824d2eb9f5709 --> u_e_b82630cb30a2a1e29d2297d2
+  f_454991be80e824d2eb9f5709 --> u_e_b827975481febb5904c1c004
+  f_454991be80e824d2eb9f5709 --> u_e_b850a24107438150bcdee4fc
+  f_454991be80e824d2eb9f5709 --> u_e_ba7426358707d6a850ea2d47
+  f_454991be80e824d2eb9f5709 --> s_453dfee5f459e22b79b692bf
+  f_454991be80e824d2eb9f5709 -.-> s_c416703a343c8ea83ddb1f3d
+  f_454991be80e824d2eb9f5709 --> u_e_c3370ae9c52b04e883d2ac3d

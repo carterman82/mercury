@@ -1,0 +1,79 @@
+flowchart LR
+  f_1e5afb9e33a62a85df92cde7["src/main/project-maps.test.ts"]
+  u_e_44cb1d94047723d3950df43a["Unresolved: path.join"]
+  u_e_45d134c5b539156ddac079f1["Unresolved: fs.rm"]
+  u_e_4605468674753295acc169c7["Unresolved: expect"]
+  s_7ebf741cf452606404f5d8dd["src/main/project-maps.ts: ProjectMaps.status"]
+  u_e_47986cc1cd09974cd8076d4f["Unresolved: (await Promise.all(sourceDiagrams.map((file) =&gt; maps.readDiagram(root, file))))       .map((file) =&gt; file.content)       .join"]
+  u_e_48f1c8c3fc69ed130862f5f8["Unresolved: expect"]
+  u_e_49fa5a23146c47e68dbec7e3["Unresolved: Array.from(     { length: 100 },     (_unused, index) =&gt; `export function target${index}(){return ${index};}`,   ).join"]
+  u_e_4b0a30e6bac3962ecebd4150["Unresolved: fs.rename"]
+  u_e_4b5700f7a45541afcc17370e["Unresolved: expect(maps.refresh(cancelled, controller.signal)).rejects.toThrow"]
+  u_e_4c611d4fedb43281ef8d3dd7["Unresolved: expect(await new ProjectMaps().existingDiagrams(root)).toEqual"]
+  u_e_4c6ed02e1a87ad23ffdbd2ba["Unresolved: expect"]
+  u_e_4fb9f0982363a26fc0167432["Unresolved: diagrams.map"]
+  s_6bebb68c6876fe05dbcd5b96["callsBetween · 20"]
+  s_b002405fa34e411f72a0b0e4["fixture · 8"]
+  u_e_52653e09f0a45d67901b4b51["Unresolved: graph.edges.find"]
+  u_e_52f5d8b61ca9a8b662686534["Unresolved: callsBetween(graph, 'src/main.ts', 'src/helper.ts')       .map"]
+  s_f06b86f390eae59ae49f8570["src/main/project-maps.ts: ProjectMaps.refresh"]
+  u_e_54b0ec33bff85badf20262ff["Unresolved: expect"]
+  u_e_54e03b548787279ba8613c6c["Unresolved: (await maps.refresh(root)).symbols.some"]
+  u_e_5543150e53b2812e9d6639d2["Unresolved: expect((await maps.status(root)).fresh).toBe"]
+  u_e_56ba1e2f353bc93eded43d0e["Unresolved: expect(ambiguous?.reason).toContain"]
+  u_e_5705381bf3eff1148a581908["Unresolved: it"]
+  u_e_5725978488226c7971189d1c["Unresolved: path.join"]
+  u_e_5762ef6afac65ecd0d8a38d3["Unresolved: path.join"]
+  u_e_57b25eeb7c9edcf9a311a79c["Unresolved: expect(graph.coverage.parsedFiles).toBe"]
+  u_e_594496b551a6f258756efaca["Unresolved: path.join"]
+  u_e_59d884b8339bc6ec39d4fafd["Unresolved: fs.stat"]
+  u_e_5b62220aab6161a21305a6ff["Unresolved: expect"]
+  u_e_5c79571e0beef150413360a8["Unresolved: expect"]
+  u_e_5d3e3645daeb774c4243f0ca["Unresolved: os.tmpdir"]
+  u_e_5dfb116b0b7af302ea237b24["Unresolved: path.join"]
+  u_e_5ecbc9ab5efa22f73b66aa4d["Unresolved: path.join"]
+  u_e_5fecd6422a57f0d68c7c9524["Unresolved: expect"]
+  u_e_609ede91a3100ad7e3c14279["Unresolved: path.join"]
+  u_e_60ad68bd59a22b8ef934488d["Unresolved: fs.readFile"]
+  u_e_62bc62ca108383e74b43ce9a["Unresolved: expect(await fs.readdir(root)).toEqual"]
+  u_e_62c03c37680abc4d6f67b44c["Unresolved: expect(fs.stat(path.join(root, '.mercury'))).rejects.toMatchObject"]
+  f_1e5afb9e33a62a85df92cde7 --> u_e_44cb1d94047723d3950df43a
+  f_1e5afb9e33a62a85df92cde7 --> u_e_45d134c5b539156ddac079f1
+  f_1e5afb9e33a62a85df92cde7 --> u_e_4605468674753295acc169c7
+  f_1e5afb9e33a62a85df92cde7 -.-> s_7ebf741cf452606404f5d8dd
+  f_1e5afb9e33a62a85df92cde7 --> u_e_47986cc1cd09974cd8076d4f
+  f_1e5afb9e33a62a85df92cde7 --> u_e_48f1c8c3fc69ed130862f5f8
+  f_1e5afb9e33a62a85df92cde7 --> u_e_49fa5a23146c47e68dbec7e3
+  f_1e5afb9e33a62a85df92cde7 --> u_e_4b0a30e6bac3962ecebd4150
+  f_1e5afb9e33a62a85df92cde7 --> u_e_4b5700f7a45541afcc17370e
+  f_1e5afb9e33a62a85df92cde7 --> u_e_4c611d4fedb43281ef8d3dd7
+  f_1e5afb9e33a62a85df92cde7 --> u_e_4c6ed02e1a87ad23ffdbd2ba
+  f_1e5afb9e33a62a85df92cde7 --> u_e_4fb9f0982363a26fc0167432
+  f_1e5afb9e33a62a85df92cde7 --> s_6bebb68c6876fe05dbcd5b96
+  f_1e5afb9e33a62a85df92cde7 --> s_b002405fa34e411f72a0b0e4
+  f_1e5afb9e33a62a85df92cde7 --> u_e_52653e09f0a45d67901b4b51
+  f_1e5afb9e33a62a85df92cde7 --> u_e_52f5d8b61ca9a8b662686534
+  f_1e5afb9e33a62a85df92cde7 -.-> s_f06b86f390eae59ae49f8570
+  f_1e5afb9e33a62a85df92cde7 --> u_e_54b0ec33bff85badf20262ff
+  f_1e5afb9e33a62a85df92cde7 --> u_e_54e03b548787279ba8613c6c
+  f_1e5afb9e33a62a85df92cde7 --> u_e_5543150e53b2812e9d6639d2
+  f_1e5afb9e33a62a85df92cde7 --> u_e_56ba1e2f353bc93eded43d0e
+  f_1e5afb9e33a62a85df92cde7 --> u_e_5705381bf3eff1148a581908
+  f_1e5afb9e33a62a85df92cde7 --> u_e_5725978488226c7971189d1c
+  f_1e5afb9e33a62a85df92cde7 --> u_e_5762ef6afac65ecd0d8a38d3
+  f_1e5afb9e33a62a85df92cde7 --> u_e_57b25eeb7c9edcf9a311a79c
+  f_1e5afb9e33a62a85df92cde7 --> s_b002405fa34e411f72a0b0e4
+  f_1e5afb9e33a62a85df92cde7 --> u_e_594496b551a6f258756efaca
+  f_1e5afb9e33a62a85df92cde7 --> u_e_59d884b8339bc6ec39d4fafd
+  f_1e5afb9e33a62a85df92cde7 --> u_e_5b62220aab6161a21305a6ff
+  f_1e5afb9e33a62a85df92cde7 --> u_e_5c79571e0beef150413360a8
+  s_b002405fa34e411f72a0b0e4 --> u_e_5d3e3645daeb774c4243f0ca
+  f_1e5afb9e33a62a85df92cde7 --> u_e_5dfb116b0b7af302ea237b24
+  f_1e5afb9e33a62a85df92cde7 -.-> s_f06b86f390eae59ae49f8570
+  f_1e5afb9e33a62a85df92cde7 --> u_e_5ecbc9ab5efa22f73b66aa4d
+  f_1e5afb9e33a62a85df92cde7 --> u_e_5fecd6422a57f0d68c7c9524
+  s_b002405fa34e411f72a0b0e4 --> u_e_609ede91a3100ad7e3c14279
+  f_1e5afb9e33a62a85df92cde7 --> u_e_60ad68bd59a22b8ef934488d
+  f_1e5afb9e33a62a85df92cde7 -.-> s_f06b86f390eae59ae49f8570
+  f_1e5afb9e33a62a85df92cde7 --> u_e_62bc62ca108383e74b43ce9a
+  f_1e5afb9e33a62a85df92cde7 --> u_e_62c03c37680abc4d6f67b44c

@@ -1,0 +1,86 @@
+flowchart LR
+  s_af373591c0570e8d2b30a3a6["CodexRpc.send · 50"]
+  u_e_91d3f7aded478f5fb9b1337e["Unresolved: this.child.stdin.write"]
+  f_e5ea88a7231b09d6b2746a78["src/main/codex.ts"]
+  u_e_942ff05aab985e16981b04b4["Unresolved: z.object"]
+  s_841b224ff8cc59bb04c96c9d["executable · 77"]
+  u_e_94326e68d042bc9d39b03e73["Unresolved: path.join"]
+  s_937010e03fd54e2cb195f572["CodexService.signIn.cancel · 141"]
+  s_c13d4922588147a5bd6f7cb9["CodexService.signIn.finish · 140"]
+  s_c588882baf829613d44ceebf["CodexService.client · 115"]
+  s_0655f90cfec19672ec7cc351["CodexService.release · 123"]
+  u_e_9dc6c47e92be4648b47ee8b9["Unresolved: signal?.throwIfAborted"]
+  s_1ab8ee924402b155716dc65a["CodexService.constructor · 104"]
+  u_e_a0a895796b6d47237f6d0215["Unresolved: path.join"]
+  u_e_a0d9e421a50c399b7f6272d4["Unresolved: directory.replace"]
+  u_e_a2291198e68b588c38381316["Unresolved: access"]
+  s_e310a919014e61ee9a938559["CodexRpc.close · 67"]
+  u_e_a3b100b888794e5d647181c6["Unresolved: this.pending.values"]
+  s_e397069cf0eb870602e8ac6e["CodexService.chat.finish · 197"]
+  u_e_a725dc6075ac050998390c09["Unresolved: unsubscribe"]
+  u_e_a7e21a78b4dbc8b6e5705857["Unresolved: Error"]
+  s_26ff0c0b1783288d5357bebb["CodexRpc.constructor · 19"]
+  u_e_a86033a0884d1bdafe918eb3["Unresolved: child.stdin.on"]
+  s_a387591332662f85ace23601["CodexService.chat · 180"]
+  u_e_ab6db8170529f7f6f3b1c248["Unresolved: rpc.request"]
+  u_e_abf6f2141d0531f8ddbbd745["Unresolved: rpc.subscribe"]
+  s_2ea453327bdf6d850c8cf635["CodexRpc.request · 53"]
+  s_126c45b521ff4d1cbed86bc5["CodexRpc.initialize · 63"]
+  u_e_b1068d100b0b57ce48996a0e["Unresolved: clearTimeout"]
+  s_c179b2e8d7342b9106c336c7["CodexService.signIn · 125"]
+  u_e_b375dc8cf79104de6972b778["Unresolved: input.signal.throwIfAborted"]
+  u_e_b47000be8ccb2e086725169a["Unresolved: candidates.push"]
+  u_e_b56918c500c7f8cad3f198ce["Unresolved: request.reject"]
+  u_e_b878f74fbcd8b70db472a793["Unresolved: z.object({ text: z.string().max(200_000), tools: z.array(z.object({ name: z.string().min(1), arguments: z.string().max(300_000) }).strict()).max(16) }).strict"]
+  u_e_bbf5e5de3d478b9133ca9c9c["Unresolved: Error"]
+  s_b606f8d0567d60afb4c31c0d["CodexService.discover · 163"]
+  u_e_c2716ba1acbe83825c6a456e["Unresolved: Error"]
+  u_e_c29a1fd4902a9d81436acaf6["Unresolved: JSON.stringify"]
+  u_e_c66af24491de8e594abe1c96["Unresolved: Error"]
+  u_e_c7f6aa4d667c25f8f34f016f["Unresolved: ['userMessage', 'agentMessage', 'reasoning'].includes"]
+  u_e_c9212f4d9e1c942e72b20252["Unresolved: this.child.kill"]
+  u_e_c9609e6124b1ce6bcfb0b691["Unresolved: rpc.request"]
+  u_e_ceec5b11ddf3d178c9f10803["Unresolved: buffer.indexOf"]
+  s_9bd065f97be99a0c31453b50["src/main/providers.ts: LocalProviders.chatOnce"]
+  u_e_d622c91f303257f079db80ed["Unresolved: z.string"]
+  u_e_d6ec70c0e932528ca935a50f["Unresolved: reject"]
+  s_af373591c0570e8d2b30a3a6 --> u_e_91d3f7aded478f5fb9b1337e
+  f_e5ea88a7231b09d6b2746a78 --> u_e_942ff05aab985e16981b04b4
+  s_841b224ff8cc59bb04c96c9d --> u_e_94326e68d042bc9d39b03e73
+  s_937010e03fd54e2cb195f572 --> s_c13d4922588147a5bd6f7cb9
+  s_c588882baf829613d44ceebf -.-> s_0655f90cfec19672ec7cc351
+  s_c588882baf829613d44ceebf --> u_e_9dc6c47e92be4648b47ee8b9
+  s_1ab8ee924402b155716dc65a --> u_e_a0a895796b6d47237f6d0215
+  s_841b224ff8cc59bb04c96c9d --> u_e_a0d9e421a50c399b7f6272d4
+  s_841b224ff8cc59bb04c96c9d --> u_e_a2291198e68b588c38381316
+  s_e310a919014e61ee9a938559 --> u_e_a3b100b888794e5d647181c6
+  s_e397069cf0eb870602e8ac6e --> u_e_a725dc6075ac050998390c09
+  s_e310a919014e61ee9a938559 --> u_e_a7e21a78b4dbc8b6e5705857
+  s_26ff0c0b1783288d5357bebb --> u_e_a86033a0884d1bdafe918eb3
+  s_26ff0c0b1783288d5357bebb -.-> s_e310a919014e61ee9a938559
+  s_a387591332662f85ace23601 --> u_e_ab6db8170529f7f6f3b1c248
+  s_a387591332662f85ace23601 --> u_e_abf6f2141d0531f8ddbbd745
+  s_a387591332662f85ace23601 --> s_e397069cf0eb870602e8ac6e
+  s_937010e03fd54e2cb195f572 -.-> s_2ea453327bdf6d850c8cf635
+  s_c588882baf829613d44ceebf -.-> s_126c45b521ff4d1cbed86bc5
+  s_e310a919014e61ee9a938559 --> u_e_b1068d100b0b57ce48996a0e
+  s_c179b2e8d7342b9106c336c7 -.-> s_0655f90cfec19672ec7cc351
+  s_a387591332662f85ace23601 --> u_e_b375dc8cf79104de6972b778
+  s_26ff0c0b1783288d5357bebb -.-> s_e310a919014e61ee9a938559
+  s_841b224ff8cc59bb04c96c9d --> u_e_b47000be8ccb2e086725169a
+  s_26ff0c0b1783288d5357bebb --> u_e_b56918c500c7f8cad3f198ce
+  f_e5ea88a7231b09d6b2746a78 --> u_e_b878f74fbcd8b70db472a793
+  s_26ff0c0b1783288d5357bebb --> u_e_bbf5e5de3d478b9133ca9c9c
+  s_b606f8d0567d60afb4c31c0d --> u_e_c2716ba1acbe83825c6a456e
+  s_af373591c0570e8d2b30a3a6 --> u_e_c29a1fd4902a9d81436acaf6
+  s_26ff0c0b1783288d5357bebb -.-> s_e310a919014e61ee9a938559
+  s_c179b2e8d7342b9106c336c7 --> u_e_c66af24491de8e594abe1c96
+  s_a387591332662f85ace23601 --> u_e_c7f6aa4d667c25f8f34f016f
+  s_e310a919014e61ee9a938559 --> u_e_c9212f4d9e1c942e72b20252
+  s_a387591332662f85ace23601 --> u_e_c9609e6124b1ce6bcfb0b691
+  s_26ff0c0b1783288d5357bebb --> u_e_ceec5b11ddf3d178c9f10803
+  s_c179b2e8d7342b9106c336c7 -.-> s_c588882baf829613d44ceebf
+  s_9bd065f97be99a0c31453b50 -.-> s_a387591332662f85ace23601
+  s_a387591332662f85ace23601 --> s_e397069cf0eb870602e8ac6e
+  f_e5ea88a7231b09d6b2746a78 --> u_e_d622c91f303257f079db80ed
+  s_e397069cf0eb870602e8ac6e --> u_e_d6ec70c0e932528ca935a50f

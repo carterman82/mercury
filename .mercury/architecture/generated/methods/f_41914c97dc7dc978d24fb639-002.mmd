@@ -1,0 +1,86 @@
+flowchart LR
+  s_f50401999535a0cded87bc51["json · 19"]
+  u_e_99c61a4beae3571389af0d05["Unresolved: response.json"]
+  s_dca2c6e63c2c9b567fd6b28b["ChatGPTAuth.token · 103"]
+  u_e_9c3eff761e1c9dfa1c017b00["Unresolved: (async () =&gt; {       if (!credentials.refresh_token) throw new Error('Reconnect your ChatGPT account in Model settings.');       const data = await json(`${issuer}/api/accounts/oauth/token`, { method: 'POST', body: new URLSearchParams({ grant_type: 'refresh_token', client_id: credentials.clientId, r"]
+  s_0015652f222d8b5c36181c26["ChatGPTAuth.signIn · 53"]
+  u_e_9d39ae76a76673f879a4621c["Unresolved: Error"]
+  u_e_9e4827c103c18648e1f3a507["Unresolved: Date.now"]
+  u_e_9ee55aaa9633369cad554a93["Unresolved: JSON.stringify"]
+  s_50827e6571f6698d7bf96eaf["validateIdentity · 28"]
+  u_e_a4ff7041ee94499e66021210["Unresolved: Buffer.from"]
+  u_e_aa59d80c2acfcc6b851c998b["Unresolved: fetch"]
+  u_e_aacee0682f12ae1d6591bf02["Unresolved: Error"]
+  u_e_ad2799af7e134c3fcfe4a3b9["Unresolved: token.split"]
+  u_e_ae83c86af6d8cb66f1255990["Unresolved: URL"]
+  u_e_afc4e466ab518c37a97853b4["Unresolved: URLSearchParams"]
+  u_e_b0deb04573675ac2c14cd74d["Unresolved: this.read"]
+  u_e_b366799e6e062e7a76cdceec["Unresolved: String(data.scope ?? credentials.scope).split(' ').includes"]
+  u_e_b4138571647cc4a93c3074e5["Unresolved: Date.now"]
+  u_e_b52cda730b042818bcbaeab9["Unresolved: reject"]
+  u_e_b56afc34d8a843804cde74ad["Unresolved: response.json().catch"]
+  u_e_b6b6fa35b5040bef11dc937d["Unresolved: Number.isFinite"]
+  u_e_bc8e65a598083087277c5621["Unresolved: createHash('sha256').update"]
+  u_e_ca55f435b99502b50e64e3ed["Unresolved: String(data.scope ?? credentials.scope).split"]
+  u_e_cb7427cb4c7ad97db71b8930["Unresolved: this.read"]
+  s_e018e8b6ca8ecb8b2b3d49b5["ChatGPTAuth.cancelSignIn · 51"]
+  u_e_cd3f78dace91041b7ae77dd7["Unresolved: this.cancelPending"]
+  u_e_cdc2b411524db84fe7a66121["Unresolved: JSON.parse"]
+  u_e_ce05d6545b3b39e301808466["Unresolved: jwks.toString"]
+  u_e_d38857dca09af63592e1ea49["Unresolved: randomBytes"]
+  u_e_d60fceb78cb653e7d5e0d0cc["Unresolved: Buffer.from(parts[1], 'base64url').toString"]
+  u_e_d8882a488c61154376601deb["Unresolved: createServer"]
+  u_e_d9fd1e3902d9546da5e7f9ea["Unresolved: response.headers.get"]
+  u_e_e05afdc2e99aaf8d0dcd3f03["Unresolved: this.read"]
+  u_e_e1b83f8cc93b992724f983f3["Unresolved: Error"]
+  u_e_e223be4e3d77ec8139527df9["Unresolved: setTimeout"]
+  u_e_e3c4ab2e6b0341808343351b["Unresolved: result.searchParams.get"]
+  u_e_e4ec86fb41ffebf28feee0a5["Unresolved: URLSearchParams"]
+  u_e_e8017e9d4380ddf29c018064["Unresolved: Error"]
+  u_e_e89de77680dee68c6799d3bb["Unresolved: this.refreshes.delete"]
+  u_e_eafe2761e64d9a731000213f["Unresolved: result.searchParams.get"]
+  u_e_eb7d5e55d3048b901622521b["Unresolved: this.read"]
+  u_e_ec4993f72d67003a820550ae["Unresolved: new URLSearchParams({ client_id: client ?? 'dynamic_agent_client', ...(!client ? { agent_name_hint: 'Mercury' } : {}), ...(previous?.id_token ? { id_token_hint: previous.id_token } : {}), ext_agent_host_id: hostId, response_type: 'code', redirect_uri: redirect, scope: 'openid profile email offline_a"]
+  s_6aca7c4292882e725e428e04["authFailure · 8"]
+  u_e_f4d99ff98c0ba534a6be4217["Unresolved: result.searchParams.get"]
+  u_e_f50b1447445ed21c87f78cbc["Unresolved: randomBytes"]
+  s_f50401999535a0cded87bc51 --> u_e_99c61a4beae3571389af0d05
+  s_dca2c6e63c2c9b567fd6b28b --> u_e_9c3eff761e1c9dfa1c017b00
+  s_0015652f222d8b5c36181c26 --> u_e_9d39ae76a76673f879a4621c
+  s_0015652f222d8b5c36181c26 --> u_e_9e4827c103c18648e1f3a507
+  s_dca2c6e63c2c9b567fd6b28b --> u_e_9ee55aaa9633369cad554a93
+  s_50827e6571f6698d7bf96eaf --> u_e_a4ff7041ee94499e66021210
+  s_f50401999535a0cded87bc51 --> u_e_aa59d80c2acfcc6b851c998b
+  s_0015652f222d8b5c36181c26 --> u_e_aacee0682f12ae1d6591bf02
+  s_50827e6571f6698d7bf96eaf --> u_e_ad2799af7e134c3fcfe4a3b9
+  s_50827e6571f6698d7bf96eaf --> u_e_ae83c86af6d8cb66f1255990
+  s_0015652f222d8b5c36181c26 --> u_e_afc4e466ab518c37a97853b4
+  s_0015652f222d8b5c36181c26 --> u_e_b0deb04573675ac2c14cd74d
+  s_dca2c6e63c2c9b567fd6b28b --> u_e_b366799e6e062e7a76cdceec
+  s_dca2c6e63c2c9b567fd6b28b --> u_e_b4138571647cc4a93c3074e5
+  s_0015652f222d8b5c36181c26 --> u_e_b52cda730b042818bcbaeab9
+  s_f50401999535a0cded87bc51 --> u_e_b56afc34d8a843804cde74ad
+  s_0015652f222d8b5c36181c26 --> u_e_b6b6fa35b5040bef11dc937d
+  s_0015652f222d8b5c36181c26 --> u_e_bc8e65a598083087277c5621
+  s_dca2c6e63c2c9b567fd6b28b --> u_e_ca55f435b99502b50e64e3ed
+  s_dca2c6e63c2c9b567fd6b28b --> u_e_cb7427cb4c7ad97db71b8930
+  s_e018e8b6ca8ecb8b2b3d49b5 --> u_e_cd3f78dace91041b7ae77dd7
+  s_dca2c6e63c2c9b567fd6b28b --> u_e_cdc2b411524db84fe7a66121
+  s_50827e6571f6698d7bf96eaf --> u_e_ce05d6545b3b39e301808466
+  s_0015652f222d8b5c36181c26 --> u_e_d38857dca09af63592e1ea49
+  s_50827e6571f6698d7bf96eaf --> u_e_d60fceb78cb653e7d5e0d0cc
+  s_0015652f222d8b5c36181c26 --> u_e_d8882a488c61154376601deb
+  s_f50401999535a0cded87bc51 --> u_e_d9fd1e3902d9546da5e7f9ea
+  s_0015652f222d8b5c36181c26 --> u_e_e05afdc2e99aaf8d0dcd3f03
+  s_0015652f222d8b5c36181c26 --> u_e_e1b83f8cc93b992724f983f3
+  s_0015652f222d8b5c36181c26 --> u_e_e223be4e3d77ec8139527df9
+  s_0015652f222d8b5c36181c26 --> u_e_e3c4ab2e6b0341808343351b
+  s_0015652f222d8b5c36181c26 --> u_e_e4ec86fb41ffebf28feee0a5
+  s_50827e6571f6698d7bf96eaf --> u_e_e8017e9d4380ddf29c018064
+  s_dca2c6e63c2c9b567fd6b28b --> u_e_e89de77680dee68c6799d3bb
+  s_0015652f222d8b5c36181c26 --> u_e_eafe2761e64d9a731000213f
+  s_0015652f222d8b5c36181c26 --> u_e_eb7d5e55d3048b901622521b
+  s_0015652f222d8b5c36181c26 --> u_e_ec4993f72d67003a820550ae
+  s_0015652f222d8b5c36181c26 --> s_6aca7c4292882e725e428e04
+  s_0015652f222d8b5c36181c26 --> u_e_f4d99ff98c0ba534a6be4217
+  s_0015652f222d8b5c36181c26 --> u_e_f50b1447445ed21c87f78cbc

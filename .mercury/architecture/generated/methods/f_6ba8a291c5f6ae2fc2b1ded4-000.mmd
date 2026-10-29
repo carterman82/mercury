@@ -1,0 +1,85 @@
+flowchart LR
+  s_ab208e79aab30c275007b42e["installed · 14"]
+  u_e_06587c513e29f8b0aa967f10["Unresolved: run"]
+  s_9b11398ffa5bdb02e0f1a072["autoDiscover · 60"]
+  u_e_07050ea278aad4be74e81bcb["Unresolved: Map"]
+  u_e_08c3f1d42698e944ef22a601["Unresolved: access"]
+  s_2b3a610564a1dc421902d4bb["tailscalePeers · 20"]
+  u_e_0a94b6cb87f83cd68b28fe38["Unresolved: (peer.TailscaleIPs ?? []).find"]
+  u_e_19f1ca407ce84921ddfe7f61["Unresolved: results.filter"]
+  u_e_1b06d406938e7e93da526c4f["Unresolved: found.some"]
+  u_e_1e2794e4db5f73e6e3240577["Unresolved: diagnostics.push"]
+  u_e_1e34eeec2b366e67468f8dca["Unresolved: path.join"]
+  u_e_20ec338427f7c90de7b4fe3e["Unresolved: found.flatMap"]
+  s_89eddcabeb98521092c1a057["src/main/providers.ts: LocalProviders.discover"]
+  u_e_2644e21c0343cee997003d7a["Unresolved: path.join"]
+  u_e_2c012a4bd239dd36c765547f["Unresolved: ([['lmstudio', 1234], ['ollama', 11434]] as [ProviderKind, number][]).map"]
+  s_391e78f85008e99a15f62af9["otherVpnPeers · 42"]
+  s_7ed54224e0b6f50452c429ea["privateAddress · 35"]
+  u_e_362e14e25faf88d31c1a0d2f["Unresolved: diagnostics.push"]
+  u_e_391875cf28e12efac8c78dd7["Unresolved: parts.some"]
+  f_6ba8a291c5f6ae2fc2b1ded4["src/main/discovery.ts"]
+  u_e_3bfd81f6696b741fe5c83ee7["Unresolved: promisify"]
+  u_e_41218b192ba8f7c823d68247["Unresolved: item.url.replace(/\/$/, '').toLowerCase"]
+  u_e_414e46ae686e2bc6568a1a49["Unresolved: applications.push"]
+  u_e_4672a97089d136a5839848fd["Unresolved: path.join"]
+  u_e_47783eb8e96824197b1d9b98["Unresolved: candidates.set"]
+  u_e_4e11c32d577028dd142b00f9["Unresolved: settings.connections.some"]
+  u_e_4ec3b5b261c31ea95e4de4e8["Unresolved: [...candidates.values()].map"]
+  u_e_52db476eb7e1b252750aec24["Unresolved: String"]
+  u_e_549b6edad9403a9d1c88f284["Unresolved: Object.values(status.Peer ?? {}).filter((peer: any) =&gt; peer.Online).slice"]
+  u_e_5daac9db77f78c3fe143e8b0["Unresolved: Promise.all"]
+  u_e_5ddf266d4d9d7b9465aa80f6["Unresolved: Map"]
+  u_e_6c4c05d041c172f5eda935dd["Unresolved: [...peers].slice"]
+  u_e_6d2f2a74fdcc0f0921d38ef6["Unresolved: Promise.all(paths.map(async candidate =&gt; access(candidate).then(() =&gt; true, () =&gt; false))).then"]
+  u_e_6db129841f282587f1142a67["Unresolved: run"]
+  u_e_7198b925dd4bf840bfab9809["Unresolved: path.join"]
+  u_e_7a50fef5ed0d3ae55a8095c0["Unresolved: run"]
+  u_e_7ad89e5dd90ff3d3156c5157["Unresolved: peers.set"]
+  u_e_7ce21e0d55b79b34e499dfc6["Unresolved: peers.set"]
+  u_e_802e0bdb33aebcd7067a309f["Unresolved: JSON.parse"]
+  u_e_855500f8e44febfa0f5b3f16["Unresolved: paths.map"]
+  u_e_8646ba634b100c713ea496aa["Unresolved: run"]
+  u_e_8886ceb8e77f6ad5a451377b["Unresolved: Object.values"]
+  u_e_8b0a1a5d87b351eac796aad3["Unresolved: Object.values(status.Peer ?? {}).filter"]
+  u_e_8c20540cc37fba3da575e17a["Unresolved: stdout.split"]
+  s_ab208e79aab30c275007b42e --> u_e_06587c513e29f8b0aa967f10
+  s_9b11398ffa5bdb02e0f1a072 --> u_e_07050ea278aad4be74e81bcb
+  s_ab208e79aab30c275007b42e --> u_e_08c3f1d42698e944ef22a601
+  s_2b3a610564a1dc421902d4bb --> u_e_0a94b6cb87f83cd68b28fe38
+  s_9b11398ffa5bdb02e0f1a072 --> u_e_19f1ca407ce84921ddfe7f61
+  s_9b11398ffa5bdb02e0f1a072 --> u_e_1b06d406938e7e93da526c4f
+  s_9b11398ffa5bdb02e0f1a072 --> u_e_1e2794e4db5f73e6e3240577
+  s_9b11398ffa5bdb02e0f1a072 --> u_e_1e34eeec2b366e67468f8dca
+  s_9b11398ffa5bdb02e0f1a072 --> u_e_20ec338427f7c90de7b4fe3e
+  s_9b11398ffa5bdb02e0f1a072 -.-> s_89eddcabeb98521092c1a057
+  s_9b11398ffa5bdb02e0f1a072 --> u_e_2644e21c0343cee997003d7a
+  s_2b3a610564a1dc421902d4bb --> u_e_2c012a4bd239dd36c765547f
+  s_391e78f85008e99a15f62af9 --> s_7ed54224e0b6f50452c429ea
+  s_9b11398ffa5bdb02e0f1a072 --> u_e_362e14e25faf88d31c1a0d2f
+  s_7ed54224e0b6f50452c429ea --> u_e_391875cf28e12efac8c78dd7
+  f_6ba8a291c5f6ae2fc2b1ded4 --> u_e_3bfd81f6696b741fe5c83ee7
+  s_9b11398ffa5bdb02e0f1a072 --> u_e_41218b192ba8f7c823d68247
+  s_9b11398ffa5bdb02e0f1a072 --> u_e_414e46ae686e2bc6568a1a49
+  s_9b11398ffa5bdb02e0f1a072 --> u_e_4672a97089d136a5839848fd
+  s_9b11398ffa5bdb02e0f1a072 --> u_e_47783eb8e96824197b1d9b98
+  s_9b11398ffa5bdb02e0f1a072 --> u_e_4e11c32d577028dd142b00f9
+  s_9b11398ffa5bdb02e0f1a072 --> u_e_4ec3b5b261c31ea95e4de4e8
+  s_9b11398ffa5bdb02e0f1a072 --> u_e_52db476eb7e1b252750aec24
+  s_2b3a610564a1dc421902d4bb --> u_e_549b6edad9403a9d1c88f284
+  s_9b11398ffa5bdb02e0f1a072 --> s_ab208e79aab30c275007b42e
+  s_ab208e79aab30c275007b42e --> u_e_5daac9db77f78c3fe143e8b0
+  s_391e78f85008e99a15f62af9 --> u_e_5ddf266d4d9d7b9465aa80f6
+  s_391e78f85008e99a15f62af9 --> u_e_6c4c05d041c172f5eda935dd
+  s_ab208e79aab30c275007b42e --> u_e_6d2f2a74fdcc0f0921d38ef6
+  s_2b3a610564a1dc421902d4bb --> u_e_6db129841f282587f1142a67
+  s_9b11398ffa5bdb02e0f1a072 --> u_e_7198b925dd4bf840bfab9809
+  s_391e78f85008e99a15f62af9 --> u_e_7a50fef5ed0d3ae55a8095c0
+  s_391e78f85008e99a15f62af9 --> u_e_7ad89e5dd90ff3d3156c5157
+  s_391e78f85008e99a15f62af9 --> u_e_7ce21e0d55b79b34e499dfc6
+  s_2b3a610564a1dc421902d4bb --> u_e_802e0bdb33aebcd7067a309f
+  s_ab208e79aab30c275007b42e --> u_e_855500f8e44febfa0f5b3f16
+  s_391e78f85008e99a15f62af9 --> u_e_8646ba634b100c713ea496aa
+  s_2b3a610564a1dc421902d4bb --> u_e_8886ceb8e77f6ad5a451377b
+  s_2b3a610564a1dc421902d4bb --> u_e_8b0a1a5d87b351eac796aad3
+  s_391e78f85008e99a15f62af9 --> u_e_8c20540cc37fba3da575e17a

@@ -1,0 +1,74 @@
+flowchart LR
+  f_454991be80e824d2eb9f5709["src/main/vision.test.ts"]
+  s_453dfee5f459e22b79b692bf["input · 8"]
+  s_6866df086f14572fb2b87b99["providers · 9"]
+  u_e_3b8733a2777a0a1960d97a45["Unresolved: it"]
+  u_e_3dc462f3027ab22e0202934d["Unresolved: Response"]
+  s_5a0958b25d6bee1d04d17a2a["src/main/providers.ts: LocalProviders.chat"]
+  u_e_42b9a6656fd79a7171e97f36["Unresolved: expect(imageUnsupported(new ModelHttpError(400, 'image context length exceeds limit'))).toBe"]
+  u_e_431056bc980a266d0c0bc4d7["Unresolved: expect"]
+  u_e_434b0655ae53cd2834b32a08["Unresolved: it"]
+  u_e_4443f412f0687a32eee02148["Unresolved: expect(providers().chat(input())).rejects.toThrow"]
+  u_e_4be9be544925b9a084dab8f7["Unresolved: vi.stubGlobal"]
+  u_e_4c1aa0fd8cebf3ae85dcda66["Unresolved: expect(text.content).toContain"]
+  u_e_514f2839f077b1cc262bce5f["Unresolved: expect"]
+  u_e_54ef6511deffd79e4d5e0b4a["Unresolved: vi.fn().mockResolvedValueOnce(new Response('{&quot;error&quot;:&quot;this model does not support images&quot;}', { status: 400 })).mockImplementation"]
+  s_302298dd27d5389003a49333["success · 10"]
+  u_e_55beb67a0612c182a2d6a65c["Unresolved: JSON.stringify"]
+  s_e2ebebf2497febd7d6df5f0a["src/main/cloud-providers.ts: claudeInput"]
+  u_e_5e178886695eeff9c801a056["Unresolved: vi.fn"]
+  u_e_609be025021c9ee59736b006["Unresolved: expect(fetch).toHaveBeenCalledTimes"]
+  u_e_659809f0390e5a656e8e07f6["Unresolved: expect(sent.images).toBeUndefined"]
+  u_e_68a4a1931bd9d543fda7226e["Unresolved: vi.stubGlobal"]
+  u_e_6ad8b69aa87ea66d411e004f["Unresolved: controller.abort"]
+  u_e_6ae5d6d910de82c903c6f4e5["Unresolved: expect(JSON.parse(fetch.mock.calls[2][1].body).messages[0].images).toBeUndefined"]
+  u_e_6bfeb841e8c37e713b54a2b3["Unresolved: vi.stubGlobal"]
+  u_e_6f26a1471c119a1645335f24["Unresolved: expect"]
+  u_e_70174708a1b94a3af78ccf28["Unresolved: expect"]
+  u_e_78cb517abb392e7dc5be9591["Unresolved: expect(fetch).toHaveBeenCalledOnce"]
+  u_e_7a74464d73071066e97d0594["Unresolved: expect"]
+  u_e_7e4d90b35e1630a1132a0a6c["Unresolved: expect"]
+  u_e_7f70c5f85f6c8498dc2a5c8c["Unresolved: Response"]
+  u_e_7f82d7f3ba2bfc3606bd31f5["Unresolved: expect"]
+  u_e_82af8f9e99895b9ef7f6d070["Unresolved: expect"]
+  u_e_82f93d19e764f76b4f4c7087["Unresolved: expect"]
+  f_454991be80e824d2eb9f5709 --> s_453dfee5f459e22b79b692bf
+  f_454991be80e824d2eb9f5709 --> s_6866df086f14572fb2b87b99
+  f_454991be80e824d2eb9f5709 --> s_6866df086f14572fb2b87b99
+  f_454991be80e824d2eb9f5709 --> u_e_3b8733a2777a0a1960d97a45
+  f_454991be80e824d2eb9f5709 --> u_e_3dc462f3027ab22e0202934d
+  f_454991be80e824d2eb9f5709 -.-> s_5a0958b25d6bee1d04d17a2a
+  f_454991be80e824d2eb9f5709 --> s_453dfee5f459e22b79b692bf
+  f_454991be80e824d2eb9f5709 --> u_e_42b9a6656fd79a7171e97f36
+  f_454991be80e824d2eb9f5709 --> u_e_431056bc980a266d0c0bc4d7
+  f_454991be80e824d2eb9f5709 --> u_e_434b0655ae53cd2834b32a08
+  f_454991be80e824d2eb9f5709 --> u_e_4443f412f0687a32eee02148
+  f_454991be80e824d2eb9f5709 --> u_e_4be9be544925b9a084dab8f7
+  f_454991be80e824d2eb9f5709 --> u_e_4c1aa0fd8cebf3ae85dcda66
+  f_454991be80e824d2eb9f5709 --> u_e_514f2839f077b1cc262bce5f
+  f_454991be80e824d2eb9f5709 --> s_453dfee5f459e22b79b692bf
+  f_454991be80e824d2eb9f5709 --> u_e_54ef6511deffd79e4d5e0b4a
+  s_302298dd27d5389003a49333 --> u_e_55beb67a0612c182a2d6a65c
+  f_454991be80e824d2eb9f5709 --> s_e2ebebf2497febd7d6df5f0a
+  f_454991be80e824d2eb9f5709 --> u_e_5e178886695eeff9c801a056
+  f_454991be80e824d2eb9f5709 --> s_453dfee5f459e22b79b692bf
+  f_454991be80e824d2eb9f5709 --> u_e_609be025021c9ee59736b006
+  f_454991be80e824d2eb9f5709 -.-> s_5a0958b25d6bee1d04d17a2a
+  f_454991be80e824d2eb9f5709 --> u_e_659809f0390e5a656e8e07f6
+  f_454991be80e824d2eb9f5709 --> u_e_68a4a1931bd9d543fda7226e
+  f_454991be80e824d2eb9f5709 --> s_6866df086f14572fb2b87b99
+  f_454991be80e824d2eb9f5709 --> s_6866df086f14572fb2b87b99
+  f_454991be80e824d2eb9f5709 --> u_e_6ad8b69aa87ea66d411e004f
+  f_454991be80e824d2eb9f5709 --> u_e_6ae5d6d910de82c903c6f4e5
+  f_454991be80e824d2eb9f5709 --> u_e_6bfeb841e8c37e713b54a2b3
+  f_454991be80e824d2eb9f5709 --> u_e_6f26a1471c119a1645335f24
+  f_454991be80e824d2eb9f5709 --> u_e_70174708a1b94a3af78ccf28
+  f_454991be80e824d2eb9f5709 -.-> s_5a0958b25d6bee1d04d17a2a
+  f_454991be80e824d2eb9f5709 --> u_e_78cb517abb392e7dc5be9591
+  f_454991be80e824d2eb9f5709 --> u_e_7a74464d73071066e97d0594
+  f_454991be80e824d2eb9f5709 -.-> s_5a0958b25d6bee1d04d17a2a
+  f_454991be80e824d2eb9f5709 --> u_e_7e4d90b35e1630a1132a0a6c
+  f_454991be80e824d2eb9f5709 --> u_e_7f70c5f85f6c8498dc2a5c8c
+  f_454991be80e824d2eb9f5709 --> u_e_7f82d7f3ba2bfc3606bd31f5
+  f_454991be80e824d2eb9f5709 --> u_e_82af8f9e99895b9ef7f6d070
+  f_454991be80e824d2eb9f5709 --> u_e_82f93d19e764f76b4f4c7087

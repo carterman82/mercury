@@ -78,7 +78,7 @@ export async function cloudChat(connection: ModelConnection, token: string, inpu
   const body = claude
     ? { model: input.profile.model, ...claudeInput(input.messages), max_tokens: input.maxOutputTokens ?? 8192, stream: true, ...(tools.length ? { tools: tools.map(tool => ({ name: tool.function.name, description: tool.function.description, input_schema: tool.function.parameters })) } : {}), ...(input.toolChoice ? { tool_choice: input.toolChoice } : {}) }
     : { model: input.profile.model, input: responsesInput(input.messages), store: false, stream: true, ...(tools.length ? { tools: tools.map(tool => ({ type: 'function', ...tool.function, strict: false })) } : {}), ...(input.maxOutputTokens ? { max_output_tokens: input.maxOutputTokens } : {}), ...(input.toolChoice ? { tool_choice: input.toolChoice.type === 'tool' ? { type: 'function', name: input.toolChoice.name } : input.toolChoice.type === 'any' ? 'required' : input.toolChoice.type, ...(input.toolChoice.disable_parallel_tool_use !== undefined ? { parallel_tool_calls: !input.toolChoice.disable_parallel_tool_use } : {}) } : {}) };
-  const idle = new InactivityWatchdog(120_000, new ThinkingLimitError('timeout'));
+  const idle = new InactivityWatchdog(input.inactivityMs ?? 120_000, new ThinkingLimitError('timeout'));
   const signal = AbortSignal.any([input.signal, idle.signal]);
   try {
   const response = await fetch(`${cloudEndpoint(connection)}/v1/${claude ? 'messages' : 'responses'}`, { method: 'POST', headers: headers(connection, token), body: JSON.stringify(body), signal, redirect: 'error' });

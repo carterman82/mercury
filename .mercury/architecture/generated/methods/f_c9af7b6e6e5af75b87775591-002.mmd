@@ -1,0 +1,81 @@
+flowchart LR
+  f_c9af7b6e6e5af75b87775591["src/main/file-formats.test.ts"]
+  u_e_73d10d0580fad0ca4896d1c7["Unresolved: Buffer.from"]
+  u_e_73fb1155fe92a9edcd04797b["Unresolved: expect(read.text).toContain"]
+  u_e_7449c80bcab295b0fbd3bc0e["Unresolved: expect"]
+  u_e_7719251bf3bfc5c3512ed045["Unresolved: expect(document.text).toContain"]
+  u_e_7a8c69ee028367fff19d23c7["Unresolved: jpeg.bytes.subarray(0, 2).toString"]
+  u_e_7cbfa773d0bd1c0b12955c3b["Unresolved: zipSync"]
+  u_e_7d60f99b09bc47e4ad8edc42["Unresolved: Object.keys(unzipSync(result.bytes)).filter"]
+  s_2320762902884e3cfbb90c04["src/main/file-formats.ts: FileFormats.constructor"]
+  s_273b7d7d1b5d687488fdbcb1["src/main/pdf.ts: makePdf"]
+  u_e_814e96bb2d19d457aacd73d4["Unresolved: expect"]
+  u_e_81655586f8f16c3c6af756e8["Unresolved: Buffer.from"]
+  s_c7848f6706a9c2e4da3538bc["src/main/file-formats.ts: FileFormats.visionImage"]
+  u_e_83fe200ed275ee2106f39cb4["Unresolved: expect"]
+  u_e_847cd2a736a2b539463573cf["Unresolved: /^ppt\/slides\/slide\d+\.xml$/.test"]
+  s_736e6a586bec09bab8e8cd59["src/main/chat-files.ts: ChatFiles.createStandard"]
+  u_e_85e83d4c3cd921b58c081b1c["Unresolved: it"]
+  u_e_86c2f6297b3fa8c8e51dfe79["Unresolved: Buffer.from(unzipSync(result.bytes)['xl/worksheets/sheet1.xml']).toString"]
+  s_cae60b05be48b19c58093049["src/main/chat-files.ts: ChatFiles.constructor"]
+  s_d0eea3d2f63f9893f0688208["src/main/chat-files.ts: ChatFiles.create"]
+  u_e_8bfebba7b92641c996c800b7["Unresolved: unzipSync"]
+  u_e_8cc7a6227af9f7fd36bd42bc["Unresolved: expect"]
+  u_e_8e0a7dbef6d6466ce243a3fb["Unresolved: it"]
+  u_e_8fd77d578879cbf7f757ade1["Unresolved: expect(await service.text(upload.id)).toContain"]
+  u_e_8ffe32057458ae91fe8927de["Unresolved: result.bytes.subarray"]
+  u_e_9019bf050122ae2c558d5c77["Unresolved: expect(result.bytes.subarray(0, 8).toString('hex')).toBe"]
+  u_e_90204e915f19e0aee1332141["Unresolved: expect(read.readStatus).toBe"]
+  u_e_909227dee5e4534713aeef13["Unresolved: directories.splice(0).forEach"]
+  u_e_92a23e79ebfe8fb3b1512b35["Unresolved: result.bytes.subarray(0, 2).toString"]
+  s_ff0ef2dcd6aeb7fc03f073d7["src/main/file-formats.ts: FileFormats.inspect"]
+  u_e_9607b971d3cec13a79f1d336["Unresolved: new Uint8Array(12 * 1024 * 1024 + 1).fill"]
+  u_e_96281f8c393259cd150d5c65["Unresolved: expect(await formats.visionImage(jpeg.bytes)).toEqual"]
+  u_e_98422b1b573854d785930856["Unresolved: Buffer.from"]
+  s_f2a3f974601ce7b0675c5349["fixture · 12"]
+  u_e_98dffd28ca6ef8a2a4f868b8["Unresolved: mkdtempSync"]
+  u_e_9b5993164973dfcb4a8bbc91["Unresolved: it"]
+  s_026cda64760dc195a4c4e777["src/main/file-formats.ts: FileFormats.presentation"]
+  u_e_a197147ffed72d8cd0b26832["Unresolved: expect(await formats.visionImage(Buffer.from('&lt;svg xmlns=&quot;http://www.w3.org/2000/svg&quot;&gt;&lt;/svg&gt;'))).toBeNull"]
+  u_e_a280eba2c1eb62294ead1618["Unresolved: expect(rejected.readStatus).toBe"]
+  u_e_a4548e76b94afdf33edf396f["Unresolved: Map"]
+  f_c9af7b6e6e5af75b87775591 --> u_e_73d10d0580fad0ca4896d1c7
+  f_c9af7b6e6e5af75b87775591 --> u_e_73fb1155fe92a9edcd04797b
+  f_c9af7b6e6e5af75b87775591 --> u_e_7449c80bcab295b0fbd3bc0e
+  f_c9af7b6e6e5af75b87775591 --> u_e_7719251bf3bfc5c3512ed045
+  f_c9af7b6e6e5af75b87775591 --> u_e_7a8c69ee028367fff19d23c7
+  f_c9af7b6e6e5af75b87775591 --> u_e_7cbfa773d0bd1c0b12955c3b
+  f_c9af7b6e6e5af75b87775591 --> u_e_7d60f99b09bc47e4ad8edc42
+  f_c9af7b6e6e5af75b87775591 -.-> s_2320762902884e3cfbb90c04
+  f_c9af7b6e6e5af75b87775591 --> s_273b7d7d1b5d687488fdbcb1
+  f_c9af7b6e6e5af75b87775591 --> u_e_814e96bb2d19d457aacd73d4
+  f_c9af7b6e6e5af75b87775591 --> u_e_81655586f8f16c3c6af756e8
+  f_c9af7b6e6e5af75b87775591 -.-> s_c7848f6706a9c2e4da3538bc
+  f_c9af7b6e6e5af75b87775591 --> u_e_83fe200ed275ee2106f39cb4
+  f_c9af7b6e6e5af75b87775591 --> u_e_847cd2a736a2b539463573cf
+  f_c9af7b6e6e5af75b87775591 -.-> s_736e6a586bec09bab8e8cd59
+  f_c9af7b6e6e5af75b87775591 --> u_e_85e83d4c3cd921b58c081b1c
+  f_c9af7b6e6e5af75b87775591 --> u_e_86c2f6297b3fa8c8e51dfe79
+  f_c9af7b6e6e5af75b87775591 -.-> s_cae60b05be48b19c58093049
+  f_c9af7b6e6e5af75b87775591 -.-> s_d0eea3d2f63f9893f0688208
+  f_c9af7b6e6e5af75b87775591 --> u_e_8bfebba7b92641c996c800b7
+  f_c9af7b6e6e5af75b87775591 --> u_e_8cc7a6227af9f7fd36bd42bc
+  f_c9af7b6e6e5af75b87775591 --> u_e_8e0a7dbef6d6466ce243a3fb
+  f_c9af7b6e6e5af75b87775591 --> u_e_8fd77d578879cbf7f757ade1
+  f_c9af7b6e6e5af75b87775591 --> u_e_8ffe32057458ae91fe8927de
+  f_c9af7b6e6e5af75b87775591 --> u_e_9019bf050122ae2c558d5c77
+  f_c9af7b6e6e5af75b87775591 --> u_e_90204e915f19e0aee1332141
+  f_c9af7b6e6e5af75b87775591 --> u_e_909227dee5e4534713aeef13
+  f_c9af7b6e6e5af75b87775591 --> u_e_92a23e79ebfe8fb3b1512b35
+  f_c9af7b6e6e5af75b87775591 -.-> s_ff0ef2dcd6aeb7fc03f073d7
+  f_c9af7b6e6e5af75b87775591 --> u_e_9607b971d3cec13a79f1d336
+  f_c9af7b6e6e5af75b87775591 --> u_e_96281f8c393259cd150d5c65
+  f_c9af7b6e6e5af75b87775591 -.-> s_ff0ef2dcd6aeb7fc03f073d7
+  f_c9af7b6e6e5af75b87775591 --> u_e_98422b1b573854d785930856
+  s_f2a3f974601ce7b0675c5349 --> u_e_98dffd28ca6ef8a2a4f868b8
+  f_c9af7b6e6e5af75b87775591 --> u_e_9b5993164973dfcb4a8bbc91
+  f_c9af7b6e6e5af75b87775591 -.-> s_ff0ef2dcd6aeb7fc03f073d7
+  f_c9af7b6e6e5af75b87775591 -.-> s_026cda64760dc195a4c4e777
+  f_c9af7b6e6e5af75b87775591 --> u_e_a197147ffed72d8cd0b26832
+  f_c9af7b6e6e5af75b87775591 --> u_e_a280eba2c1eb62294ead1618
+  f_c9af7b6e6e5af75b87775591 --> u_e_a4548e76b94afdf33edf396f

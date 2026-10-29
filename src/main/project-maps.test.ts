@@ -24,6 +24,49 @@ function callsBetween(graph: ProjectDependencyGraph, callerFile: string, targetF
   );
 }
 
+it('reads existing diagrams without rebuilding or loading an oversized graph', async () => {
+  const root = await fixture({
+    '.mercury/architecture/system.mmd': 'flowchart LR\nMain --> Storage',
+    '.mercury/architecture/generated/methods/test.mmd': 'flowchart LR\nFormula --> Cell',
+  });
+  const graph = path.join(root, '.mercury/architecture/graph.json');
+  await fs.writeFile(graph, 'x'.repeat(33 * 1024 * 1024));
+  const maps = new ProjectMaps();
+  const before = await fs.stat(graph);
+  const names = await maps.existingDiagrams(root);
+  expect(names).toEqual(['generated/methods/test.mmd', 'system.mmd']);
+  expect((await maps.readDiagram(root, names[0], true)).content).toContain('Formula');
+  expect((await fs.stat(graph)).mtimeMs).toBe(before.mtimeMs);
+  expect(await fs.readdir(root)).toEqual(['.mercury']);
+});
+
+it('does not create diagrams when none exist', async () => {
+  const root = await fixture({});
+  expect(await new ProjectMaps().existingDiagrams(root)).toEqual([]);
+  expect(await fs.readdir(root)).toEqual([]);
+});
+
+it('updates only changed source diagrams and preserves unrelated diagram modification times', async () => {
+  const root = await fixture({ 'a.ts': 'export function before() { return 1; }', 'b.ts': 'export function untouched() { return 2; }' });
+  const maps = new ProjectMaps();
+  const graph = await maps.refresh(root);
+  const a = graph.files.find(file => file.path === 'a.ts')!;
+  const b = graph.files.find(file => file.path === 'b.ts')!;
+  const aMap = `.mercury/architecture/generated/methods/${a.id}-000.mmd`;
+  const bMap = `.mercury/architecture/generated/methods/${b.id}-000.mmd`;
+  const bBefore = await fs.stat(path.join(root, bMap));
+  const graphBefore = await fs.stat(path.join(root, '.mercury/architecture/graph.json'));
+  await fs.writeFile(path.join(root, 'a.ts'), 'export function after() { return 3; }');
+  await maps.updateChanged(root, ['a.ts']);
+  expect(await fs.readFile(path.join(root, aMap), 'utf8')).toContain('after');
+  expect((await fs.stat(path.join(root, bMap))).mtimeMs).toBe(bBefore.mtimeMs);
+  expect((await fs.stat(path.join(root, '.mercury/architecture/graph.json'))).mtimeMs).toBe(graphBefore.mtimeMs);
+  await fs.unlink(path.join(root, 'a.ts'));
+  await maps.updateChanged(root, ['a.ts']);
+  await expect(fs.stat(path.join(root, aMap))).rejects.toMatchObject({ code: 'ENOENT' });
+  expect(await maps.hasExistingDiagrams(root)).toBe(true);
+});
+
 it('uses the TypeScript compiler to resolve cross-file functions and marks member dispatch inferred', async () => {
   const root = await fixture({
     'src/helper.ts':

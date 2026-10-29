@@ -1,0 +1,63 @@
+flowchart LR
+  s_a7985bb310f5ea64e3a6e320["ModelRequests.drain · 42"]
+  u_e_018e2c9bc37047ee19b9bcdf["Unresolved: this.changed"]
+  s_bbcab2d49b0d987566535e5b["ModelRequests.acquire.start · 22"]
+  u_e_157fce375f214689a5f32580["Unresolved: resolve"]
+  f_2d73a98e1161ed3056312a9d["src/main/model-requests.ts"]
+  u_e_28fafbc735b9bc85cdc9d8ef["Unresolved: Map"]
+  s_4f950d565616947707d75b3c["ModelRequests.acquire.cancel · 30"]
+  u_e_2d02b72e730a650f97d81294["Unresolved: target.waiting.indexOf"]
+  u_e_2e05b36fe066c94b591b4617["Unresolved: signal.removeEventListener"]
+  s_531110032f8606b6c83f1320["ModelRequests.snapshot · 10"]
+  u_e_395fed8d7b28f9c380446eee["Unresolved: [...this.pools.values()].map"]
+  u_e_3ae328471b98f1fc4b96955f["Unresolved: this.pools.values"]
+  s_762d5d885a843d703410665e["ModelRequests.acquire · 11"]
+  u_e_616e5ba83d3c4ec26e2b8576["Unresolved: Promise.reject"]
+  u_e_69f7d5db2582e3420cb32f94["Unresolved: this.pools.get"]
+  u_e_7060932f8dd2a4b800854473["Unresolved: target.waiting.push"]
+  u_e_74b02928dbfb3549d69dc662["Unresolved: reject"]
+  s_797d4ee2a06ad089b90e4592["src/main/providers.ts: LocalProviders.constructor"]
+  s_6edc370de25c56f7d6d365f3["ModelRequests.constructor · 9"]
+  u_e_80c28fb8c9b7f9c760de960e["Unresolved: this.pools.delete"]
+  u_e_86dbc1d48e706bb30a94aca7["Unresolved: this.pools.set"]
+  s_ce19c24314f9ba71a6083a4e["src/main/providers.ts: LocalProviders.messages"]
+  u_e_95f754399201ce70530e03c5["Unresolved: pool.waiting.shift"]
+  s_7687d4e62b81ada2f424f430["src/main/providers.ts: LocalProviders.chatOnConnection"]
+  u_e_98f56849eb2b12bb3c05a556["Unresolved: onQueued"]
+  u_e_b2ddf46d34e2d174fb762c33["Unresolved: target.waiting.splice"]
+  u_e_c0633bcd718b86bececde787["Unresolved: Error"]
+  u_e_c46b6a63a3033e77714c14b7["Unresolved: pool.waiting.shift()!.start"]
+  u_e_c8fbf6a8f4ec6307cc54f10e["Unresolved: Promise"]
+  u_e_d3d8584fb734f8e7f746828a["Unresolved: signal.throwIfAborted"]
+  u_e_dfd563cbc688c1367750a107["Unresolved: signal.addEventListener"]
+  u_e_e115542543fa4fc20cf87c47["Unresolved: signal.removeEventListener"]
+  s_d56d51eac30ca18a5b266113["src/main/providers.ts: LocalProviders.requestCounts"]
+  s_a7985bb310f5ea64e3a6e320 --> u_e_018e2c9bc37047ee19b9bcdf
+  s_bbcab2d49b0d987566535e5b --> u_e_157fce375f214689a5f32580
+  f_2d73a98e1161ed3056312a9d --> u_e_28fafbc735b9bc85cdc9d8ef
+  s_4f950d565616947707d75b3c --> u_e_2d02b72e730a650f97d81294
+  s_bbcab2d49b0d987566535e5b --> u_e_2e05b36fe066c94b591b4617
+  s_531110032f8606b6c83f1320 --> u_e_395fed8d7b28f9c380446eee
+  s_531110032f8606b6c83f1320 --> u_e_3ae328471b98f1fc4b96955f
+  s_762d5d885a843d703410665e -.-> s_a7985bb310f5ea64e3a6e320
+  s_762d5d885a843d703410665e --> u_e_616e5ba83d3c4ec26e2b8576
+  s_762d5d885a843d703410665e --> u_e_69f7d5db2582e3420cb32f94
+  s_762d5d885a843d703410665e --> u_e_7060932f8dd2a4b800854473
+  s_4f950d565616947707d75b3c --> u_e_74b02928dbfb3549d69dc662
+  s_797d4ee2a06ad089b90e4592 -.-> s_6edc370de25c56f7d6d365f3
+  s_a7985bb310f5ea64e3a6e320 --> u_e_80c28fb8c9b7f9c760de960e
+  s_762d5d885a843d703410665e --> u_e_86dbc1d48e706bb30a94aca7
+  s_ce19c24314f9ba71a6083a4e -.-> s_762d5d885a843d703410665e
+  s_a7985bb310f5ea64e3a6e320 --> u_e_95f754399201ce70530e03c5
+  s_7687d4e62b81ada2f424f430 -.-> s_762d5d885a843d703410665e
+  s_762d5d885a843d703410665e --> u_e_98f56849eb2b12bb3c05a556
+  s_4f950d565616947707d75b3c -.-> s_a7985bb310f5ea64e3a6e320
+  s_4f950d565616947707d75b3c --> u_e_b2ddf46d34e2d174fb762c33
+  s_762d5d885a843d703410665e --> u_e_c0633bcd718b86bececde787
+  s_a7985bb310f5ea64e3a6e320 --> u_e_c46b6a63a3033e77714c14b7
+  s_762d5d885a843d703410665e --> u_e_c8fbf6a8f4ec6307cc54f10e
+  s_762d5d885a843d703410665e --> u_e_d3d8584fb734f8e7f746828a
+  s_762d5d885a843d703410665e --> u_e_dfd563cbc688c1367750a107
+  s_4f950d565616947707d75b3c --> u_e_e115542543fa4fc20cf87c47
+  s_d56d51eac30ca18a5b266113 -.-> s_531110032f8606b6c83f1320
+  s_bbcab2d49b0d987566535e5b -.-> s_a7985bb310f5ea64e3a6e320

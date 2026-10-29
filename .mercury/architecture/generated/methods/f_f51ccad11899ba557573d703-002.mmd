@@ -1,0 +1,49 @@
+flowchart LR
+  s_20e1c00c514c57100dc01695["ProjectWorktreeService.commitResponse · 115"]
+  u_e_d64b6a615b0062c722df082b["Unresolved: [...new Set([...baseline.keys(), ...current.keys()])].filter"]
+  s_c5a90b570259ae78950d786b["digest · 33"]
+  u_e_d704a06906eb83248eb93266["Unresolved: createHash('sha256').update"]
+  s_40dce2feb020a80807e21cef["ProjectWorktreeService.integrate · 132"]
+  u_e_d9a72ec55313ddb9474bcadb["Unresolved: Error"]
+  s_274c170a39948835fffee3a6["eligible · 35"]
+  u_e_d9d5fba91c89716b25a83d0c["Unresolved: parts.some"]
+  s_3d4087379f83b49a58693ba1["ProjectWorktreeService.prepare · 99"]
+  u_e_db1f30b7632fd4cab05a4116["Unresolved: Error"]
+  s_514816578b33f123b26535b1["ProjectWorktreeService.snapshotEligible · 79"]
+  u_e_dcd36d823c796434ba057be4["Unresolved: path.join"]
+  s_4898c1d6549ba0da0b758f37["src/main/project-worktrees.test.ts: fixture"]
+  s_01947ba379eb781921904d33["ProjectWorktreeService.constructor · 59"]
+  s_fc82724a964bed7a312d3502["aborted · 43"]
+  f_f51ccad11899ba557573d703["src/main/project-worktrees.ts"]
+  u_e_dedc4883274bf4a402c60898["Unresolved: Map"]
+  s_d750b252c38592529e6d3256["ProjectWorktreeService.exclusive · 61"]
+  u_e_e0aa8e1551f0a228b93334d2["Unresolved: this.pending.get"]
+  s_e60c70c57b36040f83583a51["ProjectWorktreeService.ensureRepository · 88"]
+  s_00f3d7042b6c80fed11e67dc["git · 44"]
+  s_369d48e83eaf517e79ce021d["ProjectWorktreeService.stageEligible · 75"]
+  s_3af592b16a388eaf622df01c["ProjectWorktreeService.eligiblePaths · 71"]
+  s_51d8bda9b88b5ac08c27a485["succeeds · 51"]
+  u_e_f2bcd14d0a11b438801eeb81["Unresolved: current.get"]
+  u_e_f3fd70843ca9440acda6ad1e["Unresolved: signal?.throwIfAborted"]
+  s_96a56210be25ff9c6e2f096c["src/main/project-tools.ts: ProjectTools.prepare"]
+  s_21afce609bf39066dbd6a7e5["src/main/project-tools.test.ts: service"]
+  s_20e1c00c514c57100dc01695 --> u_e_d64b6a615b0062c722df082b
+  s_c5a90b570259ae78950d786b --> u_e_d704a06906eb83248eb93266
+  s_40dce2feb020a80807e21cef --> u_e_d9a72ec55313ddb9474bcadb
+  s_274c170a39948835fffee3a6 --> u_e_d9d5fba91c89716b25a83d0c
+  s_3d4087379f83b49a58693ba1 --> u_e_db1f30b7632fd4cab05a4116
+  s_514816578b33f123b26535b1 --> u_e_dcd36d823c796434ba057be4
+  s_4898c1d6549ba0da0b758f37 -.-> s_01947ba379eb781921904d33
+  s_20e1c00c514c57100dc01695 --> s_fc82724a964bed7a312d3502
+  f_f51ccad11899ba557573d703 --> u_e_dedc4883274bf4a402c60898
+  s_d750b252c38592529e6d3256 --> u_e_e0aa8e1551f0a228b93334d2
+  s_e60c70c57b36040f83583a51 --> s_00f3d7042b6c80fed11e67dc
+  s_369d48e83eaf517e79ce021d -.-> s_3af592b16a388eaf622df01c
+  s_20e1c00c514c57100dc01695 --> s_51d8bda9b88b5ac08c27a485
+  s_20e1c00c514c57100dc01695 --> u_e_f2bcd14d0a11b438801eeb81
+  s_fc82724a964bed7a312d3502 --> u_e_f3fd70843ca9440acda6ad1e
+  s_369d48e83eaf517e79ce021d --> s_00f3d7042b6c80fed11e67dc
+  s_e60c70c57b36040f83583a51 -.-> s_369d48e83eaf517e79ce021d
+  s_96a56210be25ff9c6e2f096c -.-> s_3d4087379f83b49a58693ba1
+  s_21afce609bf39066dbd6a7e5 -.-> s_01947ba379eb781921904d33
+  s_514816578b33f123b26535b1 --> s_fc82724a964bed7a312d3502

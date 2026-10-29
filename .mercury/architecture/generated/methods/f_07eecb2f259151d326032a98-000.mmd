@@ -1,0 +1,92 @@
+flowchart LR
+  s_49304ecdfc4f95bd04e12dcb["executeMxcProcess · 144"]
+  u_e_016322e9c6bf65df27d5c461["Unresolved: resolve"]
+  u_e_03e1fe1a2927f0065ae3397b["Unresolved: spawn"]
+  s_3b1f4be3e645091bf86c3edf["ProjectExecutionAdapter.volumes · 241"]
+  u_e_03fe3427e33023ec9a1a689e["Unresolved: result.push"]
+  s_bc0a3f974e4e52a6780db662["ProjectExecutionAdapter.execute · 418"]
+  u_e_048a97ddb8e27c67e876db0b["Unresolved: request.command.trim"]
+  u_e_056dd47791b5314e1b074309["Unresolved: combined.throwIfAborted"]
+  s_57b7721f425ba35b47cdf5fb["ProjectExecutionAdapter.policy · 257"]
+  s_c83c7878db882e25fb7e54c0["mxcHostEnvironment · 96"]
+  u_e_0877982415de1d59d2594835["Unresolved: input.signal.addEventListener"]
+  u_e_0bc478b55be95a8c67f23758["Unresolved: (async () =&gt; {           if (             !request.command.trim() ||             request.command.length &gt; 10000 ||             request.command.includes('\0') ||             !validPath(request.cwd)           )             throw new Error('Invalid project command.');           const timeout = request."]
+  s_39e0668113ac40c7fce0665d["ProjectExecutionAdapter.withPolicy · 325"]
+  u_e_0c6c068966f386559814b4e0["Unresolved: signal.throwIfAborted"]
+  s_4bb12334a62de443944e279d["ProjectExecutionAdapter.withInvocation · 505"]
+  u_e_0c901cdf03548d987351abf5["Unresolved: validation.stderr.trim"]
+  u_e_0f1336f6a472b3d63d86e5e0["Unresolved: [1, 2, 3].includes"]
+  u_e_0f5af3ccdc2ce20a34045428["Unresolved: child.once"]
+  u_e_0f7a4c4b1229e79aeca2c6d0["Unresolved: AbortController"]
+  s_bfb2e8a59ef6f1d1e13e44d4["executeMxcProcess.cleanup · 178"]
+  u_e_112f3b7ac7755719200580aa["Unresolved: input.signal.removeEventListener"]
+  s_fde13da701b36e435e579056["ProjectExecutionAdapter.executor · 214"]
+  u_e_11df1f35ac6c19ffa88f7130["Unresolved: fs.readFile"]
+  s_257960d5e77a484a1bee26c6["terminateTree · 118"]
+  u_e_14f6f7e98387b3769965ae7b["Unresolved: reject"]
+  s_98f679924aad8f0ae09c1ccb["validPath · 70"]
+  u_e_17c55241ad80d6d465ef10be["Unresolved: path.isAbsolute"]
+  u_e_18b9629341b3d0dbd95a973a["Unresolved: path.join"]
+  u_e_1a221e89c86838462b9029aa["Unresolved: this.transport"]
+  s_fe548fdeab806c6b9ac3d415["executeMxcProcess.append · 169"]
+  s_a26c220bf37ee317ae6ace1e["src/main/project-tools.ts: ProjectTools.execute"]
+  u_e_21a15cdaf06e69915439a64a["Unresolved: signal.throwIfAborted"]
+  u_e_24439ae7f203bc2c9648a3ac["Unresolved: path.join"]
+  u_e_255c1998d65c173d7057efc6["Unresolved: input.onOutput"]
+  u_e_2805d9e22082504c99f1574d["Unresolved: Number.isSafeInteger"]
+  u_e_288af577027c30f861d442c3["Unresolved: /^[a-f0-9]{64}$/.test"]
+  u_e_2a2b70ff78d8bf42800aeeb3["Unresolved: fs.realpath"]
+  u_e_2b063d84970b5e371e8842cd["Unresolved: Object.entries({       PATH: hostEnvironment.PATH ?? '',       PATHEXT: hostEnvironment.PATHEXT ?? '',       SystemRoot: hostEnvironment.SystemRoot ?? '',       WINDIR: hostEnvironment.WINDIR ?? hostEnvironment.SystemRoot ?? '',       ComSpec: hostEnvironment.ComSpec ?? '',       TEMP: work,       T"]
+  u_e_2d04d095a8bef74300ff989d["Unresolved: Error"]
+  u_e_2dd4f5aea53d9f24869da850["Unresolved: request.command.includes"]
+  s_d555a1cafeb2d77602cf8497["ProjectExecutionAdapter.probe · 388"]
+  u_e_2e0b8f2eda54674b2dab059b["Unresolved: String"]
+  s_372a11f986eecf5815b92107["src/main/project-execution.test.ts: fixture"]
+  s_25faa365fe0023c67d1f9faf["ProjectExecutionAdapter.constructor · 206"]
+  u_e_32bdc9d488cabca9951fb117["Unresolved: Promise"]
+  u_e_33a05eac0747d34614be2943["Unresolved: AbortSignal.any"]
+  u_e_346b53fe76e95c90d2cb14da["Unresolved: AbortController"]
+  u_e_35016e20abbaad061998204d["Unresolved: (stdout + value).slice"]
+  s_96a56210be25ff9c6e2f096c["src/main/project-tools.ts: ProjectTools.prepare"]
+  u_e_36bff82358547693f7ad8449["Unresolved: Error"]
+  s_8ca5755bdc4d3646d69bf122["ProjectExecutionAdapter.probeConfig · 347"]
+  s_49304ecdfc4f95bd04e12dcb --> u_e_016322e9c6bf65df27d5c461
+  s_49304ecdfc4f95bd04e12dcb --> u_e_03e1fe1a2927f0065ae3397b
+  s_3b1f4be3e645091bf86c3edf --> u_e_03fe3427e33023ec9a1a689e
+  s_bc0a3f974e4e52a6780db662 --> u_e_048a97ddb8e27c67e876db0b
+  s_bc0a3f974e4e52a6780db662 --> u_e_056dd47791b5314e1b074309
+  s_57b7721f425ba35b47cdf5fb --> s_c83c7878db882e25fb7e54c0
+  s_49304ecdfc4f95bd04e12dcb --> u_e_0877982415de1d59d2594835
+  s_bc0a3f974e4e52a6780db662 --> u_e_0bc478b55be95a8c67f23758
+  s_39e0668113ac40c7fce0665d --> u_e_0c6c068966f386559814b4e0
+  s_4bb12334a62de443944e279d --> u_e_0c901cdf03548d987351abf5
+  s_57b7721f425ba35b47cdf5fb --> u_e_0f1336f6a472b3d63d86e5e0
+  s_49304ecdfc4f95bd04e12dcb --> u_e_0f5af3ccdc2ce20a34045428
+  s_4bb12334a62de443944e279d --> u_e_0f7a4c4b1229e79aeca2c6d0
+  s_bfb2e8a59ef6f1d1e13e44d4 --> u_e_112f3b7ac7755719200580aa
+  s_fde13da701b36e435e579056 --> u_e_11df1f35ac6c19ffa88f7130
+  s_257960d5e77a484a1bee26c6 --> u_e_14f6f7e98387b3769965ae7b
+  s_98f679924aad8f0ae09c1ccb --> u_e_17c55241ad80d6d465ef10be
+  s_39e0668113ac40c7fce0665d --> u_e_18b9629341b3d0dbd95a973a
+  s_bc0a3f974e4e52a6780db662 --> u_e_1a221e89c86838462b9029aa
+  s_49304ecdfc4f95bd04e12dcb --> s_fe548fdeab806c6b9ac3d415
+  s_a26c220bf37ee317ae6ace1e -.-> s_bc0a3f974e4e52a6780db662
+  s_bc0a3f974e4e52a6780db662 --> u_e_21a15cdaf06e69915439a64a
+  s_fde13da701b36e435e579056 --> u_e_24439ae7f203bc2c9648a3ac
+  s_fe548fdeab806c6b9ac3d415 --> u_e_255c1998d65c173d7057efc6
+  s_57b7721f425ba35b47cdf5fb --> u_e_2805d9e22082504c99f1574d
+  s_57b7721f425ba35b47cdf5fb -.-> s_3b1f4be3e645091bf86c3edf
+  s_fde13da701b36e435e579056 --> u_e_288af577027c30f861d442c3
+  s_fde13da701b36e435e579056 --> u_e_2a2b70ff78d8bf42800aeeb3
+  s_57b7721f425ba35b47cdf5fb --> u_e_2b063d84970b5e371e8842cd
+  s_bc0a3f974e4e52a6780db662 --> u_e_2d04d095a8bef74300ff989d
+  s_bc0a3f974e4e52a6780db662 --> u_e_2dd4f5aea53d9f24869da850
+  s_d555a1cafeb2d77602cf8497 --> u_e_2e0b8f2eda54674b2dab059b
+  s_372a11f986eecf5815b92107 -.-> s_25faa365fe0023c67d1f9faf
+  s_49304ecdfc4f95bd04e12dcb --> u_e_32bdc9d488cabca9951fb117
+  s_bc0a3f974e4e52a6780db662 --> u_e_33a05eac0747d34614be2943
+  s_bc0a3f974e4e52a6780db662 --> u_e_346b53fe76e95c90d2cb14da
+  s_fe548fdeab806c6b9ac3d415 --> u_e_35016e20abbaad061998204d
+  s_96a56210be25ff9c6e2f096c -.-> s_d555a1cafeb2d77602cf8497
+  s_fde13da701b36e435e579056 --> u_e_36bff82358547693f7ad8449
+  s_bc0a3f974e4e52a6780db662 -.-> s_8ca5755bdc4d3646d69bf122

@@ -1,0 +1,71 @@
+flowchart LR
+  s_ee16044c443df2e620bb6769["delegateTask · 39"]
+  s_c77122afa756d78ccb1e5cc8["src/main/source-memory.ts: sourceMemoryContext"]
+  u_e_8a2c4439134259a8eb0deb5f["Unresolved: Error"]
+  u_e_962fc43114d70d0b35196f36["Unresolved: JSON.stringify"]
+  s_14b177c3663edee8160bd241["src/main/answer-completion.ts: AnswerCompletion.constructor"]
+  f_5d81e3b9b6e10830ce4a6e00["src/main/delegation.ts"]
+  u_e_9b51431421f7bae7df532c95["Unresolved: z.string().max"]
+  s_1bc16026f3d796f1536aab53["src/main/chat.ts: ChatService.send.executeCall"]
+  s_387dba90328ba3ef979d2769["resolveCandidates · 27"]
+  u_e_a4e78ecbd9f9b070a5a4d746["Unresolved: output.slice"]
+  u_e_a7297f51cfe3a9dee7d69df6["Unresolved: result.text.slice"]
+  u_e_ac2dc63d3e37954a7ec5acab["Unresolved: z.string"]
+  u_e_acf6f556bc3c9f84b1b01701["Unresolved: delegationSchema.parse"]
+  s_bd8d832c8c9c07233640c1df["src/main/runner.ts: Runner.plan"]
+  s_e64e940d5af9afb42ed14b6d["reserveAgent · 34"]
+  u_e_b21b7c6fd41b8f3f449cff0f["Unresolved: z.object"]
+  u_e_b46e120fdafcc3da663ca24f["Unresolved: z.string().trim().min"]
+  s_b16e408f47328ed702ffb415["resolveModel · 19"]
+  u_e_b7f65e88d71cf2654ea5c374["Unresolved: settings.connections.find"]
+  u_e_b9a8a7b1f09ea5c411646d00["Unresolved: Math.max"]
+  u_e_bb2737f36378239b3af0ea16["Unresolved: result.tools.map"]
+  u_e_bb32b88652e101e1b1fef60e["Unresolved: Error"]
+  u_e_bc3d0a05d7c31d034d6f9dfa["Unresolved: structuredClone"]
+  s_32a5813d88937ce3eb46d2aa["src/main/chat.ts: ChatService.send"]
+  u_e_c23e3d3e45125a127b53b560["Unresolved: signal.throwIfAborted"]
+  u_e_c268cfbfc381689ea0595ebe["Unresolved: Error"]
+  u_e_c4c5a54f1f4d7c155177355c["Unresolved: Error"]
+  s_6b05f49df43b740161fd76a2["src/main/project-workers.ts: ProjectWorkers.start"]
+  u_e_c76f891322f726f019885a25["Unresolved: ['images', 'documents'].includes"]
+  s_71fd89b480fab8b8c0a93b37["src/main/runner.ts: Runner.useTool"]
+  u_e_cba1ef276e7b8896449be39a["Unresolved: signal.throwIfAborted"]
+  u_e_cbb3561779cdc4b12568e560["Unresolved: JSON.stringify"]
+  s_c394d0315a03f8bcf99885de["src/main/runner.ts: Runner.assignments"]
+  u_e_da4b9abbcc555fd473206172["Unresolved: tools.some"]
+  u_e_db966392b77f55a504ddddfe["Unresolved: z.string().trim().min(1).max"]
+  u_e_f9e6a000f60c837df5e24c77["Unresolved: z.string"]
+  s_ee16044c443df2e620bb6769 --> s_c77122afa756d78ccb1e5cc8
+  s_ee16044c443df2e620bb6769 --> u_e_8a2c4439134259a8eb0deb5f
+  s_ee16044c443df2e620bb6769 --> u_e_962fc43114d70d0b35196f36
+  s_ee16044c443df2e620bb6769 -.-> s_14b177c3663edee8160bd241
+  f_5d81e3b9b6e10830ce4a6e00 --> u_e_9b51431421f7bae7df532c95
+  s_1bc16026f3d796f1536aab53 --> s_387dba90328ba3ef979d2769
+  s_ee16044c443df2e620bb6769 --> u_e_a4e78ecbd9f9b070a5a4d746
+  s_ee16044c443df2e620bb6769 --> u_e_a7297f51cfe3a9dee7d69df6
+  f_5d81e3b9b6e10830ce4a6e00 --> u_e_ac2dc63d3e37954a7ec5acab
+  s_ee16044c443df2e620bb6769 --> u_e_acf6f556bc3c9f84b1b01701
+  s_1bc16026f3d796f1536aab53 --> s_ee16044c443df2e620bb6769
+  s_bd8d832c8c9c07233640c1df --> s_e64e940d5af9afb42ed14b6d
+  f_5d81e3b9b6e10830ce4a6e00 --> u_e_b21b7c6fd41b8f3f449cff0f
+  s_bd8d832c8c9c07233640c1df --> s_387dba90328ba3ef979d2769
+  f_5d81e3b9b6e10830ce4a6e00 --> u_e_b46e120fdafcc3da663ca24f
+  s_b16e408f47328ed702ffb415 --> u_e_b7f65e88d71cf2654ea5c374
+  s_ee16044c443df2e620bb6769 --> u_e_b9a8a7b1f09ea5c411646d00
+  s_ee16044c443df2e620bb6769 --> u_e_bb2737f36378239b3af0ea16
+  s_ee16044c443df2e620bb6769 --> u_e_bb32b88652e101e1b1fef60e
+  s_b16e408f47328ed702ffb415 --> u_e_bc3d0a05d7c31d034d6f9dfa
+  s_32a5813d88937ce3eb46d2aa --> s_387dba90328ba3ef979d2769
+  s_ee16044c443df2e620bb6769 --> u_e_c23e3d3e45125a127b53b560
+  s_b16e408f47328ed702ffb415 --> u_e_c268cfbfc381689ea0595ebe
+  s_ee16044c443df2e620bb6769 --> u_e_c4c5a54f1f4d7c155177355c
+  s_6b05f49df43b740161fd76a2 --> s_387dba90328ba3ef979d2769
+  s_ee16044c443df2e620bb6769 --> u_e_c76f891322f726f019885a25
+  s_71fd89b480fab8b8c0a93b37 --> s_ee16044c443df2e620bb6769
+  s_ee16044c443df2e620bb6769 --> u_e_cba1ef276e7b8896449be39a
+  s_ee16044c443df2e620bb6769 --> u_e_cbb3561779cdc4b12568e560
+  s_c394d0315a03f8bcf99885de --> s_b16e408f47328ed702ffb415
+  s_ee16044c443df2e620bb6769 --> u_e_da4b9abbcc555fd473206172
+  f_5d81e3b9b6e10830ce4a6e00 --> u_e_db966392b77f55a504ddddfe
+  s_c394d0315a03f8bcf99885de --> s_b16e408f47328ed702ffb415
+  f_5d81e3b9b6e10830ce4a6e00 --> u_e_f9e6a000f60c837df5e24c77

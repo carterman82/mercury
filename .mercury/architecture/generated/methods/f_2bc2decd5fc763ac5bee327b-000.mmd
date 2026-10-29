@@ -1,0 +1,69 @@
+flowchart LR
+  s_d545c2bc89ab958a457aa700["src/main/chat-browser.ts: ChatBrowser.interact"]
+  s_7d79861c82eda1c61e025bb8["InactivityWatchdog.constructor · 6"]
+  s_362ce27c6e539a607e1c8dec["InactivityWatchdog.progress · 7"]
+  u_e_027c3835b3a47e8d22a5143f["Unresolved: this.controller.abort"]
+  s_a17bd4728014b7eb43781aa0["src/main/chat-browser.ts: ChatBrowser.waitDelay"]
+  s_433f33c12021213e1f31a831["abortable · 17"]
+  u_e_0addde78b965afd804493104["Unresolved: setTimeout"]
+  s_8e87c8abec358cf8d840188e["src/main/chat-browser.ts: ChatBrowser.open"]
+  s_e009478414bd902defd3a3f1["src/main/providers.ts: LocalProviders.messages.cleanup"]
+  s_bcad904a9326b17af8a6306b["InactivityWatchdog.dispose · 14"]
+  u_e_2ed4a70c92ef748007bfcff5["Unresolved: Promise.race"]
+  s_941d4daa81f147d6d6f89292["src/main/chat-generation.ts: generateChatTurn.progress"]
+  s_8d3ea567cff795446a267621["src/main/chat-browser.ts: ChatBrowser.read"]
+  s_dafb7bc9df96bb2400d55208["InactivityWatchdog.pause · 13"]
+  s_6fceed7b21f95169d965b85b["src/main/cloud-providers.ts: cloudChat"]
+  s_9bd065f97be99a0c31453b50["src/main/providers.ts: LocalProviders.chatOnce"]
+  s_83e7c8845ab9ab6e8cfc1f94["src/main/providers.ts: LocalProviders.messages.progress"]
+  s_2a05ed6a3465e61673320bca["src/main/chat-browser.ts: ChatBrowser.preview"]
+  s_9bac120e69fb07d57c9cdbe5["src/main/chat-generation.ts: generateChatTurn.onReasoning"]
+  u_e_895238ee9ff183af1a5051af["Unresolved: clearTimeout"]
+  f_2bc2decd5fc763ac5bee327b["src/main/inactivity.ts"]
+  u_e_921f56aa7dbcbb7738342eaa["Unresolved: AbortController"]
+  u_e_95df284d5ebc239386229831["Unresolved: Promise"]
+  s_b65287cfa41a37c8668126f4["src/main/chat-generation.ts: generateChatTurn"]
+  u_e_ae5e810a37c3714ca31e600a["Unresolved: signal.removeEventListener"]
+  u_e_b0e6d760a5dcbf065a3de8d9["Unresolved: this.timer.unref"]
+  u_e_bff57ff917d9b9cd35b80510["Unresolved: reject"]
+  s_f31ec72d318f5e404d179202["src/main/chat-browser.ts: ChatBrowser.screenshot"]
+  s_d545c2bc89ab958a457aa700 -.-> s_7d79861c82eda1c61e025bb8
+  s_362ce27c6e539a607e1c8dec --> u_e_027c3835b3a47e8d22a5143f
+  s_a17bd4728014b7eb43781aa0 --> s_433f33c12021213e1f31a831
+  s_362ce27c6e539a607e1c8dec --> u_e_0addde78b965afd804493104
+  s_d545c2bc89ab958a457aa700 --> s_433f33c12021213e1f31a831
+  s_8e87c8abec358cf8d840188e -.-> s_362ce27c6e539a607e1c8dec
+  s_e009478414bd902defd3a3f1 -.-> s_bcad904a9326b17af8a6306b
+  s_7d79861c82eda1c61e025bb8 -.-> s_362ce27c6e539a607e1c8dec
+  s_8e87c8abec358cf8d840188e --> s_433f33c12021213e1f31a831
+  s_433f33c12021213e1f31a831 --> u_e_2ed4a70c92ef748007bfcff5
+  s_d545c2bc89ab958a457aa700 -.-> s_bcad904a9326b17af8a6306b
+  s_941d4daa81f147d6d6f89292 -.-> s_362ce27c6e539a607e1c8dec
+  s_8d3ea567cff795446a267621 --> s_433f33c12021213e1f31a831
+  s_bcad904a9326b17af8a6306b -.-> s_dafb7bc9df96bb2400d55208
+  s_6fceed7b21f95169d965b85b -.-> s_362ce27c6e539a607e1c8dec
+  s_9bd065f97be99a0c31453b50 -.-> s_362ce27c6e539a607e1c8dec
+  s_6fceed7b21f95169d965b85b -.-> s_7d79861c82eda1c61e025bb8
+  s_83e7c8845ab9ab6e8cfc1f94 -.-> s_362ce27c6e539a607e1c8dec
+  s_2a05ed6a3465e61673320bca --> s_433f33c12021213e1f31a831
+  s_6fceed7b21f95169d965b85b -.-> s_bcad904a9326b17af8a6306b
+  s_8d3ea567cff795446a267621 -.-> s_7d79861c82eda1c61e025bb8
+  s_9bd065f97be99a0c31453b50 -.-> s_7d79861c82eda1c61e025bb8
+  s_8d3ea567cff795446a267621 -.-> s_bcad904a9326b17af8a6306b
+  s_8d3ea567cff795446a267621 -.-> s_362ce27c6e539a607e1c8dec
+  s_9bd065f97be99a0c31453b50 -.-> s_bcad904a9326b17af8a6306b
+  s_9bac120e69fb07d57c9cdbe5 -.-> s_362ce27c6e539a607e1c8dec
+  s_8e87c8abec358cf8d840188e -.-> s_362ce27c6e539a607e1c8dec
+  s_dafb7bc9df96bb2400d55208 --> u_e_895238ee9ff183af1a5051af
+  f_2bc2decd5fc763ac5bee327b --> u_e_921f56aa7dbcbb7738342eaa
+  s_433f33c12021213e1f31a831 --> u_e_95df284d5ebc239386229831
+  s_b65287cfa41a37c8668126f4 -.-> s_7d79861c82eda1c61e025bb8
+  s_9bd065f97be99a0c31453b50 -.-> s_362ce27c6e539a607e1c8dec
+  s_362ce27c6e539a607e1c8dec -.-> s_dafb7bc9df96bb2400d55208
+  s_b65287cfa41a37c8668126f4 -.-> s_bcad904a9326b17af8a6306b
+  s_433f33c12021213e1f31a831 --> u_e_ae5e810a37c3714ca31e600a
+  s_8e87c8abec358cf8d840188e -.-> s_7d79861c82eda1c61e025bb8
+  s_362ce27c6e539a607e1c8dec --> u_e_b0e6d760a5dcbf065a3de8d9
+  s_8d3ea567cff795446a267621 --> s_433f33c12021213e1f31a831
+  s_433f33c12021213e1f31a831 --> u_e_bff57ff917d9b9cd35b80510
+  s_f31ec72d318f5e404d179202 --> s_433f33c12021213e1f31a831

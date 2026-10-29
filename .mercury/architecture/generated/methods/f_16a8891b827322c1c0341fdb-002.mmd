@@ -1,0 +1,30 @@
+flowchart LR
+  f_16a8891b827322c1c0341fdb["src/main/project-worktrees.test.ts"]
+  u_e_cfe981fc1d4911b99afaf355["Unresolved: expect"]
+  s_4898c1d6549ba0da0b758f37["fixture · 14"]
+  u_e_d2751be3176ef68c71b2117d["Unresolved: os.tmpdir"]
+  s_9592cef6c541180ea01f113a["command · 11"]
+  u_e_d91377989465269cb3eb4e93["Unresolved: expect(saved).toMatchObject"]
+  s_01947ba379eb781921904d33["src/main/project-worktrees.ts: ProjectWorktreeService.constructor"]
+  u_e_de620a55f27d1c6572d29bb6["Unresolved: expect((await command(root, 'log', '-1', '--format=%an|%ae|%cn|%ce')).trim()).toBe"]
+  u_e_edae56089c4add100501a3cf["Unresolved: path.join"]
+  u_e_ef1d72f1d6378142e32a5c32["Unresolved: expect"]
+  u_e_ef1e7b1fdd86360e2afa531e["Unresolved: it"]
+  u_e_f63cd7b5fc9d667eb80deeab["Unresolved: execute"]
+  u_e_fca9734fa2e51991984b789f["Unresolved: expect(await command(root, 'log', '-1', '--format=%s')).toBe"]
+  u_e_fe8d3edd18327f88a27356a8["Unresolved: path.join"]
+  f_16a8891b827322c1c0341fdb --> u_e_cfe981fc1d4911b99afaf355
+  s_4898c1d6549ba0da0b758f37 --> u_e_d2751be3176ef68c71b2117d
+  s_4898c1d6549ba0da0b758f37 --> s_9592cef6c541180ea01f113a
+  f_16a8891b827322c1c0341fdb --> u_e_d91377989465269cb3eb4e93
+  s_4898c1d6549ba0da0b758f37 -.-> s_01947ba379eb781921904d33
+  f_16a8891b827322c1c0341fdb --> u_e_de620a55f27d1c6572d29bb6
+  f_16a8891b827322c1c0341fdb --> s_9592cef6c541180ea01f113a
+  f_16a8891b827322c1c0341fdb --> u_e_edae56089c4add100501a3cf
+  f_16a8891b827322c1c0341fdb --> u_e_ef1d72f1d6378142e32a5c32
+  f_16a8891b827322c1c0341fdb --> u_e_ef1e7b1fdd86360e2afa531e
+  s_4898c1d6549ba0da0b758f37 --> s_9592cef6c541180ea01f113a
+  s_9592cef6c541180ea01f113a --> u_e_f63cd7b5fc9d667eb80deeab
+  s_4898c1d6549ba0da0b758f37 --> s_9592cef6c541180ea01f113a
+  f_16a8891b827322c1c0341fdb --> u_e_fca9734fa2e51991984b789f
+  f_16a8891b827322c1c0341fdb --> u_e_fe8d3edd18327f88a27356a8

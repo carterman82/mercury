@@ -1,0 +1,90 @@
+flowchart LR
+  f_648573674bad009d008b25d9["src/main/project-tools.ts"]
+  u_e_6a6cf1488776fd4a68737cd0["Unresolved: z.string().trim().min(1).max"]
+  s_2b1f9bd16affc873dfbfa64d["ProjectTools.prepareWorker · 124"]
+  u_e_6f89a7c065a0384db9704d6e["Unresolved: /[:*?\0]/.test"]
+  s_a26c220bf37ee317ae6ace1e["ProjectTools.execute · 200"]
+  s_a4975f36a3f9faff23f0687c["within · 49"]
+  u_e_7054ac1b30c3f1377e2c86ac["Unresolved: Promise.all"]
+  u_e_709280a4b1e566c36436149b["Unresolved: Map"]
+  s_f27f8fdef451d7bb05c5048b["ProjectTools.authorize · 161"]
+  u_e_721c9906a8fc2474286d9cd6["Unresolved: signal.throwIfAborted"]
+  u_e_72e431a123a9a8168ad12f35["Unresolved: JSON.stringify"]
+  u_e_732307ea8b692bc8f7c83579["Unresolved: z.number().int"]
+  s_29c310f083dd35ceead7464f["ProjectTools.pluginPolicy.authorize · 184"]
+  s_11e8c8809c629b79241c80a5["ProjectTools.context · 157"]
+  u_e_740cf33715cf5213c87a58cb["Unresolved: z.object({ expectedRevision: z.number().int().nonnegative(), content: z.string().max(24000) }).strict"]
+  s_2cd77cc2c4c686a531035a8e["src/main/workspace.ts: Workspace.search"]
+  u_e_75c7ab774b64c58403bc54c4["Unresolved: z.string().min(1).max"]
+  s_9d420240f34316aba5707501["canonicalProjectPath · 55"]
+  u_e_76fe9e8abfcf74b1c0e7e094["Unresolved: path.basename"]
+  u_e_78482d941ae54bea7e365aa1["Unresolved: z.string"]
+  u_e_7990da31fc5ec8a3e29270c8["Unresolved: z.object"]
+  u_e_7a687162af6f4e0c88ba9611["Unresolved: z.object"]
+  s_96a56210be25ff9c6e2f096c["ProjectTools.prepare · 78"]
+  u_e_7b6807c766f598ee6024a677["Unresolved: signal.throwIfAborted"]
+  s_1b86a4837dbf11d0ad688ef1["ProjectTools.checkWorkerWrite · 150"]
+  s_eef34a052b825553f331042c["ProjectTools.execute.commandState · 255"]
+  u_e_7ef2c2fa588a76dca1bf99a3["Unresolved: JSON.stringify"]
+  u_e_7f4ffade89ba70401a60b470["Unresolved: z.string"]
+  u_e_7f9f182410047a3c8fc3197d["Unresolved: Error"]
+  s_0f307563c3f2a7e11151656e["ProjectTools.refreshAfterIntegration · 144"]
+  s_f06b86f390eae59ae49f8570["src/main/project-maps.ts: ProjectMaps.refresh"]
+  u_e_838e70df9f08ec2f1f24f91d["Unresolved: z.number().int().min"]
+  u_e_838f8bc67ca1fd796039ffbb["Unresolved: JSON.stringify"]
+  u_e_83937563b022c604a0a805ea["Unresolved: z.number"]
+  s_baa6cf57ae4a7200bc72a010["src/main/project-policy.ts: OneShotProjectGrants.consume"]
+  u_e_84cf69388917f00f7e4b0edd["Unresolved: fs.realpath"]
+  u_e_8547ffc2b7f5b6eac14d9ce3["Unresolved: value.includes"]
+  s_1bc16026f3d796f1536aab53["src/main/chat.ts: ChatService.send.executeCall"]
+  u_e_87caeed8652d0cf6f8b443da["Unresolved: z.number().int().min"]
+  u_e_88af708b5537c662def8c3fb["Unresolved: z.array"]
+  s_465e98f8ae25af889dd15f68["ProjectTools.checkWorkerWrite.normalize · 154"]
+  u_e_8b81151a98606c66be22fe89["Unresolved: z.string().min"]
+  u_e_8c33e8c0e3573fef4c8ed87d["Unresolved: notes.content.slice"]
+  s_2e26a1fb702ed448abf05817["ProjectTools.authorizePlugin · 178"]
+  s_6aa60aeb10ffaed53f6b83ab["src/main/workspace.ts: hash"]
+  s_19088dc301adb7ae3c49f114["ProjectTools.reportDiagrams · 110"]
+  u_e_8ca4becd142435b8a14be87c["Unresolved: diagrams.push"]
+  s_180d971dfc3d69363dce371d["ProjectTools.workspace · 123"]
+  u_e_909579a08d53cf5fc24ff00e["Unresolved: z.number"]
+  f_648573674bad009d008b25d9 --> u_e_6a6cf1488776fd4a68737cd0
+  s_2b1f9bd16affc873dfbfa64d --> u_e_6f89a7c065a0384db9704d6e
+  s_a26c220bf37ee317ae6ace1e --> s_a4975f36a3f9faff23f0687c
+  s_a26c220bf37ee317ae6ace1e --> u_e_7054ac1b30c3f1377e2c86ac
+  f_648573674bad009d008b25d9 --> u_e_709280a4b1e566c36436149b
+  s_f27f8fdef451d7bb05c5048b --> u_e_721c9906a8fc2474286d9cd6
+  s_a26c220bf37ee317ae6ace1e --> u_e_72e431a123a9a8168ad12f35
+  f_648573674bad009d008b25d9 --> u_e_732307ea8b692bc8f7c83579
+  s_29c310f083dd35ceead7464f -.-> s_11e8c8809c629b79241c80a5
+  f_648573674bad009d008b25d9 --> u_e_740cf33715cf5213c87a58cb
+  s_a26c220bf37ee317ae6ace1e -.-> s_2cd77cc2c4c686a531035a8e
+  f_648573674bad009d008b25d9 --> u_e_75c7ab774b64c58403bc54c4
+  s_9d420240f34316aba5707501 --> u_e_76fe9e8abfcf74b1c0e7e094
+  f_648573674bad009d008b25d9 --> u_e_78482d941ae54bea7e365aa1
+  f_648573674bad009d008b25d9 --> u_e_7990da31fc5ec8a3e29270c8
+  f_648573674bad009d008b25d9 --> u_e_7a687162af6f4e0c88ba9611
+  s_96a56210be25ff9c6e2f096c --> u_e_7b6807c766f598ee6024a677
+  s_a26c220bf37ee317ae6ace1e -.-> s_1b86a4837dbf11d0ad688ef1
+  s_eef34a052b825553f331042c --> u_e_7ef2c2fa588a76dca1bf99a3
+  f_648573674bad009d008b25d9 --> u_e_7f4ffade89ba70401a60b470
+  s_a26c220bf37ee317ae6ace1e --> u_e_7f9f182410047a3c8fc3197d
+  s_0f307563c3f2a7e11151656e -.-> s_f06b86f390eae59ae49f8570
+  s_f27f8fdef451d7bb05c5048b -.-> s_11e8c8809c629b79241c80a5
+  f_648573674bad009d008b25d9 --> u_e_838e70df9f08ec2f1f24f91d
+  s_2b1f9bd16affc873dfbfa64d --> u_e_838f8bc67ca1fd796039ffbb
+  f_648573674bad009d008b25d9 --> u_e_83937563b022c604a0a805ea
+  s_f27f8fdef451d7bb05c5048b -.-> s_baa6cf57ae4a7200bc72a010
+  s_9d420240f34316aba5707501 --> u_e_84cf69388917f00f7e4b0edd
+  f_648573674bad009d008b25d9 --> u_e_8547ffc2b7f5b6eac14d9ce3
+  s_1bc16026f3d796f1536aab53 -.-> s_a26c220bf37ee317ae6ace1e
+  s_a26c220bf37ee317ae6ace1e -.-> s_f27f8fdef451d7bb05c5048b
+  f_648573674bad009d008b25d9 --> u_e_87caeed8652d0cf6f8b443da
+  f_648573674bad009d008b25d9 --> u_e_88af708b5537c662def8c3fb
+  s_1b86a4837dbf11d0ad688ef1 --> s_465e98f8ae25af889dd15f68
+  f_648573674bad009d008b25d9 --> u_e_8b81151a98606c66be22fe89
+  s_96a56210be25ff9c6e2f096c --> u_e_8c33e8c0e3573fef4c8ed87d
+  s_2e26a1fb702ed448abf05817 --> s_6aa60aeb10ffaed53f6b83ab
+  s_19088dc301adb7ae3c49f114 --> u_e_8ca4becd142435b8a14be87c
+  s_1b86a4837dbf11d0ad688ef1 -.-> s_180d971dfc3d69363dce371d
+  f_648573674bad009d008b25d9 --> u_e_909579a08d53cf5fc24ff00e

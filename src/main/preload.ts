@@ -13,6 +13,14 @@ const api: DesktopApi = {
   openProject: () => call('openProject'),
   updateProjectPermissions: (projectId, mode) => call('updateProjectPermissions', projectId, mode),
   projectMapStatus: id => call('projectMapStatus', id),
+  generateProjectReport: (id, regenerate) => call('generateProjectReport', id, regenerate),
+  cachedProjectReport: id => call('cachedProjectReport', id),
+  onProjectReportProgress: callback => {
+    const listener = (_event: Electron.IpcRendererEvent, id: string, message: string) => callback(id, message);
+    ipcRenderer.on('project-report:progress', listener);
+    return () => ipcRenderer.removeListener('project-report:progress', listener);
+  },
+  saveProjectReport: id => call('saveProjectReport', id),
   refreshProjectMaps: id => call('refreshProjectMaps', id),
   readProjectDiagram: (id, path) => call('readProjectDiagram', id, path),
   createSession: (projectId, objective) => call('createSession', projectId, objective),

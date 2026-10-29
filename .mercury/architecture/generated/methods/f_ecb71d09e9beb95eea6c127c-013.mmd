@@ -1,0 +1,107 @@
+flowchart LR
+  s_87ea1be9aed5f0a5a7535895["tests.cli_captures_command_after_config_base64 · 2585"]
+  u_e_9711fbe3d12df6d41b343d24["Unresolved: assert_eq"]
+  s_5ffe69e19965b218673f424e["main · 1031"]
+  u_e_973b20bae3e276413be65a62["Unresolved: n.as_str"]
+  u_e_9770e484de8df83520c9be59["Unresolved: telemetry::emit_early_exit_with_kind"]
+  u_e_97bc90e551c81db811d4b0b4["Unresolved: eprintln"]
+  u_e_981c40cbc19c9e5a5d90c75c["Unresolved: std::env::current_exe()         .ok"]
+  s_06b5024b9155c9e053b14b12["tests.finalize_maps_envelope_to_stdout_exit_zero · 3132"]
+  u_e_98b4173ce322d89b5f5c342d["Unresolved: assert_eq"]
+  s_580ec7e3cb8706f9204215f1["config_input · 820"]
+  u_e_996a4882d9f177644b338a0a["Unresolved: cli.config.as_ref"]
+  u_e_9a78984a8855937581128cca["Unresolved: response         .output_metadata         .as_ref()         .and_then"]
+  s_7207dc4cfbd29eb0bb4e2a41["tests.request_preflight_duplicates_preserve_the_selected_output_route · 2337"]
+  u_e_9ab8ee756580d8c31f5b9725["Unresolved: assert"]
+  s_c61fba9c8c0be59e18174723["tests.resolve_with_cli · 2378"]
+  u_e_9b2bf9d529ee352cf16a5e39["Unresolved: parse_cli"]
+  s_389d8e6e328509b2081305ac["tests.cli_operation_routes_input_failures_to_lifecycle_errors · 2093"]
+  u_e_9b2da2cd3d8da0e14255ac9b["Unresolved: RequestInputError::Decode"]
+  u_e_9b330676e13dd86869afd8c8["Unresolved: eprint"]
+  s_dfb7b221b2ba1a55318b6c17["tests.finalize_routes_a_failed_exec_to_stderr · 3169"]
+  u_e_9b52c54146e6a773389c4737["Unresolved: Err"]
+  s_70087aaf0833d89bd3e8bbff["tests.audit_mode_only_accepts_process_container · 2419"]
+  u_e_9bebef2a438e6afd2354c038["Unresolved: containment.wire_name"]
+  s_adae7ce67e6be5e995a18909["run_state_aware_main · 504"]
+  u_e_9c5b55fe39c28e291df63235["Unresolved: AuditEvent::new(AuditEventName::SandboxIdentity)             .str(&quot;backend&quot;, backend)             .str"]
+  s_9360924eaf993ac03b0e2254["validate_audit_request · 317"]
+  s_34ad33a2d86e2991d09a7b1e["tests.cancel_then_cleanup_runs_cleanup_even_if_emit_panics · 3071"]
+  u_e_9c6c5f56e63bc7765c3f3d52["Unresolved: Box::new"]
+  s_6e281e7568f94146f45a98b5["tests.request_error_route_matches_the_output_conventions · 2066"]
+  u_e_9c6d779b7149e9f3f15e4743["Unresolved: assert"]
+  s_852b0cfab860ffd604cfecfe["decode_config_input_once · 334"]
+  u_e_9c756a9d641e7793aa2a8346["Unresolved: mxc_sdk::mxc_common::config_parser::decode_request_input_classified"]
+  s_246d95db49bfb729e1d13258["tests.state_aware_exec_cli_command_overrides_policy_command_line · 2962"]
+  u_e_9cae873c8c05d6979102b864["Unresolved: assert_eq"]
+  s_ec03ef5fca4a2e59d9564039["tests.parse_rejection_logging_preserves_optional_phase_context · 2233"]
+  u_e_9cbfbe2de2b3ea107d70bdb4["Unresolved: std::fs::read_to_string"]
+  s_bfde3b0cb12f0d44f9476e20["tests.cli_command_fills_absent_policy_command_line_without_override_log · 2744"]
+  u_e_9d6ec9c17502815c1c479c03["Unresolved: assert_eq"]
+  u_e_9d7c885bd9b37d8977a8cce7["Unresolved: cli                 .image                 .iter()                 .map(String::as_str)                 .filter"]
+  s_6c7ffc56923459f554c47ae7["tests.no_identity_record_for_a_failed_phase · 2058"]
+  u_e_9e667a24875cd6225c094add["Unresolved: MxcError::backend_unavailable"]
+  s_33a8b6f7aee99a2796e5f2b0["tests.cli_help_advertises_container_id_for_lifecycle_routing · 1854"]
+  u_e_9e93ac12c88e904a47f724f9["Unresolved: Cli::command().render_help().to_string"]
+  s_0d3ef9eb00e0751efb424fa0["tests.state_aware_exec_unconvertible_cli_command_routes_to_envelope · 3026"]
+  u_e_9f2d566965274d7b603cb277["Unresolved: assert"]
+  s_9665a9db785eb41b88ce6e4f["ParkedDaclGuard.drop · 934"]
+  s_61af96d253f484cbe16c0555["tests.cli_accepts_lifecycle_operation_and_container_id · 1789"]
+  u_e_9f4e06956b3198959f6149ab["Unresolved: Cli::try_parse_from"]
+  s_9ef1a56b438ce88a39c10d49["reject_state_aware_without_operation · 745"]
+  s_bb661505b7983f995a78a8e1["log_request_parse_rejection · 756"]
+  s_e6ac2b6c16313418ff74e510["cancel_then_cleanup · 1015"]
+  u_e_9fb04e455a71e9d4b83b6713["Unresolved: std::panic::catch_unwind"]
+  s_e1160bd776f7fec9ff51272f["tests.finalize_maps_error_to_serialised_envelope · 3154"]
+  u_e_9fc154d81ffadbe5a7db4edd["Unresolved: serde_json::from_str"]
+  s_eb1bc8acb8ad4fe12b46ea08["log_request · 275"]
+  u_e_9fc41e5003d854323f4f947b["Unresolved: request.container_id.is_empty"]
+  u_e_a014e224cdf2b0300179743e["Unresolved: process::exit"]
+  s_3372bdfdd5471510b290163b["tests.request_parse_failures_preserve_audit_classification_and_output_route · 2268"]
+  u_e_a01d0dd8b4d9dd145e7aa207["Unresolved: mxc_sdk::mxc_common::config_parser::load_mxc_request_from_json"]
+  u_e_a081122a8248ff4f5deb15cf["Unresolved: assert_eq"]
+  s_ba3be7a42f0af23d08bf989f["tests.invalid_utf8_file_is_a_malformed_lifecycle_input · 2168"]
+  u_e_a09a6103dd1e03155f8101f4["Unresolved: std::fs::read_to_string(audit_path).unwrap"]
+  u_e_a09e502beb275dc8e047a270["Unresolved: writeln"]
+  u_e_a0b4ba3f282ed165d9deb352["Unresolved: logger.get_buffer"]
+  u_e_a0bae0a0f1622dd4baa1222b["Unresolved: outcome.emit"]
+  u_e_a0f3ec63dadca56523fbeb32["Unresolved: eprintln"]
+  s_87ea1be9aed5f0a5a7535895 --> u_e_9711fbe3d12df6d41b343d24
+  s_5ffe69e19965b218673f424e --> u_e_973b20bae3e276413be65a62
+  s_5ffe69e19965b218673f424e --> u_e_9770e484de8df83520c9be59
+  s_5ffe69e19965b218673f424e --> u_e_97bc90e551c81db811d4b0b4
+  s_5ffe69e19965b218673f424e --> u_e_981c40cbc19c9e5a5d90c75c
+  s_06b5024b9155c9e053b14b12 --> u_e_98b4173ce322d89b5f5c342d
+  s_580ec7e3cb8706f9204215f1 --> u_e_996a4882d9f177644b338a0a
+  s_5ffe69e19965b218673f424e --> u_e_9a78984a8855937581128cca
+  s_7207dc4cfbd29eb0bb4e2a41 --> u_e_9ab8ee756580d8c31f5b9725
+  s_c61fba9c8c0be59e18174723 --> u_e_9b2bf9d529ee352cf16a5e39
+  s_389d8e6e328509b2081305ac --> u_e_9b2da2cd3d8da0e14255ac9b
+  s_5ffe69e19965b218673f424e --> u_e_9b330676e13dd86869afd8c8
+  s_dfb7b221b2ba1a55318b6c17 --> u_e_9b52c54146e6a773389c4737
+  s_70087aaf0833d89bd3e8bbff --> u_e_9bebef2a438e6afd2354c038
+  s_adae7ce67e6be5e995a18909 --> u_e_9c5b55fe39c28e291df63235
+  s_5ffe69e19965b218673f424e -.-> s_9360924eaf993ac03b0e2254
+  s_34ad33a2d86e2991d09a7b1e --> u_e_9c6c5f56e63bc7765c3f3d52
+  s_6e281e7568f94146f45a98b5 --> u_e_9c6d779b7149e9f3f15e4743
+  s_852b0cfab860ffd604cfecfe --> u_e_9c756a9d641e7793aa2a8346
+  s_246d95db49bfb729e1d13258 --> u_e_9cae873c8c05d6979102b864
+  s_ec03ef5fca4a2e59d9564039 --> u_e_9cbfbe2de2b3ea107d70bdb4
+  s_bfde3b0cb12f0d44f9476e20 --> u_e_9d6ec9c17502815c1c479c03
+  s_5ffe69e19965b218673f424e --> u_e_9d7c885bd9b37d8977a8cce7
+  s_6c7ffc56923459f554c47ae7 --> u_e_9e667a24875cd6225c094add
+  s_33a8b6f7aee99a2796e5f2b0 --> u_e_9e93ac12c88e904a47f724f9
+  s_0d3ef9eb00e0751efb424fa0 --> u_e_9f2d566965274d7b603cb277
+  s_ec03ef5fca4a2e59d9564039 -.-> s_9665a9db785eb41b88ce6e4f
+  s_61af96d253f484cbe16c0555 --> u_e_9f4e06956b3198959f6149ab
+  s_9ef1a56b438ce88a39c10d49 -.-> s_bb661505b7983f995a78a8e1
+  s_e6ac2b6c16313418ff74e510 --> u_e_9fb04e455a71e9d4b83b6713
+  s_e1160bd776f7fec9ff51272f --> u_e_9fc154d81ffadbe5a7db4edd
+  s_eb1bc8acb8ad4fe12b46ea08 --> u_e_9fc41e5003d854323f4f947b
+  s_adae7ce67e6be5e995a18909 --> u_e_a014e224cdf2b0300179743e
+  s_3372bdfdd5471510b290163b --> u_e_a01d0dd8b4d9dd145e7aa207
+  s_87ea1be9aed5f0a5a7535895 --> u_e_a081122a8248ff4f5deb15cf
+  s_ba3be7a42f0af23d08bf989f --> u_e_a09a6103dd1e03155f8101f4
+  s_eb1bc8acb8ad4fe12b46ea08 --> u_e_a09e502beb275dc8e047a270
+  s_5ffe69e19965b218673f424e --> u_e_a0b4ba3f282ed165d9deb352
+  s_5ffe69e19965b218673f424e --> u_e_a0bae0a0f1622dd4baa1222b
+  s_5ffe69e19965b218673f424e --> u_e_a0f3ec63dadca56523fbeb32

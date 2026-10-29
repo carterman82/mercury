@@ -1,0 +1,39 @@
+flowchart LR
+  f_911ccbef4815017d6eb4543c["src/main/project-store.test.ts"]
+  u_e_d83c86936cf58a11b3d52c65["Unresolved: expect"]
+  u_e_d9b71547dd28c62b43c6f500["Unresolved: old.close"]
+  u_e_db678e496e867053cb731130["Unresolved: JSON.stringify"]
+  s_60c896f3250fe893ef6ec761["src/main/store.ts: Store.project"]
+  s_72e582247916ebc50956475d["src/main/store.ts: Store.chat"]
+  s_10b6283226ff498fc18604cc["src/main/store.ts: Store.constructor"]
+  u_e_e3ea6b0cd76ea8e1575a2523["Unresolved: DatabaseSync"]
+  s_86f024fd6484279d58d3029e["src/main/store.ts: Store.close"]
+  u_e_ec278c2ace9660831a6f5528["Unresolved: expect(() =&gt; store.saveChat(thread('linked'))).toThrow"]
+  u_e_ed96b2a9943926354ed538f7["Unresolved: old.prepare"]
+  s_3328aa467be6836b854b5d35["database · 11"]
+  u_e_f4939b458f9710947303f3f7["Unresolved: old.prepare"]
+  u_e_f56f49e34b14d00d2b7d7a21["Unresolved: mkdtempSync"]
+  u_e_f962bb80d50e259b5f598548["Unresolved: it"]
+  u_e_f9c5284f62db73523331bad7["Unresolved: expect(store.chat('ordinary').projectId).toBeUndefined"]
+  u_e_ff387256a3d574811839161c["Unresolved: old.prepare('INSERT INTO chats VALUES (?,?,?)').run"]
+  f_911ccbef4815017d6eb4543c --> u_e_d83c86936cf58a11b3d52c65
+  f_911ccbef4815017d6eb4543c --> u_e_d9b71547dd28c62b43c6f500
+  f_911ccbef4815017d6eb4543c --> u_e_db678e496e867053cb731130
+  f_911ccbef4815017d6eb4543c -.-> s_60c896f3250fe893ef6ec761
+  f_911ccbef4815017d6eb4543c -.-> s_72e582247916ebc50956475d
+  f_911ccbef4815017d6eb4543c -.-> s_10b6283226ff498fc18604cc
+  f_911ccbef4815017d6eb4543c --> u_e_e3ea6b0cd76ea8e1575a2523
+  f_911ccbef4815017d6eb4543c -.-> s_72e582247916ebc50956475d
+  f_911ccbef4815017d6eb4543c -.-> s_86f024fd6484279d58d3029e
+  f_911ccbef4815017d6eb4543c -.-> s_10b6283226ff498fc18604cc
+  f_911ccbef4815017d6eb4543c -.-> s_72e582247916ebc50956475d
+  f_911ccbef4815017d6eb4543c --> u_e_ec278c2ace9660831a6f5528
+  f_911ccbef4815017d6eb4543c --> u_e_ed96b2a9943926354ed538f7
+  f_911ccbef4815017d6eb4543c --> s_3328aa467be6836b854b5d35
+  f_911ccbef4815017d6eb4543c --> u_e_f4939b458f9710947303f3f7
+  s_3328aa467be6836b854b5d35 --> u_e_f56f49e34b14d00d2b7d7a21
+  f_911ccbef4815017d6eb4543c -.-> s_72e582247916ebc50956475d
+  f_911ccbef4815017d6eb4543c --> u_e_f962bb80d50e259b5f598548
+  f_911ccbef4815017d6eb4543c --> u_e_f9c5284f62db73523331bad7
+  f_911ccbef4815017d6eb4543c --> s_3328aa467be6836b854b5d35
+  f_911ccbef4815017d6eb4543c --> u_e_ff387256a3d574811839161c

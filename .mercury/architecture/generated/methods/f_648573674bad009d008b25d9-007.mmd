@@ -1,0 +1,93 @@
+flowchart LR
+  s_6a832b2be24b4daba416b3a6["ProjectTools.serial · 193"]
+  u_e_c7c2b72c5b18daba1e58175a["Unresolved: previous.catch"]
+  s_1bc16026f3d796f1536aab53["src/main/chat.ts: ChatService.send.executeCall"]
+  s_81f2741e78bc517e5800d6f1["ProjectTools.pluginPolicy · 181"]
+  s_96a56210be25ff9c6e2f096c["ProjectTools.prepare · 78"]
+  s_fdd4d8e7aa6db53e5f6cd77a["src/main/project-context.ts: projectContext"]
+  s_e5b6aa2534800ec5570c77e2["ProjectTools.handles · 94"]
+  s_f27f8fdef451d7bb05c5048b["ProjectTools.authorize · 161"]
+  u_e_c97f2acd1d7ee0084e3ea0bc["Unresolved: Error"]
+  f_648573674bad009d008b25d9["src/main/project-tools.ts"]
+  u_e_c9eda3adbedd061b21dbb2bd["Unresolved: Object.entries"]
+  s_a26c220bf37ee317ae6ace1e["ProjectTools.execute · 200"]
+  u_e_ca35d9ba586c4f18053822c1["Unresolved: change.after?.slice"]
+  s_3f6b073275fc294e65d9e427["ProjectTools.constructor · 76"]
+  s_49a813c7e82d685c83a3fdf1["src/main/project-context.ts: ProjectNotes.constructor"]
+  u_e_cedcd2aba5c19b3c98397c30["Unresolved: z.string().trim().min"]
+  u_e_cf7967daedf2dbc8e40c08ad["Unresolved: filename.optional"]
+  u_e_cf8da1bea74dca85f19d9f74["Unresolved: z.number().int().min(1).optional"]
+  u_e_cfc3d4b2425e1963806dd6dd["Unresolved: signal.throwIfAborted"]
+  s_dde8512336ff9fdf98c86728["src/main/project-workers.ts: ProjectWorkers.run"]
+  s_69f8583bf37b29bb18fcda99["ProjectTools.getWorkspace · 118"]
+  s_6ce6bd8e0ad6bbbf16ef93e3["ProjectTools.releaseWorker · 136"]
+  u_e_d2266844da10636bc73c0d7a["Unresolved: z.array(filename).max"]
+  u_e_d522e71b2ea8e2852dc8a925["Unresolved: z.string"]
+  s_420a6667f9d16798afc6a039["src/main/project-policy.ts: OneShotProjectGrants.constructor"]
+  u_e_d58bf76e98f86290c68bca7a["Unresolved: z.number().int().min(1).max"]
+  u_e_d758c06952acbc2e35919eaf["Unresolved: Promise.all"]
+  s_78a69a1e3b734dd28de66abb["ProjectTools.execute.resolve · 217"]
+  s_2e26a1fb702ed448abf05817["ProjectTools.authorizePlugin · 178"]
+  u_e_da7f2b3526caff8c0dced4cc["Unresolved: JSON.stringify"]
+  u_e_da84abe2230577c317fe1ff7["Unresolved: JSON.stringify"]
+  u_e_db7b1738f5e10781a2c4d94e["Unresolved: Error"]
+  u_e_dc074b5f53d32860c6f778c9["Unresolved: z.object({ path: filename, start: z.number().int().min(1).optional(), end: z.number().int().min(1).optional() }).strict"]
+  u_e_dc995c073f88186ceffeeb2e["Unresolved: z.object"]
+  s_32a5813d88937ce3eb46d2aa["src/main/chat.ts: ChatService.send"]
+  u_e_dfe119171cc9f3fd5f11d250["Unresolved: z.object"]
+  s_1b86a4837dbf11d0ad688ef1["ProjectTools.checkWorkerWrite · 150"]
+  u_e_e0fc383d4e8f56b34bd788d5["Unresolved: normalize(relative).startsWith"]
+  s_eef34a052b825553f331042c["ProjectTools.execute.commandState · 255"]
+  s_6c57fb22fa612eeba88295b5["src/main/workspace.ts: Workspace.list"]
+  u_e_e3909673dbd6127fdaeca52b["Unresolved: z.string().max"]
+  u_e_e743be2fbf16c1b7cdeb2a1a["Unresolved: z.string().regex(/^[a-f0-9]{64}$/).nullable"]
+  u_e_e7c584fda416b6e2eb62a7b4["Unresolved: z.object"]
+  s_6aa60aeb10ffaed53f6b83ab["src/main/workspace.ts: hash"]
+  u_e_ed6f5c3868781a794ba68070["Unresolved: z.string().max"]
+  s_2b1f9bd16affc873dfbfa64d["ProjectTools.prepareWorker · 124"]
+  u_e_edb9999b1550362babb0ef96["Unresolved: scope.ownedPaths.map"]
+  u_e_ee2ddf5ad14113e2c1f2d1f2["Unresolved: z.string().min(1).max"]
+  u_e_f0602cf563baba99195b0bd7["Unresolved: this.workspaces.delete"]
+  u_e_f127e82e704ee3abf312fde4["Unresolved: z.array(filename).max(20).optional"]
+  u_e_f16f7bc8eb5a5d0a09ea5385["Unresolved: value.replaceAll('\\', '/').replace"]
+  s_0f307563c3f2a7e11151656e["ProjectTools.refreshAfterIntegration · 144"]
+  s_6a832b2be24b4daba416b3a6 --> u_e_c7c2b72c5b18daba1e58175a
+  s_1bc16026f3d796f1536aab53 -.-> s_81f2741e78bc517e5800d6f1
+  s_96a56210be25ff9c6e2f096c --> s_fdd4d8e7aa6db53e5f6cd77a
+  s_1bc16026f3d796f1536aab53 -.-> s_e5b6aa2534800ec5570c77e2
+  s_f27f8fdef451d7bb05c5048b --> u_e_c97f2acd1d7ee0084e3ea0bc
+  f_648573674bad009d008b25d9 --> u_e_c9eda3adbedd061b21dbb2bd
+  s_a26c220bf37ee317ae6ace1e --> u_e_ca35d9ba586c4f18053822c1
+  s_3f6b073275fc294e65d9e427 -.-> s_49a813c7e82d685c83a3fdf1
+  f_648573674bad009d008b25d9 --> u_e_cedcd2aba5c19b3c98397c30
+  f_648573674bad009d008b25d9 --> u_e_cf7967daedf2dbc8e40c08ad
+  f_648573674bad009d008b25d9 --> u_e_cf8da1bea74dca85f19d9f74
+  s_a26c220bf37ee317ae6ace1e --> u_e_cfc3d4b2425e1963806dd6dd
+  s_dde8512336ff9fdf98c86728 -.-> s_69f8583bf37b29bb18fcda99
+  s_dde8512336ff9fdf98c86728 -.-> s_6ce6bd8e0ad6bbbf16ef93e3
+  f_648573674bad009d008b25d9 --> u_e_d2266844da10636bc73c0d7a
+  f_648573674bad009d008b25d9 --> u_e_d522e71b2ea8e2852dc8a925
+  f_648573674bad009d008b25d9 -.-> s_420a6667f9d16798afc6a039
+  f_648573674bad009d008b25d9 --> u_e_d58bf76e98f86290c68bca7a
+  s_a26c220bf37ee317ae6ace1e --> u_e_d758c06952acbc2e35919eaf
+  s_a26c220bf37ee317ae6ace1e --> s_78a69a1e3b734dd28de66abb
+  s_2e26a1fb702ed448abf05817 --> u_e_da7f2b3526caff8c0dced4cc
+  s_a26c220bf37ee317ae6ace1e --> u_e_da84abe2230577c317fe1ff7
+  s_a26c220bf37ee317ae6ace1e --> u_e_db7b1738f5e10781a2c4d94e
+  f_648573674bad009d008b25d9 --> u_e_dc074b5f53d32860c6f778c9
+  f_648573674bad009d008b25d9 --> u_e_dc995c073f88186ceffeeb2e
+  s_32a5813d88937ce3eb46d2aa -.-> s_96a56210be25ff9c6e2f096c
+  f_648573674bad009d008b25d9 --> u_e_dfe119171cc9f3fd5f11d250
+  s_1b86a4837dbf11d0ad688ef1 --> u_e_e0fc383d4e8f56b34bd788d5
+  s_eef34a052b825553f331042c -.-> s_6c57fb22fa612eeba88295b5
+  f_648573674bad009d008b25d9 --> u_e_e3909673dbd6127fdaeca52b
+  f_648573674bad009d008b25d9 --> u_e_e743be2fbf16c1b7cdeb2a1a
+  f_648573674bad009d008b25d9 --> u_e_e7c584fda416b6e2eb62a7b4
+  s_a26c220bf37ee317ae6ace1e --> s_6aa60aeb10ffaed53f6b83ab
+  f_648573674bad009d008b25d9 --> u_e_ed6f5c3868781a794ba68070
+  s_2b1f9bd16affc873dfbfa64d --> u_e_edb9999b1550362babb0ef96
+  f_648573674bad009d008b25d9 --> u_e_ee2ddf5ad14113e2c1f2d1f2
+  s_6ce6bd8e0ad6bbbf16ef93e3 --> u_e_f0602cf563baba99195b0bd7
+  f_648573674bad009d008b25d9 --> u_e_f127e82e704ee3abf312fde4
+  s_2b1f9bd16affc873dfbfa64d --> u_e_f16f7bc8eb5a5d0a09ea5385
+  s_0f307563c3f2a7e11151656e -.-> s_69f8583bf37b29bb18fcda99

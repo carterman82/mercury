@@ -1,0 +1,94 @@
+flowchart LR
+  s_7ebf741cf452606404f5d8dd["ProjectMaps.status · 795"]
+  u_e_28e0ac36f5dac5928e4100e7["Unresolved: (manifest?.diagrams ?? []).map"]
+  u_e_29076bb1be9791f51a5d4eff["Unresolved: Boolean"]
+  s_b9bc957c236a115517c4e83b["ProjectMaps.write · 671"]
+  s_b35f878cdc69a282c209602a["writeMap · 257"]
+  u_e_2b1afeeae401b67c37dca949["Unresolved: fileGroups.get"]
+  s_6b0ee449ef4b2fa3d8982e70["scan.walk · 154"]
+  u_e_2b9ef650f147090a0a9c9e06["Unresolved: diagnostics.push"]
+  s_c6fa6b2c1c4dc69c835fec51["link · 326"]
+  u_e_2c03cc09cb424920ab783b3d["Unresolved: path.posix.basename"]
+  s_97773740f4059654159749cd["md · 86"]
+  u_e_2c071acb1358c3039d78a332["Unresolved: value.replace(/[\\`*_[\]&lt;&gt;]/g, '\\$&amp;').replace"]
+  u_e_2c38873736fc72be53be1001["Unresolved: symbols.filter"]
+  s_8becdffe8476f55d19b993ab["portable · 85"]
+  s_96a56210be25ff9c6e2f096c["src/main/project-tools.ts: ProjectTools.prepare"]
+  s_f06b86f390eae59ae49f8570["ProjectMaps.refresh · 581"]
+  u_e_2e1a79a879631f456fb477cc["Unresolved: graph.symbols           .filter"]
+  u_e_2eb89f24966625dabd493701["Unresolved: signal?.throwIfAborted"]
+  s_a26c220bf37ee317ae6ace1e["src/main/project-tools.ts: ProjectTools.execute"]
+  u_e_2f0665924d6a6b53ae406a2e["Unresolved: signal?.throwIfAborted"]
+  u_e_2f1059f0e099a196c84f8b54["Unresolved: units.flatMap((unit) =&gt; unit.symbols).sort"]
+  s_58cadf78d45117d53cb8c9e2["ProjectMaps.load · 522"]
+  s_a1a219f852f68923ed205495["mapPath · 233"]
+  s_aa106b40106ad41a00fd1fb3["diagramParts · 483"]
+  u_e_2f3f8ac2447aea1046141f49["Unresolved: byId.has"]
+  u_e_2f6ce9cad94a53a28a2e452a["Unresolved: previous       .catch(() =&gt; {})       .then"]
+  u_e_2fa1749774e76336a85ec5d9["Unresolved: a.id.localeCompare"]
+  s_20f5e6b6c3287f4e2d6e63ec["within · 81"]
+  u_e_3026509b81e65ef8df106752["Unresolved: path.isAbsolute"]
+  s_408be34bf664057ff2c0c2ac["languageFor · 73"]
+  u_e_30f3df8939a40764e66ef466["Unresolved: path.extname"]
+  u_e_31a5deb8906996bb0b6f41de["Unresolved: signal?.throwIfAborted"]
+  u_e_3277ee7dbd976d750f98414c["Unresolved: source.content.indexOf"]
+  s_954253553b9f9d7c495d075a["ProjectMaps.readDiagram · 896"]
+  u_e_338d4b104d6ad16b10cb15c4["Unresolved: fs.stat"]
+  u_e_341532c5157460c31000a88f["Unresolved: path.posix.basename"]
+  s_0c1358d7cae853fb3103c293["ProjectMaps.query · 838"]
+  u_e_34e865990435775c8a03a34b["Unresolved: this.graphs.get"]
+  s_0368f312ecb5ac7fed0c1ef5["importTargets · 270"]
+  u_e_35b3b3f7efdd532ec836ff44["Unresolved: specifier.startsWith"]
+  u_e_36676d27f7538e782a1aa2bd["Unresolved: value.replaceAll"]
+  u_e_36887921a0d93dbe40a68d1d["Unresolved: graph.edges       .filter((item) =&gt; item.kind === 'imports' &amp;&amp; item.to &amp;&amp; fileGroups.get(item.from) !== fileGroups.get(item.to))       .map"]
+  u_e_36e97df60d6eb88b8135cc3b["Unresolved: [...candidates].sort"]
+  u_e_371b05ed296f71451524fcd0["Unresolved: fs.realpath"]
+  s_a3a117bb1a32b0571e3fca74["src/main/project-map-analyzers.ts: dependencyFileId"]
+  u_e_376f083429372c32d712b5d4["Unresolved: Array.isArray"]
+  s_0570c7ed756368f7ef7831b7["ProjectMaps.existingDiagrams.visit · 878"]
+  u_e_38094b1aa790675f2a8e8518["Unresolved: entry.isSymbolicLink"]
+  u_e_38325b25e3c506c0732f7f6e["Unresolved: hash(fileGroups.get(item.from)!).slice"]
+  u_e_38561699653dded20f26e2de["Unresolved: existing.diagnostics.some"]
+  s_72dbbc8168a564ec6c1a9350["ProjectMaps.artifactsIntact · 561"]
+  u_e_38e8f3af360a65bfada1dd1a["Unresolved: fs.readFile"]
+  u_e_390d40ca05e209b2f825c500["Unresolved: Boolean"]
+  s_7ebf741cf452606404f5d8dd --> u_e_28e0ac36f5dac5928e4100e7
+  s_7ebf741cf452606404f5d8dd --> u_e_29076bb1be9791f51a5d4eff
+  s_b9bc957c236a115517c4e83b --> s_b35f878cdc69a282c209602a
+  s_b9bc957c236a115517c4e83b --> u_e_2b1afeeae401b67c37dca949
+  s_6b0ee449ef4b2fa3d8982e70 --> u_e_2b9ef650f147090a0a9c9e06
+  s_c6fa6b2c1c4dc69c835fec51 --> u_e_2c03cc09cb424920ab783b3d
+  s_97773740f4059654159749cd --> u_e_2c071acb1358c3039d78a332
+  s_c6fa6b2c1c4dc69c835fec51 --> u_e_2c38873736fc72be53be1001
+  s_6b0ee449ef4b2fa3d8982e70 --> s_8becdffe8476f55d19b993ab
+  s_96a56210be25ff9c6e2f096c -.-> s_f06b86f390eae59ae49f8570
+  s_b9bc957c236a115517c4e83b --> u_e_2e1a79a879631f456fb477cc
+  s_f06b86f390eae59ae49f8570 --> u_e_2eb89f24966625dabd493701
+  s_a26c220bf37ee317ae6ace1e -.-> s_f06b86f390eae59ae49f8570
+  s_b9bc957c236a115517c4e83b --> u_e_2f0665924d6a6b53ae406a2e
+  s_c6fa6b2c1c4dc69c835fec51 --> u_e_2f1059f0e099a196c84f8b54
+  s_58cadf78d45117d53cb8c9e2 --> s_a1a219f852f68923ed205495
+  s_aa106b40106ad41a00fd1fb3 --> u_e_2f3f8ac2447aea1046141f49
+  s_f06b86f390eae59ae49f8570 --> u_e_2f6ce9cad94a53a28a2e452a
+  s_c6fa6b2c1c4dc69c835fec51 --> u_e_2fa1749774e76336a85ec5d9
+  s_20f5e6b6c3287f4e2d6e63ec --> u_e_3026509b81e65ef8df106752
+  s_408be34bf664057ff2c0c2ac --> u_e_30f3df8939a40764e66ef466
+  s_6b0ee449ef4b2fa3d8982e70 --> u_e_31a5deb8906996bb0b6f41de
+  s_c6fa6b2c1c4dc69c835fec51 --> u_e_3277ee7dbd976d750f98414c
+  s_954253553b9f9d7c495d075a --> u_e_338d4b104d6ad16b10cb15c4
+  s_6b0ee449ef4b2fa3d8982e70 --> s_408be34bf664057ff2c0c2ac
+  s_c6fa6b2c1c4dc69c835fec51 --> u_e_341532c5157460c31000a88f
+  s_0c1358d7cae853fb3103c293 --> u_e_34e865990435775c8a03a34b
+  s_0368f312ecb5ac7fed0c1ef5 --> u_e_35b3b3f7efdd532ec836ff44
+  s_8becdffe8476f55d19b993ab --> u_e_36676d27f7538e782a1aa2bd
+  s_b9bc957c236a115517c4e83b --> u_e_36887921a0d93dbe40a68d1d
+  s_0368f312ecb5ac7fed0c1ef5 --> u_e_36e97df60d6eb88b8135cc3b
+  s_954253553b9f9d7c495d075a --> u_e_371b05ed296f71451524fcd0
+  s_c6fa6b2c1c4dc69c835fec51 --> s_a3a117bb1a32b0571e3fca74
+  s_58cadf78d45117d53cb8c9e2 --> u_e_376f083429372c32d712b5d4
+  s_0570c7ed756368f7ef7831b7 --> u_e_38094b1aa790675f2a8e8518
+  s_b9bc957c236a115517c4e83b --> u_e_38325b25e3c506c0732f7f6e
+  s_f06b86f390eae59ae49f8570 --> u_e_38561699653dded20f26e2de
+  s_f06b86f390eae59ae49f8570 -.-> s_72dbbc8168a564ec6c1a9350
+  s_72dbbc8168a564ec6c1a9350 --> u_e_38e8f3af360a65bfada1dd1a
+  s_0c1358d7cae853fb3103c293 --> u_e_390d40ca05e209b2f825c500

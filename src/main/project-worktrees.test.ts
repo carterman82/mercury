@@ -42,6 +42,7 @@ describe('project Git safety', () => {
     expect(await command(root, 'log', '-1', '--format=%s')).toBe('Mercury safety baseline\n');
     expect(await command(root, 'ls-files')).toContain('app.ts');
     expect(await command(root, 'ls-files')).not.toContain('.env.local');
+    expect((await command(root, 'log', '-1', '--format=%an|%ae|%cn|%ce')).trim()).toBe('Mercury AI|ai@mercury.local|Mercury AI|ai@mercury.local');
   });
 
   it('commits eligible response changes and leaves sensitive files unstaged', async () => {
@@ -51,6 +52,9 @@ describe('project Git safety', () => {
     await fs.writeFile(path.join(root, '.env.local'), 'TOKEN=secret');
     const saved = await service.commitResponse(workspace);
     expect(saved).toMatchObject({ committed: true });
+    expect((await command(root, 'log', '-1', '--format=%an|%ae|%cn|%ce')).trim()).toBe('Mercury AI|ai@mercury.local|Mercury AI|ai@mercury.local');
+    expect((await command(root, 'config', 'user.name')).trim()).toBe('Git safety tests');
+    expect((await command(root, 'config', 'user.email')).trim()).toBe('tests@example.invalid');
     expect(await command(root, 'log', '-1', '--format=%s')).toBe('Mercury: save response for 12345678\n');
     expect(await command(root, 'show', 'HEAD:app.ts')).toBe('export const value = 2;\n');
     expect(await command(root, 'status', '--porcelain')).toContain('.env.local');
@@ -60,6 +64,15 @@ describe('project Git safety', () => {
     const { root, service } = await fixture();
     const workspace = await service.prepare({ projectRoot: root, chatId: 'chat' });
     expect(await service.commitResponse(workspace)).toEqual({ committed: false });
+  });
+
+  it('detects and commits a file deletion from Git status', async () => {
+    const { root, service } = await fixture();
+    const workspace = await service.prepare({ projectRoot: root, chatId: 'deletion' });
+    await fs.unlink(path.join(root, 'app.ts'));
+    expect(await service.changedPaths(workspace)).toEqual(['app.ts']);
+    expect((await service.commitResponse(workspace)).committed).toBe(true);
+    expect(await command(root, 'ls-files')).not.toContain('app.ts');
   });
 
   it('does not commit unrelated changes that predate the response', async () => {

@@ -1,0 +1,86 @@
+flowchart LR
+  s_841b224ff8cc59bb04c96c9d["executable · 77"]
+  u_e_632fbc9db181019c51eb6de3["Unresolved: path.join"]
+  s_26ff0c0b1783288d5357bebb["CodexRpc.constructor · 19"]
+  u_e_63a1ec1b348ade12c9196974["Unresolved: child.on"]
+  s_a387591332662f85ace23601["CodexService.chat · 180"]
+  u_e_6406a6e7bb5cce86e3104a3d["Unresolved: JSON.parse"]
+  s_c179b2e8d7342b9106c336c7["CodexService.signIn · 125"]
+  s_c13d4922588147a5bd6f7cb9["CodexService.signIn.finish · 140"]
+  u_e_656b292c91ccec41c26e7675["Unresolved: buffer.slice"]
+  s_c588882baf829613d44ceebf["CodexService.client · 115"]
+  u_e_67f2205d6672f9c778a76e9e["Unresolved: Error"]
+  u_e_684607c58e04f248077b1641["Unresolved: signal?.addEventListener"]
+  s_e397069cf0eb870602e8ac6e["CodexService.chat.finish · 197"]
+  u_e_6ad9670a44fe721d63b2f774["Unresolved: resolve"]
+  s_e310a919014e61ee9a938559["CodexRpc.close · 67"]
+  s_2ea453327bdf6d850c8cf635["CodexRpc.request · 53"]
+  s_af373591c0570e8d2b30a3a6["CodexRpc.send · 50"]
+  u_e_6e868ae03f3b7c5e8b7fac06["Unresolved: this.launch"]
+  u_e_6f00c10ff47b2e655ccd8143["Unresolved: resultSchema.parse"]
+  u_e_754f3c771df03817814a03fc["Unresolved: this.pending.get"]
+  u_e_75d721f8a3be3d3eb4bb08a2["Unresolved: setTimeout"]
+  s_8a2ccc74b8cc83f7e6362c5c["CodexService.disconnect · 158"]
+  s_0655f90cfec19672ec7cc351["CodexService.release · 123"]
+  u_e_76f81b940330d441115b444d["Unresolved: input.messages.flatMap"]
+  u_e_77559b417500e4504ece20e7["Unresolved: randomUUID"]
+  f_e5ea88a7231b09d6b2746a78["src/main/codex.ts"]
+  u_e_77c8df11d76fe7e46879c6df["Unresolved: Set"]
+  u_e_78924f0d21ceb0411e6aae9c["Unresolved: Error"]
+  u_e_7b9bb2df3ba13d06c9c6ba3f["Unresolved: Number"]
+  u_e_7bed4fd396030246d545d7c2["Unresolved: Error"]
+  u_e_7c27285e7f887c83b798c649["Unresolved: rpc.request('account/login/start', { type: 'chatgpt' }).then"]
+  s_8194ac864c5f19dfbf516a1d["CodexService.dispose · 219"]
+  s_ebf2ef6e65b667876b7fb083["CodexService.cancelSignIn · 124"]
+  s_b606f8d0567d60afb4c31c0d["CodexService.discover · 163"]
+  s_5bb70878f7fd48aab417c324["src/shared/cloud-context.ts: withContextLimit"]
+  u_e_846e8350d057a1d6cafa6756["Unresolved: Error"]
+  u_e_856cd61cf231ae82d72f034e["Unresolved: rpc.request"]
+  u_e_88063aa3dc58b168b9e0a2fe["Unresolved: access(candidate).then"]
+  u_e_8bc1f6459f60c28c63627b23["Unresolved: this.active.clear"]
+  u_e_8c10f5cbfda3bc98de301675["Unresolved: clearTimeout"]
+  u_e_8c2df0a93a661b818cce52ec["Unresolved: rpc.request('account/login/start', { type: 'chatgpt' }).then(async result =&gt; {           if (settled) return;           loginId = result.loginId;           const url = new URL(result.authUrl);           if (url.protocol !== 'https:' || url.hostname !== 'auth.openai.com') throw new Error('Codex retur"]
+  u_e_8ed5350e40a80d997d4f394e["Unresolved: z.string().min"]
+  u_e_9052e7bbfe440eb94e0a5a23["Unresolved: seen.add"]
+  u_e_90dc2658267eedc5814a0ef9["Unresolved: Map"]
+  u_e_91245a2c394bdd9298df729d["Unresolved: Error"]
+  s_841b224ff8cc59bb04c96c9d --> u_e_632fbc9db181019c51eb6de3
+  s_26ff0c0b1783288d5357bebb --> u_e_63a1ec1b348ade12c9196974
+  s_a387591332662f85ace23601 --> u_e_6406a6e7bb5cce86e3104a3d
+  s_c179b2e8d7342b9106c336c7 --> s_c13d4922588147a5bd6f7cb9
+  s_26ff0c0b1783288d5357bebb --> u_e_656b292c91ccec41c26e7675
+  s_c588882baf829613d44ceebf -.-> s_26ff0c0b1783288d5357bebb
+  s_26ff0c0b1783288d5357bebb --> u_e_67f2205d6672f9c778a76e9e
+  s_c588882baf829613d44ceebf --> u_e_684607c58e04f248077b1641
+  s_e397069cf0eb870602e8ac6e --> u_e_6ad9670a44fe721d63b2f774
+  s_26ff0c0b1783288d5357bebb -.-> s_e310a919014e61ee9a938559
+  s_2ea453327bdf6d850c8cf635 -.-> s_af373591c0570e8d2b30a3a6
+  s_c588882baf829613d44ceebf --> u_e_6e868ae03f3b7c5e8b7fac06
+  s_a387591332662f85ace23601 --> u_e_6f00c10ff47b2e655ccd8143
+  s_a387591332662f85ace23601 --> s_e397069cf0eb870602e8ac6e
+  s_26ff0c0b1783288d5357bebb --> u_e_754f3c771df03817814a03fc
+  s_2ea453327bdf6d850c8cf635 --> u_e_75d721f8a3be3d3eb4bb08a2
+  s_8a2ccc74b8cc83f7e6362c5c -.-> s_0655f90cfec19672ec7cc351
+  s_a387591332662f85ace23601 --> u_e_76f81b940330d441115b444d
+  s_a387591332662f85ace23601 --> u_e_77559b417500e4504ece20e7
+  f_e5ea88a7231b09d6b2746a78 --> u_e_77c8df11d76fe7e46879c6df
+  s_26ff0c0b1783288d5357bebb --> u_e_78924f0d21ceb0411e6aae9c
+  s_26ff0c0b1783288d5357bebb --> u_e_7b9bb2df3ba13d06c9c6ba3f
+  s_2ea453327bdf6d850c8cf635 --> u_e_7bed4fd396030246d545d7c2
+  s_c179b2e8d7342b9106c336c7 --> u_e_7c27285e7f887c83b798c649
+  s_8194ac864c5f19dfbf516a1d -.-> s_ebf2ef6e65b667876b7fb083
+  s_b606f8d0567d60afb4c31c0d --> s_5bb70878f7fd48aab417c324
+  s_c179b2e8d7342b9106c336c7 -.-> s_2ea453327bdf6d850c8cf635
+  s_26ff0c0b1783288d5357bebb --> u_e_846e8350d057a1d6cafa6756
+  s_8a2ccc74b8cc83f7e6362c5c --> u_e_856cd61cf231ae82d72f034e
+  s_c179b2e8d7342b9106c336c7 --> s_c13d4922588147a5bd6f7cb9
+  s_841b224ff8cc59bb04c96c9d --> u_e_88063aa3dc58b168b9e0a2fe
+  s_a387591332662f85ace23601 --> s_e397069cf0eb870602e8ac6e
+  s_8194ac864c5f19dfbf516a1d --> u_e_8bc1f6459f60c28c63627b23
+  s_c13d4922588147a5bd6f7cb9 --> u_e_8c10f5cbfda3bc98de301675
+  s_c179b2e8d7342b9106c336c7 --> u_e_8c2df0a93a661b818cce52ec
+  f_e5ea88a7231b09d6b2746a78 --> u_e_8ed5350e40a80d997d4f394e
+  s_a387591332662f85ace23601 -.-> s_0655f90cfec19672ec7cc351
+  s_b606f8d0567d60afb4c31c0d --> u_e_9052e7bbfe440eb94e0a5a23
+  f_e5ea88a7231b09d6b2746a78 --> u_e_90dc2658267eedc5814a0ef9
+  s_a387591332662f85ace23601 --> u_e_91245a2c394bdd9298df729d

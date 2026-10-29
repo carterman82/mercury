@@ -1,0 +1,37 @@
+flowchart LR
+  s_875c6cfa12c48a333e0b857e["WebPolicy.check · 11"]
+  u_e_c412fca9474d6daf41bf99a1["Unresolved: ['http:', 'https:'].includes"]
+  u_e_c545d21767a6618c4296c4d1["Unresolved: URL"]
+  s_cb69a8b678f15ba8175e27a0["src/main/web-search.test.ts: service"]
+  s_6d2de09a43552387966259c9["WebPolicy.constructor · 10"]
+  s_afc08212b1d4a49eb88c7d7b["WebPolicy.fetch · 21"]
+  u_e_c8c44d8130a394d366fe7805["Unresolved: response.body.pipeThrough"]
+  s_f9b2b4bb63fdef9afbf40484["src/main/chat-browser.ts: ChatBrowser.session"]
+  s_b70fc9f324519456a80b5f7c["src/main/chat-plugins.ts: ChatPlugins.discover"]
+  s_52fdbca89a27eb954908ba41["WebPolicy.fetch.transform · 26"]
+  u_e_da3cca54f1a6265f158b6554["Unresolved: controller.enqueue"]
+  u_e_db6656a0508c97e164d0cd2a["Unresolved: Response"]
+  s_03ee17365368d55c784e2f20["WebPolicy.json · 29"]
+  u_e_e193479f8c0e6a7dfd12d405["Unresolved: Error"]
+  s_7c8bf658a3a91dd59515e961["publicAddress · 4"]
+  u_e_ee253d9a0aa30d004ad565a6["Unresolved: addresses.some"]
+  u_e_f584b2e30b3c2e4e6ff265ba["Unresolved: Error"]
+  s_9874310e2ebc639cf6a6c41c["src/main/web-search.ts: WebSearch.constructor"]
+  u_e_fbf2981700e86119ee12c694["Unresolved: Buffer.concat"]
+  u_e_fd156ddfd921e48b213e77b8["Unresolved: url.hostname.replace"]
+  s_875c6cfa12c48a333e0b857e --> u_e_c412fca9474d6daf41bf99a1
+  s_875c6cfa12c48a333e0b857e --> u_e_c545d21767a6618c4296c4d1
+  s_cb69a8b678f15ba8175e27a0 -.-> s_6d2de09a43552387966259c9
+  s_afc08212b1d4a49eb88c7d7b --> u_e_c8c44d8130a394d366fe7805
+  s_f9b2b4bb63fdef9afbf40484 -.-> s_875c6cfa12c48a333e0b857e
+  s_b70fc9f324519456a80b5f7c -.-> s_875c6cfa12c48a333e0b857e
+  s_52fdbca89a27eb954908ba41 --> u_e_da3cca54f1a6265f158b6554
+  s_afc08212b1d4a49eb88c7d7b --> u_e_db6656a0508c97e164d0cd2a
+  s_03ee17365368d55c784e2f20 --> u_e_e193479f8c0e6a7dfd12d405
+  s_875c6cfa12c48a333e0b857e --> s_7c8bf658a3a91dd59515e961
+  s_875c6cfa12c48a333e0b857e --> u_e_ee253d9a0aa30d004ad565a6
+  s_03ee17365368d55c784e2f20 -.-> s_afc08212b1d4a49eb88c7d7b
+  s_03ee17365368d55c784e2f20 --> u_e_f584b2e30b3c2e4e6ff265ba
+  s_9874310e2ebc639cf6a6c41c -.-> s_6d2de09a43552387966259c9
+  s_03ee17365368d55c784e2f20 --> u_e_fbf2981700e86119ee12c694
+  s_875c6cfa12c48a333e0b857e --> u_e_fd156ddfd921e48b213e77b8

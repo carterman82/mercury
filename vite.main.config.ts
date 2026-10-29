@@ -1,2 +1,2 @@
 import { defineConfig } from 'vite';
-export default defineConfig({ build: { rollupOptions: { external: ['electron', 'node:sqlite'] } } });
+export default defineConfig({ build: { rollupOptions: { external: ['electron', 'node:sqlite', 'jsdom'] } } });

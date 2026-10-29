@@ -1,0 +1,12 @@
+flowchart LR
+  s_cd9c611635374f24b5e9675e["ChatBrowser.search · 180"]
+  u_e_fe43ac35c4c587b91938fb6e["Unresolved: String(error).slice"]
+  s_e6794c91ee746f65785c987e["ChatBrowser.launch · 36"]
+  u_e_feadcfdf71a7f9ae97b8b60a["Unresolved: fs.readdir"]
+  s_8d3ea567cff795446a267621["ChatBrowser.read · 103"]
+  s_362ce27c6e539a607e1c8dec["src/main/inactivity.ts: InactivityWatchdog.progress"]
+  s_cf968ce7d4cc1795fed19306["src/main/chat-capabilities.ts: ChatCapabilities.execute"]
+  s_cd9c611635374f24b5e9675e --> u_e_fe43ac35c4c587b91938fb6e
+  s_e6794c91ee746f65785c987e --> u_e_feadcfdf71a7f9ae97b8b60a
+  s_8d3ea567cff795446a267621 -.-> s_362ce27c6e539a607e1c8dec
+  s_cf968ce7d4cc1795fed19306 -.-> s_8d3ea567cff795446a267621

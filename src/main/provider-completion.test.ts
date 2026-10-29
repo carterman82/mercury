@@ -29,6 +29,22 @@ it('accepts the LM Studio DONE marker even when finish_reason is omitted', async
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue(stream('lmstudio', [{ choices: [{ delta: { content: 'Done' } }] }], true)));
   expect((await service('lmstudio').chat(input('lmstudio'))).text).toBe('Done');
 });
+
+it('sends the verified LM Studio fast-summary setting when thinking is disabled', async () => {
+  const fetch = vi.fn().mockResolvedValue(stream('lmstudio', [{ choices: [{ delta: { content: 'Summary' }, finish_reason: 'stop' }] }]));
+  vi.stubGlobal('fetch', fetch);
+  await service('lmstudio').chat({ ...input('lmstudio'), disableThinking: true });
+  expect(JSON.parse(fetch.mock.calls[0][1].body).reasoning).toEqual({ effort: 'none' });
+});
+
+it('uses the native LM Studio reasoning control for reports without enabling tools or stored sessions', async () => {
+  const fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify({ output: [{ type: 'message', content: 'Architecture overview' }], stats: { total_output_tokens: 10 } })));
+  vi.stubGlobal('fetch', fetch);
+  const result = await service('lmstudio').chat({ ...input('lmstudio'), reportMode: true, maxOutputTokens: 100 });
+  expect(fetch.mock.calls[0][0]).toContain('/api/v1/chat');
+  expect(JSON.parse(fetch.mock.calls[0][1].body)).toMatchObject({ reasoning: 'off', store: false, integrations: [] });
+  expect(result.text).toBe('Architecture overview');
+});
 it.each<Provider>(['ollama', 'lmstudio'])('rejects %s output token exhaustion even with a terminal marker', async provider => {
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue(stream(provider, [provider === 'ollama'
     ? { message: { content: 'Cut off' }, done: true, done_reason: 'length' }

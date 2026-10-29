@@ -1,0 +1,77 @@
+flowchart LR
+  f_8b7ff6be53a2534a0be23dd6["src/main/codex.test.ts"]
+  s_a387591332662f85ace23601["src/main/codex.ts: CodexService.chat"]
+  u_e_81b43a1cd7b63aa6fc59fe88["Unresolved: expect"]
+  u_e_839f9c5dbef93a81d3475e13["Unresolved: expect(new CodexService('C:/test/codex', async () =&gt; {}, native.launch).chat(input())).rejects.toThrow"]
+  s_b43a53e17cc07cfe2192034d["fixture.launch · 12"]
+  u_e_840ed8c1a471344c4dbcc403["Unresolved: Object.assign"]
+  s_26ff0c0b1783288d5357bebb["src/main/codex.ts: CodexRpc.constructor"]
+  s_7ae2d760090982839c3e376e["fixture.launch.reply · 19"]
+  u_e_8c4b9f5aa223f59edb677243["Unresolved: child.stdin.on"]
+  u_e_8d80ab3ee9bb31abd667638d["Unresolved: bytes.toString"]
+  u_e_8d95af652d8811869f9d6c55["Unresolved: requests.push"]
+  s_1ab8ee924402b155716dc65a["src/main/codex.ts: CodexService.constructor"]
+  u_e_8e3d142fd7c3f4d3d28e26ed["Unresolved: vi.fn"]
+  u_e_90865f6cc67e2c7b03d53469["Unresolved: expect(open).toHaveBeenCalledWith"]
+  u_e_90b2da828fb280b72207e970["Unresolved: queueMicrotask"]
+  u_e_91a1166ba6265b5703edb065["Unresolved: expect(await service.discover(connection)).toEqual"]
+  s_ee7413f7dc507653a172ceb6["fixture · 9"]
+  u_e_93d333385852fb79f18ae690["Unresolved: expect(service.chat(input())).rejects.toThrow"]
+  u_e_9442671fc0430debf5f8b34b["Unresolved: expect(service.signIn()).rejects.toThrow"]
+  u_e_95be4c121652807d836cba0f["Unresolved: it"]
+  u_e_95ed63e0cc6cc3ed5da1d783["Unresolved: expect(await service.chat(request)).toEqual"]
+  u_e_9787fc76036f3b5118630a5a["Unresolved: override"]
+  u_e_9ac1d7c2bc073131390ad041["Unresolved: reply"]
+  u_e_9c1c85a7f4b7e594063e36a7["Unresolved: expect(turn.outputSchema.properties.tools).toBeDefined"]
+  u_e_9d2985fb9ad6a2a6a0587cb1["Unresolved: f.requests.find"]
+  s_c179b2e8d7342b9106c336c7["src/main/codex.ts: CodexService.signIn"]
+  u_e_9de5bcb51b14b755a35f91cb["Unresolved: it"]
+  u_e_9edbe509873edc4964717949["Unresolved: reply"]
+  u_e_9ee2b9cb83eb3e8b43c09a88["Unresolved: notify"]
+  u_e_9ef568bbd34952e9e8a12b99["Unresolved: expect"]
+  u_e_9f8dd85465d44cac90a61594["Unresolved: vi.fn"]
+  s_75528ad08ea819424c22cce3["input · 40"]
+  u_e_a7719da6eaead21bcd4dbbe6["Unresolved: expect"]
+  u_e_b071fe96ec05e2e778ea2afb["Unresolved: PassThrough"]
+  s_2ea453327bdf6d850c8cf635["src/main/codex.ts: CodexRpc.request"]
+  u_e_b2a92d3f1383eb9c27ff27eb["Unresolved: reply"]
+  f_8b7ff6be53a2534a0be23dd6 -.-> s_a387591332662f85ace23601
+  f_8b7ff6be53a2534a0be23dd6 --> u_e_81b43a1cd7b63aa6fc59fe88
+  f_8b7ff6be53a2534a0be23dd6 --> u_e_839f9c5dbef93a81d3475e13
+  s_b43a53e17cc07cfe2192034d --> u_e_840ed8c1a471344c4dbcc403
+  f_8b7ff6be53a2534a0be23dd6 -.-> s_26ff0c0b1783288d5357bebb
+  s_b43a53e17cc07cfe2192034d --> s_7ae2d760090982839c3e376e
+  s_b43a53e17cc07cfe2192034d --> u_e_8c4b9f5aa223f59edb677243
+  s_b43a53e17cc07cfe2192034d --> u_e_8d80ab3ee9bb31abd667638d
+  s_b43a53e17cc07cfe2192034d --> u_e_8d95af652d8811869f9d6c55
+  f_8b7ff6be53a2534a0be23dd6 -.-> s_1ab8ee924402b155716dc65a
+  f_8b7ff6be53a2534a0be23dd6 --> u_e_8e3d142fd7c3f4d3d28e26ed
+  f_8b7ff6be53a2534a0be23dd6 --> u_e_90865f6cc67e2c7b03d53469
+  s_7ae2d760090982839c3e376e --> u_e_90b2da828fb280b72207e970
+  f_8b7ff6be53a2534a0be23dd6 --> u_e_91a1166ba6265b5703edb065
+  f_8b7ff6be53a2534a0be23dd6 --> s_ee7413f7dc507653a172ceb6
+  f_8b7ff6be53a2534a0be23dd6 --> s_ee7413f7dc507653a172ceb6
+  f_8b7ff6be53a2534a0be23dd6 --> u_e_93d333385852fb79f18ae690
+  f_8b7ff6be53a2534a0be23dd6 --> u_e_9442671fc0430debf5f8b34b
+  f_8b7ff6be53a2534a0be23dd6 --> u_e_95be4c121652807d836cba0f
+  f_8b7ff6be53a2534a0be23dd6 --> u_e_95ed63e0cc6cc3ed5da1d783
+  s_b43a53e17cc07cfe2192034d --> u_e_9787fc76036f3b5118630a5a
+  f_8b7ff6be53a2534a0be23dd6 -.-> s_a387591332662f85ace23601
+  f_8b7ff6be53a2534a0be23dd6 --> u_e_9ac1d7c2bc073131390ad041
+  f_8b7ff6be53a2534a0be23dd6 --> u_e_9c1c85a7f4b7e594063e36a7
+  f_8b7ff6be53a2534a0be23dd6 --> u_e_9d2985fb9ad6a2a6a0587cb1
+  f_8b7ff6be53a2534a0be23dd6 -.-> s_a387591332662f85ace23601
+  f_8b7ff6be53a2534a0be23dd6 -.-> s_c179b2e8d7342b9106c336c7
+  f_8b7ff6be53a2534a0be23dd6 --> u_e_9de5bcb51b14b755a35f91cb
+  f_8b7ff6be53a2534a0be23dd6 --> u_e_9edbe509873edc4964717949
+  f_8b7ff6be53a2534a0be23dd6 --> u_e_9ee2b9cb83eb3e8b43c09a88
+  f_8b7ff6be53a2534a0be23dd6 --> u_e_9ef568bbd34952e9e8a12b99
+  s_b43a53e17cc07cfe2192034d --> u_e_9f8dd85465d44cac90a61594
+  f_8b7ff6be53a2534a0be23dd6 --> s_75528ad08ea819424c22cce3
+  f_8b7ff6be53a2534a0be23dd6 -.-> s_c179b2e8d7342b9106c336c7
+  f_8b7ff6be53a2534a0be23dd6 -.-> s_1ab8ee924402b155716dc65a
+  f_8b7ff6be53a2534a0be23dd6 --> u_e_a7719da6eaead21bcd4dbbe6
+  f_8b7ff6be53a2534a0be23dd6 -.-> s_1ab8ee924402b155716dc65a
+  s_b43a53e17cc07cfe2192034d --> u_e_b071fe96ec05e2e778ea2afb
+  f_8b7ff6be53a2534a0be23dd6 -.-> s_2ea453327bdf6d850c8cf635
+  f_8b7ff6be53a2534a0be23dd6 --> u_e_b2a92d3f1383eb9c27ff27eb

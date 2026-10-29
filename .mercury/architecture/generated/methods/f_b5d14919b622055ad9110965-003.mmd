@@ -1,0 +1,85 @@
+flowchart LR
+  f_b5d14919b622055ad9110965["src/main/project-gateway.ts"]
+  u_e_79e0ef27879935d472725789["Unresolved: z       .array(         z           .object({             role: z.enum(['user', 'assistant', 'system']),             content: z.union([z.string(), z.array(jsonObject)]),           })           .passthrough(),       )       .min(1)       .max"]
+  s_caff1d36cc1621c1e6b9b65f["ProjectModelGateway.handle · 367"]
+  s_2d63fd59dc1f840581796895["json · 238"]
+  s_37a3e9b3c134e6d129d33ea9["media · 113"]
+  s_ab1e5f55dfc2a7630785b881["ProjectGatewayError.constructor · 83"]
+  s_93016cbe7643be884cf9ee15["validateResult · 246"]
+  s_34d647a32e95de0451172c39["readJson · 219"]
+  u_e_7dc9724d1e2c359fb0947024["Unresolved: Buffer.concat"]
+  u_e_81b567321df4350f14aa97c1["Unresolved: Error"]
+  u_e_84aa67702f5740820fefc6ed["Unresolved: name.startsWith"]
+  u_e_855c2e51f3ea683f7b630fe4["Unresolved: z   .object({     model: z.string().min(1).max(300),     messages: z       .array(         z           .object({             role: z.enum(['user', 'assistant', 'system']),             content: z.union([z.string(), z.array(jsonObject)]),           })           .passthrough(),       )       .min(1)   "]
+  s_fdc14380023ed59880fcd7a3["event · 242"]
+  s_7ff90bc3567f9c4e2b66a891["ProjectModelGateway.open · 292"]
+  u_e_872d3298675beff93cc849ff["Unresolved: server.address"]
+  s_ced143499c49f35fb5888b12["textBlocks · 101"]
+  u_e_894b6b971bb130e72232e6a2["Unresolved: randomBytes(32).toString"]
+  u_e_89cd4c6e3814b787cd293232["Unresolved: z       .object"]
+  u_e_8b4d2968482baa90aa340307["Unresolved: ids.add"]
+  u_e_8ca467ce5f2e683b957f3c3c["Unresolved: z.boolean"]
+  u_e_8cf26f020b48d3dbb5540cc0["Unresolved: response.end"]
+  u_e_8d5758c9b94c1daa354e1e83["Unresolved: z.string"]
+  u_e_8f1b3377bf3e8f8f61a2683f["Unresolved: name.startsWith"]
+  u_e_8f1b5c37c8d521952087a552["Unresolved: randomUUID().replaceAll"]
+  u_e_8fa9dcbdd196e9ae4a6475f4["Unresolved: (body.tools ?? []).map"]
+  u_e_9011a318fdd5b5d39bf6e882["Unresolved: randomUUID"]
+  s_93c5a2928e2481c48726e9dc["src/main/project-agent-runtime.ts: ClaudeProjectRuntime.constructor"]
+  s_7a9f31eef4e9746fdb8d2e8e["ProjectModelGateway.constructor · 290"]
+  s_e6f1a2fdbec10d3e9393ac01["ProjectModelGateway.handle.cancel · 434"]
+  u_e_9252433c967db1d2a5169006["Unresolved: reader.cancel"]
+  u_e_94d3f7fcdb3b3e5294a7743e["Unresolved: Object.keys"]
+  s_ae6944a1b579b1066930440c["projectGatewayMessages · 139"]
+  u_e_96759e8c039a51ccfef2defb["Unresolved: priorIds.has"]
+  u_e_96dfffc95bef16771e36ebce["Unresolved: z           .object"]
+  u_e_99167b9353e31de34acbe151["Unresolved: value     .map"]
+  u_e_9cf09898eb8dbb776d2417a7["Unresolved: Object.entries"]
+  u_e_9dc2b52e6aa06b88c08900ec["Unresolved: z.string"]
+  u_e_a085b7a33046a3361569f0f3["Unresolved: z       .array"]
+  u_e_a0cd55c75f82f226b32144ce["Unresolved: output.push"]
+  s_6d39d74c6338ca2f9250cd35["ProjectModelGateway.handle.drain · 445"]
+  s_c7bc44ea87d1eec69d70352b["ProjectModelGateway.handle.cleanup · 453"]
+  u_e_a5bf9551607a4a18c33407e6["Unresolved: response.end"]
+  u_e_a7684c12b5402575947a8abe["Unresolved: z           .object"]
+  u_e_a7c89c198eb0942718120671["Unresolved: body.tools?.map"]
+  f_b5d14919b622055ad9110965 --> u_e_79e0ef27879935d472725789
+  s_caff1d36cc1621c1e6b9b65f --> s_2d63fd59dc1f840581796895
+  s_37a3e9b3c134e6d129d33ea9 -.-> s_ab1e5f55dfc2a7630785b881
+  s_caff1d36cc1621c1e6b9b65f --> s_93016cbe7643be884cf9ee15
+  s_34d647a32e95de0451172c39 --> u_e_7dc9724d1e2c359fb0947024
+  s_93016cbe7643be884cf9ee15 -.-> s_ab1e5f55dfc2a7630785b881
+  s_34d647a32e95de0451172c39 --> u_e_81b567321df4350f14aa97c1
+  s_93016cbe7643be884cf9ee15 -.-> s_ab1e5f55dfc2a7630785b881
+  s_caff1d36cc1621c1e6b9b65f --> u_e_84aa67702f5740820fefc6ed
+  f_b5d14919b622055ad9110965 --> u_e_855c2e51f3ea683f7b630fe4
+  s_caff1d36cc1621c1e6b9b65f --> s_fdc14380023ed59880fcd7a3
+  s_7ff90bc3567f9c4e2b66a891 --> u_e_872d3298675beff93cc849ff
+  s_ced143499c49f35fb5888b12 -.-> s_ab1e5f55dfc2a7630785b881
+  s_7ff90bc3567f9c4e2b66a891 --> u_e_894b6b971bb130e72232e6a2
+  f_b5d14919b622055ad9110965 --> u_e_89cd4c6e3814b787cd293232
+  s_93016cbe7643be884cf9ee15 --> u_e_8b4d2968482baa90aa340307
+  f_b5d14919b622055ad9110965 --> u_e_8ca467ce5f2e683b957f3c3c
+  s_caff1d36cc1621c1e6b9b65f --> u_e_8cf26f020b48d3dbb5540cc0
+  f_b5d14919b622055ad9110965 --> u_e_8d5758c9b94c1daa354e1e83
+  s_caff1d36cc1621c1e6b9b65f --> u_e_8f1b3377bf3e8f8f61a2683f
+  s_caff1d36cc1621c1e6b9b65f --> u_e_8f1b5c37c8d521952087a552
+  s_caff1d36cc1621c1e6b9b65f --> u_e_8fa9dcbdd196e9ae4a6475f4
+  s_7ff90bc3567f9c4e2b66a891 --> u_e_9011a318fdd5b5d39bf6e882
+  s_93c5a2928e2481c48726e9dc -.-> s_7a9f31eef4e9746fdb8d2e8e
+  s_e6f1a2fdbec10d3e9393ac01 --> u_e_9252433c967db1d2a5169006
+  s_caff1d36cc1621c1e6b9b65f --> u_e_94d3f7fcdb3b3e5294a7743e
+  s_ae6944a1b579b1066930440c -.-> s_ab1e5f55dfc2a7630785b881
+  s_caff1d36cc1621c1e6b9b65f --> u_e_96759e8c039a51ccfef2defb
+  f_b5d14919b622055ad9110965 --> u_e_96dfffc95bef16771e36ebce
+  s_ced143499c49f35fb5888b12 --> u_e_99167b9353e31de34acbe151
+  s_caff1d36cc1621c1e6b9b65f --> u_e_9cf09898eb8dbb776d2417a7
+  f_b5d14919b622055ad9110965 --> u_e_9dc2b52e6aa06b88c08900ec
+  f_b5d14919b622055ad9110965 --> u_e_a085b7a33046a3361569f0f3
+  s_ae6944a1b579b1066930440c --> u_e_a0cd55c75f82f226b32144ce
+  s_6d39d74c6338ca2f9250cd35 --> s_c7bc44ea87d1eec69d70352b
+  s_93016cbe7643be884cf9ee15 -.-> s_ab1e5f55dfc2a7630785b881
+  s_ae6944a1b579b1066930440c -.-> s_ab1e5f55dfc2a7630785b881
+  s_caff1d36cc1621c1e6b9b65f --> u_e_a5bf9551607a4a18c33407e6
+  f_b5d14919b622055ad9110965 --> u_e_a7684c12b5402575947a8abe
+  s_93016cbe7643be884cf9ee15 --> u_e_a7c89c198eb0942718120671

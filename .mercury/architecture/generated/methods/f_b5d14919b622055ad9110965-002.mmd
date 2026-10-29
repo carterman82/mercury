@@ -1,0 +1,89 @@
+flowchart LR
+  s_ae6944a1b579b1066930440c["projectGatewayMessages · 139"]
+  s_ab1e5f55dfc2a7630785b881["ProjectGatewayError.constructor · 83"]
+  s_caff1d36cc1621c1e6b9b65f["ProjectModelGateway.handle · 367"]
+  u_e_5029420d7811373ae4ca9f94["Unresolved: result.tools.map"]
+  u_e_51b3d0490449258fdbf0acf7["Unresolved: response.write"]
+  s_af5395abcf3ccc7c41427a1f["authenticate · 207"]
+  u_e_51fa6e63fed6c648c9795699["Unresolved: Buffer.from"]
+  s_326f29cb10b984817b315458["ProjectModelGateway.handle.aborted · 449"]
+  u_e_564b7a0d01d34c2c69f6c3ed["Unresolved: reject"]
+  s_93016cbe7643be884cf9ee15["validateResult · 246"]
+  u_e_59cad6769ed9320156151b1f["Unresolved: offered.has"]
+  s_7ff90bc3567f9c4e2b66a891["ProjectModelGateway.open · 292"]
+  s_2d63fd59dc1f840581796895["json · 238"]
+  u_e_5a731a4d64d4a0a81d3937e3["Unresolved: options.signal?.throwIfAborted"]
+  u_e_5bcf6ff53354636117e2d4a1["Unresolved: Promise"]
+  f_b5d14919b622055ad9110965["src/main/project-gateway.ts"]
+  u_e_5c9febc971129a9276a09d39["Unresolved: z.number().int"]
+  u_e_5d8927a6403ac8d260af3d7e["Unresolved: response.writeHead"]
+  s_c7bc44ea87d1eec69d70352b["ProjectModelGateway.handle.cleanup · 453"]
+  u_e_5dc491067bd9c87db496e63c["Unresolved: response.removeListener"]
+  u_e_6015d5e5f3631cd210e521bd["Unresolved: options.signal?.addEventListener"]
+  u_e_626a05a11d8bcdf0b4bfb783["Unresolved: Buffer.from"]
+  s_ecf5e1505185c1e81e7efbd4["ProjectModelGateway.open.close · 352"]
+  u_e_632ac2f0f2585a1fd38b48ad["Unresolved: server.closeAllConnections"]
+  u_e_637b9b270f86d0c33b18c8ba["Unresolved: createServer"]
+  u_e_679c4f81078cc3600e0c0ee4["Unresolved: Object.fromEntries"]
+  u_e_69e7c7c0498996ea60f193d2["Unresolved: z.union"]
+  u_e_6aca2fc95c77ae78f0c72329["Unresolved: Promise"]
+  u_e_6ad4c3c7c2cb59a73f7a7430["Unresolved: response.end"]
+  u_e_6c43a610e1c6f50686d8add5["Unresolved: z.string().min(1).max"]
+  u_e_6c932daead12dc76d82444a6["Unresolved: AbortController"]
+  s_07b72fe6609a35a6b460ae87["ProjectModelGateway.open.abort · 359"]
+  s_34d647a32e95de0451172c39["readJson · 219"]
+  u_e_6cc00ec3ab2a1bed2a17a45e["Unresolved: Array.isArray"]
+  s_ced143499c49f35fb5888b12["textBlocks · 101"]
+  u_e_6d0da7e40209d87dafc5c850["Unresolved: String"]
+  s_fdc14380023ed59880fcd7a3["event · 242"]
+  u_e_6dd2a9930aef23129b27b42d["Unresolved: JSON.parse"]
+  s_0e7dfcdcf1851b4d2d230844["ProjectModelGateway.handle.writeText · 518"]
+  u_e_6febce919f56f00a87b19466["Unresolved: Object.entries(request.headers).filter"]
+  s_37a3e9b3c134e6d129d33ea9["media · 113"]
+  u_e_700eb15e123be4f3778113e2["Unresolved: (target.documents ??= []).push"]
+  u_e_7036845fbec5733d154c84bb["Unresolved: AbortSignal.any"]
+  u_e_707aa2b6705c0f6d29347440["Unresolved: options.onUsage"]
+  u_e_70bee2a6faadc120771e4d48["Unresolved: value     .map((block) =&gt; {       if (!block || block.type !== 'text' || typeof block.text !== 'string')         throw new ProjectGatewayError(400, `capability_rejected: unsupported text block ${String(block?.type)}`);       return block.text;     })     .join"]
+  u_e_7706438b1b651f7f064d8192["Unresolved: upstream.headers.forEach"]
+  u_e_7771b67a5e0e56d8af0031f6["Unresolved: Array.isArray"]
+  u_e_79b79e0e9e0421fb939189e0["Unresolved: (pending.tool_calls ??= []).push"]
+  s_ae6944a1b579b1066930440c -.-> s_ab1e5f55dfc2a7630785b881
+  s_caff1d36cc1621c1e6b9b65f --> u_e_5029420d7811373ae4ca9f94
+  s_caff1d36cc1621c1e6b9b65f --> u_e_51b3d0490449258fdbf0acf7
+  s_af5395abcf3ccc7c41427a1f --> u_e_51fa6e63fed6c648c9795699
+  s_326f29cb10b984817b315458 --> u_e_564b7a0d01d34c2c69f6c3ed
+  s_93016cbe7643be884cf9ee15 --> u_e_59cad6769ed9320156151b1f
+  s_7ff90bc3567f9c4e2b66a891 --> s_2d63fd59dc1f840581796895
+  s_7ff90bc3567f9c4e2b66a891 --> u_e_5a731a4d64d4a0a81d3937e3
+  s_7ff90bc3567f9c4e2b66a891 --> u_e_5bcf6ff53354636117e2d4a1
+  f_b5d14919b622055ad9110965 --> u_e_5c9febc971129a9276a09d39
+  s_2d63fd59dc1f840581796895 --> u_e_5d8927a6403ac8d260af3d7e
+  s_c7bc44ea87d1eec69d70352b --> u_e_5dc491067bd9c87db496e63c
+  s_7ff90bc3567f9c4e2b66a891 --> u_e_6015d5e5f3631cd210e521bd
+  s_caff1d36cc1621c1e6b9b65f --> s_2d63fd59dc1f840581796895
+  s_caff1d36cc1621c1e6b9b65f --> u_e_626a05a11d8bcdf0b4bfb783
+  s_93016cbe7643be884cf9ee15 -.-> s_ab1e5f55dfc2a7630785b881
+  s_ecf5e1505185c1e81e7efbd4 --> u_e_632ac2f0f2585a1fd38b48ad
+  s_7ff90bc3567f9c4e2b66a891 --> u_e_637b9b270f86d0c33b18c8ba
+  s_caff1d36cc1621c1e6b9b65f --> u_e_679c4f81078cc3600e0c0ee4
+  f_b5d14919b622055ad9110965 --> u_e_69e7c7c0498996ea60f193d2
+  s_caff1d36cc1621c1e6b9b65f --> u_e_6aca2fc95c77ae78f0c72329
+  s_2d63fd59dc1f840581796895 --> u_e_6ad4c3c7c2cb59a73f7a7430
+  f_b5d14919b622055ad9110965 --> u_e_6c43a610e1c6f50686d8add5
+  s_7ff90bc3567f9c4e2b66a891 --> u_e_6c932daead12dc76d82444a6
+  s_07b72fe6609a35a6b460ae87 --> s_ecf5e1505185c1e81e7efbd4
+  s_34d647a32e95de0451172c39 --> u_e_6cc00ec3ab2a1bed2a17a45e
+  s_ced143499c49f35fb5888b12 --> u_e_6d0da7e40209d87dafc5c850
+  s_caff1d36cc1621c1e6b9b65f --> s_fdc14380023ed59880fcd7a3
+  s_34d647a32e95de0451172c39 --> u_e_6dd2a9930aef23129b27b42d
+  s_0e7dfcdcf1851b4d2d230844 --> s_fdc14380023ed59880fcd7a3
+  s_caff1d36cc1621c1e6b9b65f --> u_e_6febce919f56f00a87b19466
+  s_37a3e9b3c134e6d129d33ea9 --> u_e_700eb15e123be4f3778113e2
+  s_7ff90bc3567f9c4e2b66a891 --> u_e_7036845fbec5733d154c84bb
+  s_caff1d36cc1621c1e6b9b65f --> u_e_707aa2b6705c0f6d29347440
+  s_ced143499c49f35fb5888b12 --> u_e_70bee2a6faadc120771e4d48
+  s_caff1d36cc1621c1e6b9b65f -.-> s_ab1e5f55dfc2a7630785b881
+  s_ae6944a1b579b1066930440c -.-> s_ab1e5f55dfc2a7630785b881
+  s_caff1d36cc1621c1e6b9b65f --> u_e_7706438b1b651f7f064d8192
+  s_ced143499c49f35fb5888b12 --> u_e_7771b67a5e0e56d8af0031f6
+  s_ae6944a1b579b1066930440c --> u_e_79b79e0e9e0421fb939189e0

@@ -1,0 +1,25 @@
+flowchart LR
+  s_929fb866a2f1fd9c771467b7["src/renderer/main.tsx: SettingsPanel"]
+  s_865d56f8f181d43cc84a0cf4["refreshModelContext · 12"]
+  s_d2856be78b391813998ee7e3["src/renderer/ChatPanel.tsx: ChatPanel"]
+  s_9bc04564ab09cab8106b946c["src/renderer/RoleModels.tsx: RoleModels"]
+  s_5388822ad2d66c126b805dfa["modelProfile · 8"]
+  s_7d26c5884b12f75cb16033c4["src/shared/openai-routing.ts: openAIRoutes"]
+  s_aaf8bb10d4ea83152ffdcd35["maximumContext · 4"]
+  s_197b18c8adf933e8bf3dfe17["src/renderer/ModelSelect.tsx: ModelSelect.select"]
+  s_0ed063a443f14c86961790fd["src/shared/cloud-context.ts: contextLimitDetails"]
+  u_e_e64fbd8bda9c5d2ec079884d["Unresolved: models.find"]
+  u_e_ee3bb8e6b0ef3d00cdb4a028["Unresolved: [8192, 32768].includes"]
+  s_929fb866a2f1fd9c771467b7 --> s_865d56f8f181d43cc84a0cf4
+  s_d2856be78b391813998ee7e3 --> s_865d56f8f181d43cc84a0cf4
+  s_9bc04564ab09cab8106b946c --> s_5388822ad2d66c126b805dfa
+  s_929fb866a2f1fd9c771467b7 --> s_865d56f8f181d43cc84a0cf4
+  s_7d26c5884b12f75cb16033c4 --> s_aaf8bb10d4ea83152ffdcd35
+  s_197b18c8adf933e8bf3dfe17 --> s_5388822ad2d66c126b805dfa
+  s_5388822ad2d66c126b805dfa --> s_aaf8bb10d4ea83152ffdcd35
+  s_929fb866a2f1fd9c771467b7 --> s_865d56f8f181d43cc84a0cf4
+  s_d2856be78b391813998ee7e3 --> s_5388822ad2d66c126b805dfa
+  s_865d56f8f181d43cc84a0cf4 --> s_aaf8bb10d4ea83152ffdcd35
+  s_aaf8bb10d4ea83152ffdcd35 --> s_0ed063a443f14c86961790fd
+  s_865d56f8f181d43cc84a0cf4 --> u_e_e64fbd8bda9c5d2ec079884d
+  s_865d56f8f181d43cc84a0cf4 --> u_e_ee3bb8e6b0ef3d00cdb4a028

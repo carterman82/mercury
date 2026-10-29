@@ -1,0 +1,80 @@
+flowchart LR
+  s_e824e981c201b30e2be5d61b["open · 14"]
+  s_7ff90bc3567f9c4e2b66a891["src/main/project-gateway.ts: ProjectModelGateway.open"]
+  f_bb20365571892e7f5090ecb7["src/main/project-gateway.test.ts"]
+  u_e_30b6f015173dbcb4279a1bcc["Unresolved: expect(chat.mock.calls[0][0].profile.contextLimit).toBe"]
+  u_e_31c9486daad12eec76cd59fa["Unresolved: expect(response.status).toBe"]
+  u_e_33c2e004e387bcec4c9f6b8f["Unresolved: expect"]
+  u_e_346c058d722ab39c813be583["Unresolved: (     await post(session, {       system: [{ type: 'text', text: 'System instruction' }],       messages: [         {           role: 'assistant',           content: [             { type: 'text', text: 'Reading' },             { type: 'tool_use', id: 'call-1', name: 'read_project_file', input: { pat"]
+  u_e_3569add08a4ca63e426cf807["Unresolved: sessions.push"]
+  s_41d0e012d15945cea44486f5["events · 32"]
+  u_e_35df7261120502d75a17c567["Unresolved: line.startsWith"]
+  u_e_370f1c627ab7018bd4516a41["Unresolved: expect(await response.text()).toContain"]
+  u_e_389b7d4d91ed13cfa14deb1c["Unresolved: expect.poll"]
+  u_e_395eebfc410530a172fd8d71["Unresolved: expect"]
+  u_e_39c4086e9f19b5d5191e88fc["Unresolved: expect"]
+  u_e_3a82036593e728345dc358bd["Unresolved: expect((await post(first, {}, { origin: 'https://untrusted.example' })).status).toBe"]
+  u_e_3b415d5ba6e38f40a8669f20["Unresolved: import"]
+  u_e_3d06427f5a7cba3a6abf3a34["Unresolved: expect"]
+  u_e_3dc573d2e66ba5427aaa1ca3["Unresolved: expect"]
+  u_e_3dc7e5effb5dc657c0b6645f["Unresolved: it"]
+  s_95d81833ae554d5051104066["post · 25"]
+  u_e_3eec1122545e1379bd408a41["Unresolved: it"]
+  u_e_3fb612549119f2ad7cef3948["Unresolved: expect"]
+  u_e_3fe2dcc913c159c60560084e["Unresolved: expect(((await (await post(session, {})).json()) as any).content).toEqual"]
+  u_e_405d77cdef06580a8ae76c09["Unresolved: controller.abort"]
+  u_e_40757785c149374bc2d37bba["Unresolved: input.onText"]
+  s_c416703a343c8ea83ddb1f3d["src/main/vision.ts: ModelHttpError.constructor"]
+  u_e_4204c297d312b031f39a6892["Unresolved: it"]
+  u_e_421bbe2f2f0051f599092822["Unresolved: reject"]
+  u_e_43adfa64b1cf4cb3504ad7d2["Unresolved: (     await post(session, {       messages: [         { role: 'assistant', content: [{ type: 'tool_use', id: 'call_0', name: 'read_source', input: {} }] },         { role: 'user', content: [{ type: 'tool_result', tool_use_id: 'call_0', content: 'done' }] },       ],       tools: [{ name: 'read_sourc"]
+  u_e_44bbc3a3f8502560c5e068c7["Unresolved: expect.poll(() =&gt; cancelled).toBe"]
+  u_e_45587b2b27ecc9c8b5ec1cd6["Unresolved: expect(catalog.data).toHaveLength"]
+  u_e_4578cfe63b32ec37301de54f["Unresolved: expect"]
+  u_e_4912ca7bffa09d3c184f934f["Unresolved: expect"]
+  u_e_492590cc479f1a9bff3694e0["Unresolved: it"]
+  u_e_4d022d7e0970928c5fb4e8df["Unresolved: expect(     (       await fetch(first.baseUrl + '/v1/messages/count_tokens', {         method: 'POST',         headers: { authorization: `Bearer ${first.token}` },       })     ).status,   ).toBe"]
+  u_e_4e977290e3e773df1dc5558a["Unresolved: expect"]
+  u_e_4eb993ca6487b414a00e0779["Unresolved: reject"]
+  u_e_4ef606f98109b83205e4262c["Unresolved: expect(result.status).toBe"]
+  u_e_4f6f65d77322b188be521791["Unresolved: it"]
+  s_e824e981c201b30e2be5d61b -.-> s_7ff90bc3567f9c4e2b66a891
+  f_bb20365571892e7f5090ecb7 --> u_e_30b6f015173dbcb4279a1bcc
+  f_bb20365571892e7f5090ecb7 --> s_e824e981c201b30e2be5d61b
+  f_bb20365571892e7f5090ecb7 --> u_e_31c9486daad12eec76cd59fa
+  f_bb20365571892e7f5090ecb7 --> u_e_33c2e004e387bcec4c9f6b8f
+  f_bb20365571892e7f5090ecb7 --> u_e_346c058d722ab39c813be583
+  s_e824e981c201b30e2be5d61b --> u_e_3569add08a4ca63e426cf807
+  s_41d0e012d15945cea44486f5 --> u_e_35df7261120502d75a17c567
+  f_bb20365571892e7f5090ecb7 --> u_e_370f1c627ab7018bd4516a41
+  f_bb20365571892e7f5090ecb7 --> u_e_389b7d4d91ed13cfa14deb1c
+  f_bb20365571892e7f5090ecb7 --> u_e_395eebfc410530a172fd8d71
+  f_bb20365571892e7f5090ecb7 --> u_e_39c4086e9f19b5d5191e88fc
+  f_bb20365571892e7f5090ecb7 --> u_e_3a82036593e728345dc358bd
+  f_bb20365571892e7f5090ecb7 --> u_e_3b415d5ba6e38f40a8669f20
+  f_bb20365571892e7f5090ecb7 --> u_e_3d06427f5a7cba3a6abf3a34
+  f_bb20365571892e7f5090ecb7 --> u_e_3dc573d2e66ba5427aaa1ca3
+  f_bb20365571892e7f5090ecb7 --> u_e_3dc7e5effb5dc657c0b6645f
+  f_bb20365571892e7f5090ecb7 --> s_95d81833ae554d5051104066
+  f_bb20365571892e7f5090ecb7 --> u_e_3eec1122545e1379bd408a41
+  f_bb20365571892e7f5090ecb7 --> u_e_3fb612549119f2ad7cef3948
+  f_bb20365571892e7f5090ecb7 --> u_e_3fe2dcc913c159c60560084e
+  f_bb20365571892e7f5090ecb7 --> u_e_405d77cdef06580a8ae76c09
+  f_bb20365571892e7f5090ecb7 --> u_e_40757785c149374bc2d37bba
+  f_bb20365571892e7f5090ecb7 -.-> s_c416703a343c8ea83ddb1f3d
+  f_bb20365571892e7f5090ecb7 --> s_e824e981c201b30e2be5d61b
+  f_bb20365571892e7f5090ecb7 --> u_e_4204c297d312b031f39a6892
+  f_bb20365571892e7f5090ecb7 --> u_e_421bbe2f2f0051f599092822
+  f_bb20365571892e7f5090ecb7 --> u_e_43adfa64b1cf4cb3504ad7d2
+  f_bb20365571892e7f5090ecb7 --> u_e_44bbc3a3f8502560c5e068c7
+  f_bb20365571892e7f5090ecb7 --> u_e_45587b2b27ecc9c8b5ec1cd6
+  f_bb20365571892e7f5090ecb7 --> u_e_4578cfe63b32ec37301de54f
+  f_bb20365571892e7f5090ecb7 --> u_e_4912ca7bffa09d3c184f934f
+  f_bb20365571892e7f5090ecb7 --> u_e_492590cc479f1a9bff3694e0
+  f_bb20365571892e7f5090ecb7 --> s_e824e981c201b30e2be5d61b
+  f_bb20365571892e7f5090ecb7 --> u_e_4d022d7e0970928c5fb4e8df
+  f_bb20365571892e7f5090ecb7 --> u_e_4e977290e3e773df1dc5558a
+  f_bb20365571892e7f5090ecb7 --> u_e_4eb993ca6487b414a00e0779
+  f_bb20365571892e7f5090ecb7 --> u_e_4ef606f98109b83205e4262c
+  f_bb20365571892e7f5090ecb7 --> s_e824e981c201b30e2be5d61b
+  f_bb20365571892e7f5090ecb7 --> u_e_4f6f65d77322b188be521791

@@ -29,6 +29,9 @@ import { ProjectWorktreeService } from './project-worktrees';
 import { ClaudeProjectRuntime } from './project-agent-runtime';
 import { ProjectExecutionAdapter } from './project-execution';
 import { ProjectMaps } from './project-maps';
+import { generateProjectReport } from './project-report';
+import { ProjectReportCache, reportSourceCommit, type DiagramAnalysis, type ReportReduction } from './project-report-cache';
+import { resolveCandidates } from './delegation';
 import { ProjectWorkers } from './project-workers';
 
 declare const MAIN_WINDOW_VITE_DEV_SERVER_URL: string | undefined;
@@ -202,6 +205,42 @@ app.whenReady().then(async () => {
     notify();
   });
   handle('projectMapStatus', (_event, id: string) => projectTools.mapStatus(store.chat(z.string().uuid().parse(id))));
+  const reportCache = new ProjectReportCache(path.join(app.getPath('userData'), 'project-reports'));
+  const reportRoot = (id: string) => {
+    const chat = store.chat(z.string().uuid().parse(id));
+    if (!chat.projectId) throw new Error('Select a project before generating a report.');
+    return { chat, root: store.project(chat.projectId).path };
+  };
+  handle('cachedProjectReport', async (_event, id: string) => (await reportCache.read(reportRoot(id).root))?.report ?? null);
+  handle('generateProjectReport', async (event, id: string, rawRegenerate?: boolean) => {
+    const { chat, root } = reportRoot(id);
+    const fromScratch = z.boolean().optional().parse(rawRegenerate) ?? false;
+    return reportCache.run(root, async () => {
+      const progress = (message: string) => { if (!event.sender.isDestroyed()) event.sender.send('project-report:progress', chat.id, message); };
+      progress('Checking for changed diagrams.');
+      const lastCommit = await reportSourceCommit(root);
+      const diagrams = await projectTools.reportDiagrams(chat);
+      return reportCache.update(root, diagrams, lastCommit, async (previous, previousReductions) => {
+      const settings = store.settings();
+      const candidates = resolveCandidates(settings, 'subagent', chat.profile);
+      let analyses: DiagramAnalysis[] = [];
+      let reductions: ReportReduction[] = [];
+      const result = await generateProjectReport(providers, chat.profile, diagrams, new AbortController().signal, {
+        candidates, concurrency: settings.projectWorkerConcurrency ?? 3, onProgress: progress,
+        analyses: previous, reductions: previousReductions, onAnalyses: (value, combined) => { analyses = value; reductions = combined; },
+      });
+      return { report: result, analyses, reductions };
+      }, fromScratch);
+    });
+  });
+  handle('saveProjectReport', async (_event, id: string) => {
+    const report = (await reportCache.read(reportRoot(id).root))?.report;
+    if (!report) throw new Error('Generate a report before saving it.');
+    const chosen = await dialog.showSaveDialog(window!, { defaultPath: 'architecture-report.mmd', filters: [{ name: 'Mermaid diagram', extensions: ['mmd'] }] });
+    if (chosen.canceled || !chosen.filePath) return false;
+    await fs.writeFile(chosen.filePath, report.diagram, 'utf8');
+    return true;
+  });
   handle('refreshProjectMaps', (_event, id: string) => projectTools.mapStatus(store.chat(z.string().uuid().parse(id)), true));
   handle('readProjectDiagram', (_event, id: string, relative: string) => projectTools.readDiagram(store.chat(z.string().uuid().parse(id)), z.string().min(1).max(2000).parse(relative)));
   handle('createSession', (_event, projectId: string, objective: string) => {

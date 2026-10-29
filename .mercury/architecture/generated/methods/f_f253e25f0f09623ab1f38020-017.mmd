@@ -1,0 +1,105 @@
+flowchart LR
+  s_05f41d258c25d0c87af9e9b4["tests.fake_capture_factory · 2242"]
+  s_73ae9d4fc9a1955487dd0332["BaseContainerRunner.new · 284"]
+  s_31643dff0916cddffce5b86f["tests.FakeAnalyzer.analyze_capture · 2266"]
+  u_e_799ff920958466f67f92d622["Unresolved: result.denials.clone"]
+  s_75d59b15b0fc308431d83eb5["BaseContainerRunner.spawn_base · 464"]
+  u_e_79d1bf6a21ba3da4b0804d02["Unresolved: config.output_path.as_deref"]
+  s_4989a879f4d223149c236cf0["BaseContainerSandboxProcess.wait · 1835"]
+  u_e_79e7555a565d2e4799ff8a7a["Unresolved: self.stdout.take"]
+  s_df5df6b461778cc5c792c9d1["discard_abandoned_capture · 1698"]
+  u_e_7a316e8bcbfba43003b3a651["Unresolved: session.finish"]
+  u_e_7a865d3831232a1c8d59ef62["Unresolved: session.finish(None).err"]
+  s_e6a7fc3c578c3ad77ce527f0["tests.abandoned_capture_discards_without_sealing_output.DiscardRecordingSession.environment · 2567"]
+  u_e_7a92f1521cf65e4aed3887e8["Unresolved: HANDLE"]
+  s_c45ba058e7d52d071c939220["BaseContainerSandboxProcess.run_teardown · 1345"]
+  u_e_7a96a280441815da68e863bb["Unresolved: etl_path.to_string_lossy().into_owned"]
+  u_e_7aa0cf779de43fce099536b2["Unresolved: primary.is_api_unavailable"]
+  s_b8cfb14d5ee4620bb27d8946["tests.identityless_loopback_proxy_requires_base_container_api · 3251"]
+  u_e_7ab723f495267b97e36b0cb9["Unresolved: crate::process_container_common::test_env::BcUsableGuard::set"]
+  u_e_7b1a89d4712c1c81b1c3b0ff["Unresolved: capture_denials.is_some"]
+  s_7afa9a3dcbfec7940128aefb["tests.capture_capability_requires_an_explicit_direct_egress_section · 2975"]
+  u_e_7b31fb0c12dde6d5f7ad93f9["Unresolved: spec                 .network_policy()                 .and_then(|policy| policy.egress())                 .expect"]
+  u_e_7b47944ed3b3dd18ecbd1d29["Unresolved: capture_denials             .as_ref"]
+  s_d434cc2826f51044fc6eeb8a["managed_capture_output_path · 1940"]
+  u_e_7b7a8c8f9610734826fae630["Unresolved: std::env::var_os"]
+  u_e_7b881abe35fbbb01c93ed515["Unresolved: capture_denials             .as_ref()             .map(|config| unique_denials_output_paths(config.output_path.as_deref(), false))             .transpose()             .map_err"]
+  s_d0b565e215fcc4bd8996d34a["tests.validate_runner_rejects_a_sparse_verbatim_environment_before_host_probes · 2700"]
+  u_e_7be88a6385f89d02a717528a["Unresolved: vec"]
+  s_43ad6cb6b43e807f3c4ac594["tests.managed_capture_paths_are_unique_per_run · 2284"]
+  s_53f62fec7c547573425fa29c["managed_capture_output_path_in · 2004"]
+  u_e_7bffdc9dfac8f57e5397ad89["Unresolved: tempfile::tempdir().expect"]
+  u_e_7c415d3f910be41bfa8fb4d6["Unresolved: self.managed_capture.take"]
+  u_e_7cc4e205cdc753fa3cfc069a["Unresolved: std::env::var_os(&quot;LOCALAPPDATA&quot;)         .map(PathBuf::from)         .or_else(|| {             std::env::var_os(&quot;USERPROFILE&quot;)                 .map(PathBuf::from)                 .map(|profile| profile.join(&quot;AppData&quot;).join(&quot;Local&quot;))         })         .ok_or_else"]
+  s_718071bb994453f213c600a4["tests.build_process_security_environment_spec_preserves_directional_allow_egress · 3108"]
+  s_2b6f4f81b670afa7b6f61cf9["BaseContainerRunner.default · 274"]
+  s_6bc8dffd551d6bfe4c9dfbd8["build_child_env_block · 108"]
+  u_e_7d352e736a42a4304287e3d9["Unresolved: Some"]
+  s_c15599a09ee14be41348a279["base_container_teardown_status · 1733"]
+  u_e_7d598cf6ed8da72a6f56f839["Unresolved: Some"]
+  s_051766fbe45382b985d17a54["tests.default_etl_cleanup_removes_managed_directory · 2460"]
+  u_e_7da822f16d4dbc2a8ca46744["Unresolved: BaseContainerSandboxProcess::decode_write_and_finalize(             &amp;analyzer,             &amp;etl_path,             Some(&amp;directory),             &amp;output_path,             0,             false,         )         .expect"]
+  u_e_7db6d3f3b3b8ff4f63ff20f5["Unresolved: capture_session                         .take"]
+  s_9c125e370d145f54c33c13a4["tests.validate_rejects_conflicting_proxy_identity_paths · 3592"]
+  u_e_7ddc64d853f940349a4c8a65["Unresolved: assert_eq"]
+  s_45faf60b4405df8e5957e5b3["BaseContainerSandboxProcess.try_wait · 1796"]
+  u_e_7dea3eece07a10a66ddeb484["Unresolved: Err"]
+  u_e_7e13cddc015530d06171c758["Unresolved: env_block.is_some"]
+  u_e_7e1863be1fa8c0351b25112c["Unresolved: ScriptResponse::error"]
+  s_6ccb36388fd02a1e9f9551d9["tests.directional_default_deny_without_capture_does_not_add_internet_capability · 3026"]
+  u_e_7edccf02c30818433dc6c89b["Unresolved: assert_eq"]
+  u_e_7f5b2830125908b5bd1e136f["Unresolved: write"]
+  u_e_7f6467cdd0577e31b7afce3f["Unresolved: Err"]
+  s_4b015a40bfb71b07d5051d70["tests.is_api_not_implemented_classifies_disabled_feature · 2633"]
+  u_e_7f8b4e8b1e0a40edcb224214["Unresolved: assert"]
+  s_41a5e82d79d3b38209f0faaf["tests.injected_analyzer_failure_leaves_no_output_file · 2410"]
+  u_e_7f9322a0b0d4cd01e310d9a3["Unresolved: assert"]
+  s_965c4393ed66b8094fead3da["tests.successful_process_reports_capture_teardown_failure · 2604"]
+  u_e_8005038800b450369a4dc700["Unresolved: std::io::Error::other"]
+  u_e_80481e9c9501802ca29c307c["Unresolved: format"]
+  s_4b4fe2a9575e1f38e2fdb266["tests.build_process_security_environment_spec_splits_mixed_icmp_rules · 3434"]
+  u_e_804a823976aee89c60e66eaf["Unresolved: spec             .network_policy()             .and_then"]
+  s_71eeb904bcf9977509568161["log_base_network_policy_audit · 155"]
+  u_e_804b178f7f57f4e24508efa6["Unresolved: sanitize_identity"]
+  s_9665f781df459286b5101562["tests.abandoned_capture_discards_without_sealing_output · 2561"]
+  u_e_805283ec007bbb308d6cfee5["Unresolved: std::fs::create_dir"]
+  s_05f41d258c25d0c87af9e9b4 -.-> s_73ae9d4fc9a1955487dd0332
+  s_31643dff0916cddffce5b86f --> u_e_799ff920958466f67f92d622
+  s_75d59b15b0fc308431d83eb5 --> u_e_79d1bf6a21ba3da4b0804d02
+  s_4989a879f4d223149c236cf0 --> u_e_79e7555a565d2e4799ff8a7a
+  s_df5df6b461778cc5c792c9d1 --> u_e_7a316e8bcbfba43003b3a651
+  s_75d59b15b0fc308431d83eb5 --> u_e_7a865d3831232a1c8d59ef62
+  s_e6a7fc3c578c3ad77ce527f0 --> u_e_7a92f1521cf65e4aed3887e8
+  s_c45ba058e7d52d071c939220 --> u_e_7a96a280441815da68e863bb
+  s_75d59b15b0fc308431d83eb5 --> u_e_7aa0cf779de43fce099536b2
+  s_b8cfb14d5ee4620bb27d8946 --> u_e_7ab723f495267b97e36b0cb9
+  s_75d59b15b0fc308431d83eb5 --> u_e_7b1a89d4712c1c81b1c3b0ff
+  s_7afa9a3dcbfec7940128aefb --> u_e_7b31fb0c12dde6d5f7ad93f9
+  s_75d59b15b0fc308431d83eb5 --> u_e_7b47944ed3b3dd18ecbd1d29
+  s_d434cc2826f51044fc6eeb8a --> u_e_7b7a8c8f9610734826fae630
+  s_75d59b15b0fc308431d83eb5 --> u_e_7b881abe35fbbb01c93ed515
+  s_d0b565e215fcc4bd8996d34a --> u_e_7be88a6385f89d02a717528a
+  s_43ad6cb6b43e807f3c4ac594 -.-> s_53f62fec7c547573425fa29c
+  s_43ad6cb6b43e807f3c4ac594 --> u_e_7bffdc9dfac8f57e5397ad89
+  s_c45ba058e7d52d071c939220 --> u_e_7c415d3f910be41bfa8fb4d6
+  s_d434cc2826f51044fc6eeb8a --> u_e_7cc4e205cdc753fa3cfc069a
+  s_718071bb994453f213c600a4 -.-> s_2b6f4f81b670afa7b6f61cf9
+  s_6bc8dffd551d6bfe4c9dfbd8 --> u_e_7d352e736a42a4304287e3d9
+  s_c15599a09ee14be41348a279 --> u_e_7d598cf6ed8da72a6f56f839
+  s_051766fbe45382b985d17a54 --> u_e_7da822f16d4dbc2a8ca46744
+  s_75d59b15b0fc308431d83eb5 --> u_e_7db6d3f3b3b8ff4f63ff20f5
+  s_9c125e370d145f54c33c13a4 --> u_e_7ddc64d853f940349a4c8a65
+  s_45faf60b4405df8e5957e5b3 --> u_e_7dea3eece07a10a66ddeb484
+  s_75d59b15b0fc308431d83eb5 --> u_e_7e13cddc015530d06171c758
+  s_53f62fec7c547573425fa29c --> u_e_7e1863be1fa8c0351b25112c
+  s_6ccb36388fd02a1e9f9551d9 --> u_e_7edccf02c30818433dc6c89b
+  s_2b6f4f81b670afa7b6f61cf9 -.-> s_73ae9d4fc9a1955487dd0332
+  s_75d59b15b0fc308431d83eb5 --> u_e_7f5b2830125908b5bd1e136f
+  s_75d59b15b0fc308431d83eb5 --> u_e_7f6467cdd0577e31b7afce3f
+  s_4b015a40bfb71b07d5051d70 --> u_e_7f8b4e8b1e0a40edcb224214
+  s_41a5e82d79d3b38209f0faaf --> u_e_7f9322a0b0d4cd01e310d9a3
+  s_965c4393ed66b8094fead3da --> u_e_8005038800b450369a4dc700
+  s_53f62fec7c547573425fa29c --> u_e_80481e9c9501802ca29c307c
+  s_4b4fe2a9575e1f38e2fdb266 --> u_e_804a823976aee89c60e66eaf
+  s_71eeb904bcf9977509568161 --> u_e_804b178f7f57f4e24508efa6
+  s_9665f781df459286b5101562 --> u_e_805283ec007bbb308d6cfee5

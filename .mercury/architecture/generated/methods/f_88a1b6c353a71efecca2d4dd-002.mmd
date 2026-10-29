@@ -1,0 +1,88 @@
+flowchart LR
+  s_e33d2fd514298beee022604f["Workspace.list.skip · 49"]
+  u_e_7c0e4861771b81011fb10f5b["Unresolved: name.endsWith"]
+  s_a77872571afdc1edd63716fa["Workspace.canonicalRoot · 17"]
+  u_e_7df5a21777fc4b8aaa563bac["Unresolved: fs.realpath"]
+  s_a63e5a1513d2fc01d0c902f5["Workspace.read · 68"]
+  u_e_7f981947a5e3954a8c7d4a39["Unresolved: Math.floor"]
+  s_71fd89b480fab8b8c0a93b37["src/main/runner.ts: Runner.useTool"]
+  s_dbafb8571053ccc3bf08ef15["Workspace.resolve · 22"]
+  s_aefcfbc8df21286294057589["Workspace.within · 18"]
+  s_1bf203f3a677de8fed1cd884["Workspace.edit · 101"]
+  s_6aa60aeb10ffaed53f6b83ab["hash · 10"]
+  u_e_84639109d5095d17aa591ddb["Unresolved: fs.realpath"]
+  u_e_89d92d515c0796ee7ebd73cb["Unresolved: lines.slice(start - 1, end).map((line, i) =&gt; `${start + i}: ${line}`).join('\n').slice"]
+  s_2e26a1fb702ed448abf05817["src/main/project-tools.ts: ProjectTools.authorizePlugin"]
+  s_2cd77cc2c4c686a531035a8e["Workspace.search · 87"]
+  u_e_8f08fb681ca79e531be9ff6a["Unresolved: results.push"]
+  u_e_8f66cb64fbfd470015b40396["Unresolved: relative.split(/[\\/]+/).includes"]
+  u_e_91fae4645f43fb8ee3f0bdc0["Unresolved: Error"]
+  s_3416ba8d5bced309d41195a8["Workspace.createPdf · 115"]
+  u_e_925b7fb35eac5ee8fd7f2ee3["Unresolved: fs.writeFile"]
+  u_e_92b8dc0e2e3376ffbdfb24a2["Unresolved: path.isAbsolute"]
+  u_e_92d14563d7fa2f095d9e52f6["Unresolved: path.extname(relative).toLowerCase"]
+  u_e_9416322dd7accd5deb38b374["Unresolved: Error"]
+  u_e_945ec884a13b6f9a5e622ae6["Unresolved: Math.floor"]
+  u_e_94d3caead0032a42f17b750a["Unresolved: line.slice"]
+  u_e_9639e079eaf3bc9aa937e0ca["Unresolved: relative.replaceAll"]
+  s_6c57fb22fa612eeba88295b5["Workspace.list · 45"]
+  u_e_97c1fe292af88419352835d8["Unresolved: x.trim"]
+  u_e_99e1a52185a9f96d6392ea6a["Unresolved: fs.stat"]
+  u_e_9a99599a263be21320171b4b["Unresolved: ignore.split(/\r?\n/).map"]
+  u_e_9cd9d8e6b991ccf382c2f504["Unresolved: lines.slice(start - 1, end).map((line, i) =&gt; `${start + i}: ${line}`).join('\n').slice"]
+  u_e_9ea635ee15f8edad260d3f71["Unresolved: Math.min"]
+  s_674616fb80e60e023242849d["src/main/core.test.ts: chat"]
+  u_e_9ef7aaa57047036928759157["Unresolved: relative.split"]
+  u_e_a0f2e0418d59c2db21c67424["Unresolved: Error"]
+  u_e_a13c261863023533b568e771["Unresolved: path.dirname"]
+  u_e_a16a79def282beced6bf24dc["Unresolved: fs.readFile"]
+  u_e_a1c8e2372ebd4372ce1edffc["Unresolved: Math.min"]
+  s_eef34a052b825553f331042c["src/main/project-tools.ts: ProjectTools.execute.commandState"]
+  s_2a61ae8c7364769b9cb7e3c8["Workspace.constructor · 16"]
+  u_e_a35c04f071c2d279ae7cc569["Unresolved: fs.readFile(path.join(this.root, '.gitignore'), 'utf8').catch"]
+  s_5cc50dd5256707bcf046fa0e["src/main/runner.ts: Runner.projectContext"]
+  u_e_a8a991686ab61fd12dd3eb09["Unresolved: path.isAbsolute"]
+  s_a26c220bf37ee317ae6ace1e["src/main/project-tools.ts: ProjectTools.execute"]
+  s_36f2bee38b20cd143406a4e3["Workspace.list.walk · 53"]
+  u_e_ad06bce80a2cd94aca1add08["Unresolved: output.push"]
+  u_e_aefa9bce85be8e6120361052["Unresolved: fs.writeFile"]
+  s_e33d2fd514298beee022604f --> u_e_7c0e4861771b81011fb10f5b
+  s_a77872571afdc1edd63716fa --> u_e_7df5a21777fc4b8aaa563bac
+  s_a63e5a1513d2fc01d0c902f5 --> u_e_7f981947a5e3954a8c7d4a39
+  s_71fd89b480fab8b8c0a93b37 -.-> s_a63e5a1513d2fc01d0c902f5
+  s_dbafb8571053ccc3bf08ef15 -.-> s_aefcfbc8df21286294057589
+  s_1bf203f3a677de8fed1cd884 --> s_6aa60aeb10ffaed53f6b83ab
+  s_dbafb8571053ccc3bf08ef15 --> u_e_84639109d5095d17aa591ddb
+  s_dbafb8571053ccc3bf08ef15 -.-> s_aefcfbc8df21286294057589
+  s_a63e5a1513d2fc01d0c902f5 --> u_e_89d92d515c0796ee7ebd73cb
+  s_2e26a1fb702ed448abf05817 --> s_6aa60aeb10ffaed53f6b83ab
+  s_2cd77cc2c4c686a531035a8e --> u_e_8f08fb681ca79e531be9ff6a
+  s_dbafb8571053ccc3bf08ef15 --> u_e_8f66cb64fbfd470015b40396
+  s_a63e5a1513d2fc01d0c902f5 --> u_e_91fae4645f43fb8ee3f0bdc0
+  s_3416ba8d5bced309d41195a8 --> u_e_925b7fb35eac5ee8fd7f2ee3
+  s_dbafb8571053ccc3bf08ef15 --> u_e_92b8dc0e2e3376ffbdfb24a2
+  s_3416ba8d5bced309d41195a8 --> u_e_92d14563d7fa2f095d9e52f6
+  s_3416ba8d5bced309d41195a8 --> u_e_9416322dd7accd5deb38b374
+  s_a63e5a1513d2fc01d0c902f5 --> u_e_945ec884a13b6f9a5e622ae6
+  s_2cd77cc2c4c686a531035a8e --> u_e_94d3caead0032a42f17b750a
+  s_1bf203f3a677de8fed1cd884 --> u_e_9639e079eaf3bc9aa937e0ca
+  s_6c57fb22fa612eeba88295b5 --> u_e_97c1fe292af88419352835d8
+  s_a63e5a1513d2fc01d0c902f5 --> s_6aa60aeb10ffaed53f6b83ab
+  s_a63e5a1513d2fc01d0c902f5 --> u_e_99e1a52185a9f96d6392ea6a
+  s_6c57fb22fa612eeba88295b5 --> u_e_9a99599a263be21320171b4b
+  s_a63e5a1513d2fc01d0c902f5 --> u_e_9cd9d8e6b991ccf382c2f504
+  s_a63e5a1513d2fc01d0c902f5 --> u_e_9ea635ee15f8edad260d3f71
+  s_674616fb80e60e023242849d --> s_6aa60aeb10ffaed53f6b83ab
+  s_dbafb8571053ccc3bf08ef15 --> u_e_9ef7aaa57047036928759157
+  s_2cd77cc2c4c686a531035a8e -.-> s_6c57fb22fa612eeba88295b5
+  s_3416ba8d5bced309d41195a8 --> u_e_a0f2e0418d59c2db21c67424
+  s_3416ba8d5bced309d41195a8 --> u_e_a13c261863023533b568e771
+  s_1bf203f3a677de8fed1cd884 --> u_e_a16a79def282beced6bf24dc
+  s_a63e5a1513d2fc01d0c902f5 --> u_e_a1c8e2372ebd4372ce1edffc
+  s_eef34a052b825553f331042c -.-> s_2a61ae8c7364769b9cb7e3c8
+  s_6c57fb22fa612eeba88295b5 --> u_e_a35c04f071c2d279ae7cc569
+  s_5cc50dd5256707bcf046fa0e -.-> s_a63e5a1513d2fc01d0c902f5
+  s_aefcfbc8df21286294057589 --> u_e_a8a991686ab61fd12dd3eb09
+  s_a26c220bf37ee317ae6ace1e -.-> s_a63e5a1513d2fc01d0c902f5
+  s_36f2bee38b20cd143406a4e3 --> u_e_ad06bce80a2cd94aca1add08
+  s_1bf203f3a677de8fed1cd884 --> u_e_aefa9bce85be8e6120361052

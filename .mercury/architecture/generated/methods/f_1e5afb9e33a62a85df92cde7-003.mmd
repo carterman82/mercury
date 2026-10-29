@@ -1,0 +1,78 @@
+flowchart LR
+  f_1e5afb9e33a62a85df92cde7["src/main/project-maps.test.ts"]
+  u_e_636df116567b0e14211fda67["Unresolved: it.each"]
+  u_e_65adb9b73606635663bce1f3["Unresolved: file.startsWith"]
+  u_e_65f4814ff4a781f0306b47e0["Unresolved: expect(second).toEqual"]
+  u_e_6662a8affdacd07f22e65415["Unresolved: expect(fs.stat(path.join(cancelled, '.mercury'))).rejects.toMatchObject"]
+  u_e_67dfd4663d65d11e7d187bde["Unresolved: fs.stat"]
+  s_6bebb68c6876fe05dbcd5b96["callsBetween · 20"]
+  s_f06b86f390eae59ae49f8570["src/main/project-maps.ts: ProjectMaps.refresh"]
+  u_e_6bdd41d17b13bce5d4e26b17["Unresolved: first.symbols.find"]
+  u_e_6d4d3b0e044fcc923968e759["Unresolved: expect((await maps.readDiagram(root, diagram)).content).toContain"]
+  u_e_6f691a77b7e7c2b5160fe41d["Unresolved: path.join"]
+  u_e_6fc1ded00718906a6142d194["Unresolved: (await Promise.all(diagrams.map((file) =&gt; maps.readDiagram(root, file))))     .map((file) =&gt; file.content)     .join"]
+  s_7ebf741cf452606404f5d8dd["src/main/project-maps.ts: ProjectMaps.status"]
+  u_e_72effacfee81ccb7573f5e32["Unresolved: fs.unlink"]
+  u_e_76c0a396ceb0daf3d753a744["Unresolved: fs.writeFile"]
+  u_e_7739af04d3dad51d0d425857["Unresolved: Error"]
+  s_9c3b27d8e01b2fdc48008770["src/main/project-maps.ts: ProjectMaps.constructor"]
+  u_e_77d7b6d99b0d2e15a5a27d1b["Unresolved: expect"]
+  s_b002405fa34e411f72a0b0e4["fixture · 8"]
+  u_e_7875cfe4f2c2b1035b8b82cf["Unresolved: path.join"]
+  u_e_7a2d47d4422528f0c42b7d7a["Unresolved: expect"]
+  u_e_7bd198dba5db0827b39ab7cb["Unresolved: expect"]
+  u_e_7bd93b206adc58d739184b3f["Unresolved: expect"]
+  u_e_7cdcc0c73f8320d96a07d638["Unresolved: fs.readFile"]
+  u_e_7e2acb29b1814a369c644a03["Unresolved: graph.symbols.filter((symbol) =&gt; symbol.file === targetFile).map"]
+  u_e_80222a2abe10e859289e6ce3["Unresolved: expect((await maps.status(root)).fresh).toBe"]
+  u_e_816dc4cc10e998f017e0021e["Unresolved: expect(graph.edges.some((edge) =&gt; edge.kind === 'configuration' &amp;&amp; edge.confidence === 'inferred')).toBe"]
+  s_954253553b9f9d7c495d075a["src/main/project-maps.ts: ProjectMaps.readDiagram"]
+  u_e_82d52753eed04743e915471f["Unresolved: expect(graph.diagnostics.some((diagnostic) =&gt; diagnostic.file === 'broken.ts')).toBe"]
+  u_e_835d4ead46fc7547b29d89fd["Unresolved: it"]
+  u_e_839f2df4e026da8c4a40f128["Unresolved: graph.diagnostics.some"]
+  u_e_83c956c3609399eb3aa6206f["Unresolved: Array.from"]
+  u_e_83e6a3afd5e4f172772bd172["Unresolved: it"]
+  u_e_840d68bb611df3972d54e2a9["Unresolved: expect"]
+  u_e_85d8b45a023081670b3a0d0a["Unresolved: fs.mkdir"]
+  u_e_865846ce5bc48f8369c8c83d["Unresolved: fs.stat"]
+  u_e_865a8f584c1e4dba6e504dcc["Unresolved: JSON.stringify"]
+  f_1e5afb9e33a62a85df92cde7 --> u_e_636df116567b0e14211fda67
+  f_1e5afb9e33a62a85df92cde7 --> u_e_65adb9b73606635663bce1f3
+  f_1e5afb9e33a62a85df92cde7 --> u_e_65f4814ff4a781f0306b47e0
+  f_1e5afb9e33a62a85df92cde7 --> u_e_6662a8affdacd07f22e65415
+  f_1e5afb9e33a62a85df92cde7 --> u_e_67dfd4663d65d11e7d187bde
+  f_1e5afb9e33a62a85df92cde7 --> s_6bebb68c6876fe05dbcd5b96
+  f_1e5afb9e33a62a85df92cde7 -.-> s_f06b86f390eae59ae49f8570
+  f_1e5afb9e33a62a85df92cde7 --> u_e_6bdd41d17b13bce5d4e26b17
+  f_1e5afb9e33a62a85df92cde7 --> u_e_6d4d3b0e044fcc923968e759
+  f_1e5afb9e33a62a85df92cde7 --> u_e_6f691a77b7e7c2b5160fe41d
+  f_1e5afb9e33a62a85df92cde7 --> u_e_6fc1ded00718906a6142d194
+  f_1e5afb9e33a62a85df92cde7 -.-> s_7ebf741cf452606404f5d8dd
+  f_1e5afb9e33a62a85df92cde7 --> u_e_72effacfee81ccb7573f5e32
+  f_1e5afb9e33a62a85df92cde7 -.-> s_f06b86f390eae59ae49f8570
+  f_1e5afb9e33a62a85df92cde7 --> u_e_76c0a396ceb0daf3d753a744
+  f_1e5afb9e33a62a85df92cde7 --> u_e_7739af04d3dad51d0d425857
+  f_1e5afb9e33a62a85df92cde7 -.-> s_9c3b27d8e01b2fdc48008770
+  f_1e5afb9e33a62a85df92cde7 --> u_e_77d7b6d99b0d2e15a5a27d1b
+  s_b002405fa34e411f72a0b0e4 --> u_e_7875cfe4f2c2b1035b8b82cf
+  f_1e5afb9e33a62a85df92cde7 -.-> s_7ebf741cf452606404f5d8dd
+  f_1e5afb9e33a62a85df92cde7 --> u_e_7a2d47d4422528f0c42b7d7a
+  f_1e5afb9e33a62a85df92cde7 --> u_e_7bd198dba5db0827b39ab7cb
+  f_1e5afb9e33a62a85df92cde7 --> u_e_7bd93b206adc58d739184b3f
+  f_1e5afb9e33a62a85df92cde7 --> u_e_7cdcc0c73f8320d96a07d638
+  s_6bebb68c6876fe05dbcd5b96 --> u_e_7e2acb29b1814a369c644a03
+  f_1e5afb9e33a62a85df92cde7 --> s_b002405fa34e411f72a0b0e4
+  f_1e5afb9e33a62a85df92cde7 --> u_e_80222a2abe10e859289e6ce3
+  f_1e5afb9e33a62a85df92cde7 -.-> s_f06b86f390eae59ae49f8570
+  f_1e5afb9e33a62a85df92cde7 --> u_e_816dc4cc10e998f017e0021e
+  f_1e5afb9e33a62a85df92cde7 -.-> s_954253553b9f9d7c495d075a
+  f_1e5afb9e33a62a85df92cde7 --> u_e_82d52753eed04743e915471f
+  f_1e5afb9e33a62a85df92cde7 --> u_e_835d4ead46fc7547b29d89fd
+  f_1e5afb9e33a62a85df92cde7 --> u_e_839f2df4e026da8c4a40f128
+  f_1e5afb9e33a62a85df92cde7 --> u_e_83c956c3609399eb3aa6206f
+  f_1e5afb9e33a62a85df92cde7 --> u_e_83e6a3afd5e4f172772bd172
+  f_1e5afb9e33a62a85df92cde7 -.-> s_f06b86f390eae59ae49f8570
+  f_1e5afb9e33a62a85df92cde7 --> u_e_840d68bb611df3972d54e2a9
+  f_1e5afb9e33a62a85df92cde7 --> u_e_85d8b45a023081670b3a0d0a
+  f_1e5afb9e33a62a85df92cde7 --> u_e_865846ce5bc48f8369c8c83d
+  f_1e5afb9e33a62a85df92cde7 --> u_e_865a8f584c1e4dba6e504dcc
