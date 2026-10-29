@@ -3,6 +3,7 @@ import type { ModelProvider } from './providers';
 import { validateReportDiagram } from './report-diagram';
 import { reserveAgent } from './delegation';
 import { diagramHash, type DiagramAnalysis, type ReportReduction } from './project-report-cache';
+import { architectureFromMermaid, architectureSchema, reconcileArchitecture, renderArchitecture, type Architecture } from './project-architecture';
 
 /** Read every supplied diagram in context-sized batches before synthesizing concepts. */
 export async function generateProjectReport(provider: ModelProvider, profile: ModelProfile, diagrams: { path: string; content: string }[], signal: AbortSignal, options: { candidates?: ModelProfile[]; concurrency?: number; onProgress?: (message: string) => void; analyses?: DiagramAnalysis[]; reductions?: ReportReduction[]; onAnalyses?: (analyses: DiagramAnalysis[], reductions: ReportReduction[]) => void } = {}): Promise<{ content: string; diagram: string; sources: number }> {
@@ -168,36 +169,38 @@ export async function generateProjectReport(provider: ModelProvider, profile: Mo
     hashes.forEach((hash, index) => reductions.push({ hash, summary: notes[index] }));
   }
   options.onAnalyses?.(savedAnalyses, reductions);
-  let content = await ask('Create a readable architecture report explaining how this project and its data/database work. Include exactly one fenced mermaid flowchart. Use about 4–12 abstract concept nodes (for example Main, Spreadsheet, Formula, Dependency Graph), grouping multiple scripts under each concept. Label data flow edges. Use dashed edges for inferred links. Follow with a concise explanation and limitations. Use simple unquoted alphanumeric node IDs and labels in brackets, for example: main[Main] -->|evaluates| formula[Formula]. Never use a quoted string as a node ID. No Mermaid directives, HTML, links or click actions.', notes.join('\n'));
+  let content = await ask('Build a canonical architecture representation from this evidence. Return JSON only, matching {"purpose":"optional verified project purpose","entryPoints":["verified entry point"],"components":[{"id":"stable-id","name":"responsibility-based name","responsibility":"only if supported","kind":"application|external|storage","group":"optional boundary","evidence":["source reference"],"uncertainty":"optional"}],"relationships":[{"source":"component id","target":"component id","type":"calls|reads|writes|publishes_to|uses|imports|configuration","artifact":"only if supported","observed":true,"evidence":["source reference"],"uncertainty":"optional"}]}. This is an architecture overview, not an execution timeline. Keep observed calls distinct from inferred architecture; never infer artifacts, order, or responsibility without evidence. Consolidate only explicit aliases or the same supported responsibility, retain meaningful cycles, suppress internal edges, and preserve external systems and storage. Prefer 4–12 major responsibilities.', notes.join('\n'));
   let diagram = '';
+  let architecture: Architecture | undefined;
   options.onProgress?.('Main generated the report; checking its flowchart.');
   for (let repair = 0; repair < 3; repair++) {
     const json = [...content.matchAll(/```(?:json)?\s*\n([\s\S]*?)```/gi)].map(match => match[1].trim()).filter(value => value.startsWith('{')).at(-1) ?? /\{[\s\S]*\}/.exec(content)?.[0];
     if (json) {
       try {
-        const graph = JSON.parse(json);
-        if (!Array.isArray(graph.nodes) || !Array.isArray(graph.edges) || !graph.nodes.length || graph.nodes.length > 20 || graph.edges.length > 80) throw new Error('Invalid concept graph.');
-        const ids = new Map<string, string>();
-        const label = (value: unknown) => String(value ?? '').replace(/[<>"`\[\]{}|\\\r\n]/g, ' ').slice(0, 160);
-        const lines = ['flowchart LR'];
-        for (const [index, node] of graph.nodes.entries()) { ids.set(String(node.id), `n${index}`); lines.push(`  n${index}["${label(node.label)}"]`); }
-        for (const edge of graph.edges) {
-          const from = ids.get(String(edge.from)), to = ids.get(String(edge.to));
-          if (!from || !to) throw new Error('Unknown concept ID.');
-          lines.push(`  ${from} ${edge.inferred ? '-.->' : '-->'}|${label(edge.label) || 'uses'}| ${to}`);
-        }
-        content = '```mermaid\n' + lines.join('\n') + '\n```\n\n' + String(graph.explanation ?? '');
+        architecture = reconcileArchitecture(architectureSchema.parse(JSON.parse(json)));
+        diagram = renderArchitecture(architecture);
+        content = '```mermaid\n' + diagram + '\n```\n\n' + [architecture.purpose, architecture.entryPoints.length ? `Verified entry points: ${architecture.entryPoints.join(', ')}.` : '', 'Relationships marked with dashed lines are interpretations rather than observed dependencies.'].filter(Boolean).join('\n');
       } catch { /* Request another structured repair below if needed. */ }
     }
-    const block = [...content.matchAll(/```mermaid\s*\n([\s\S]*?)```/gi)].at(-1);
-    diagram = block?.[1]?.trim() ?? '';
+    if (!architecture) {
+      // Backwards-compatible model output is treated as untrusted evidence only;
+      // it is never returned directly as a diagram.
+      const block = [...content.matchAll(/```mermaid\s*\n([\s\S]*?)```/gi)].at(-1);
+      if (block) { architecture = architectureFromMermaid([{ path: 'model-output.mmd', content: block[1] }]); diagram = renderArchitecture(architecture); content = '```mermaid\n' + diagram + '\n```\n\nArchitecture derived from available dependency-map evidence.'; }
+    }
     try {
       await validateReportDiagram(diagram);
       break;
     } catch (error) {
-      if (repair === 2) throw new Error('The model could not produce a valid report flowchart after two repairs.');
+      if (repair === 2) {
+        architecture = architectureFromMermaid(diagrams);
+        diagram = renderArchitecture(architecture);
+        await validateReportDiagram(diagram);
+        content = '```mermaid\n' + diagram + '\n```\n\nArchitecture derived from dependency-map evidence; responsibilities and data flows not supported by that evidence are omitted.';
+        break;
+      }
       options.onProgress?.(`Main is repairing the flowchart (${repair + 1} of 2).`);
-      content = await ask('Convert this architecture report to JSON only: {"nodes":[{"id":"main","label":"Main"}],"edges":[{"from":"main","to":"storage","label":"stores data","inferred":false}],"explanation":"Concise architecture explanation and limitations"}. Use 4–12 conceptual nodes. Every edge must reference existing node IDs. Preserve the evidence and meaning. Do not return Mermaid syntax.', `${content}\nParser error: ${String(error).slice(0, 1500)}`);
+      content = await ask('Repair this into the canonical architecture JSON schema requested previously. Return JSON only. Every relationship endpoint must be a listed component and every responsibility, artifact, external system, and storage claim needs evidence.', `${content}\nValidation error: ${String(error).slice(0, 1500)}`);
     }
   }
   options.onProgress?.('Report ready.');

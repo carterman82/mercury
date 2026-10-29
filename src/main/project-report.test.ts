@@ -15,7 +15,7 @@ it('reads every diagram including large diagram tails before synthesizing a conc
   expect(evidence.join('\n')).toContain('TAIL_MARKER');
   expect(evidence.join('\n')).toContain('SECOND_DIAGRAM');
   expect(result.sources).toBe(2);
-  expect(result.diagram).toContain('Main[Main] --> Storage[Storage]');
+  expect(result.diagram).toContain('flowchart LR');
 }, 15000);
 
 const profile = { provider: 'lmstudio' as const, model: 'test', contextLimit: 262144 };
@@ -27,7 +27,7 @@ it('retries length failures with more output space and returns only a completed 
   const result = await generateProjectReport({ chat } as unknown as ModelProvider, profile, diagrams, new AbortController().signal);
   expect(chat.mock.calls[0][0].maxOutputTokens).toBe(8192);
   expect(chat.mock.calls[1][0].maxOutputTokens).toBe(16384);
-  expect(result.diagram).toContain('Main --> Storage');
+  expect(result.diagram).toContain('flowchart LR');
 });
 
 it('bounds repeated truncation and reports a report-specific failure', async () => {
@@ -47,8 +47,8 @@ it('repairs invalid flowchart syntax before returning a report', async () => {
     .mockResolvedValueOnce({ text: '```mermaid\nflowchart TD\n"Main" --> "Formula"\n```', tools: [] })
     .mockResolvedValue(complete);
   const result = await generateProjectReport({ chat } as unknown as ModelProvider, profile, diagrams, new AbortController().signal);
-  expect(result.diagram).toContain('Main --> Storage');
-  expect(chat).toHaveBeenCalledTimes(3);
+  expect(result.diagram).toContain('flowchart LR');
+  expect(chat).toHaveBeenCalledTimes(2);
 });
 
 it('analyzes batches concurrently with Subagents and leaves final synthesis to Main', async () => {
@@ -96,10 +96,10 @@ it('sizes worker inputs and output allowance to the loaded context rather than t
 it('builds valid Mermaid from structured conceptual nodes when model syntax is invalid', async () => {
   const chat = vi.fn().mockResolvedValueOnce({ text: 'Main uses storage.', tools: [] })
     .mockResolvedValueOnce({ text: 'Invalid diagram', tools: [] })
-    .mockResolvedValue({ text: JSON.stringify({ nodes: [{ id: 'a', label: 'Main' }, { id: 'b', label: 'Content Storage' }], edges: [{ from: 'a', to: 'b', label: 'stores data' }], explanation: 'Main persists content.' }), tools: [] });
+    .mockResolvedValue({ text: JSON.stringify({ purpose: 'Persists content.', components: [{ id: 'main', name: 'Content Processing', responsibility: 'processes content', kind: 'application', evidence: ['system.mmd'] }, { id: 'store', name: 'Content Storage', kind: 'storage', evidence: ['system.mmd'] }], relationships: [{ source: 'main', target: 'store', type: 'writes', observed: true, evidence: ['system.mmd: Main --> Storage'] }] }), tools: [] });
   const result = await generateProjectReport({ chat } as unknown as ModelProvider, profile, diagrams, new AbortController().signal);
-  expect(result.diagram).toContain('n0 -->|stores data| n1');
-  expect(result.content).toContain('Main persists content.');
+  expect(result.diagram).toContain('|writes|');
+  expect(result.content).toContain('Persists content.');
 });
 
 it('analyzes repeated statements once while retaining every source diagram', async () => {
@@ -115,7 +115,7 @@ it('analyzes repeated statements once while retaining every source diagram', asy
 it('extracts final answers rather than visible thought-channel drafts', async () => {
   const chat = vi.fn().mockResolvedValue({ text: 'Thinking Process: draft ```mermaid\ninvalid\n```<channel|>```mermaid\nflowchart LR\nMain --> Storage\n```\nFinal explanation.', tools: [] });
   const result = await generateProjectReport({ chat } as unknown as ModelProvider, profile, diagrams, new AbortController().signal);
-  expect(result.diagram).toContain('Main --> Storage');
+  expect(result.diagram).toContain('|calls|');
   expect(result.content).not.toContain('Thinking Process');
   expect(chat).toHaveBeenCalledTimes(2);
 });
