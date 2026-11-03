@@ -2,6 +2,7 @@ import { execFile, spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
+import { mercuryProjectGitEnvironment } from './project-git-environment';
 
 export const MXC_RUNTIME_VERSION = '1.0.1';
 export const MXC_CONTRACT_VERSION = '1.0.0';
@@ -10,12 +11,16 @@ export const MXC_RELEASE_ARCHIVE_SHA256 = '0e832239454ba7fcd338ff56218a287eef4c0
 /** Constructed by Mercury after authorization, never directly from model claims. */
 export interface ProjectExecutionRequest {
   command: string;
+  executable?: string;
+  args?: string[];
+  stdin?: string;
   cwd: string;
   mode: 1 | 2 | 3;
   workspaceRoot: string;
   readableRoots?: string[];
   writableRoots?: string[];
   network?: 'deny' | 'allow';
+  loopback?: boolean;
   /** Reviewed Win32 initialization capability required by Node/.NET on Windows. */
   win32k?: boolean;
   /** Worker execution remains confined even when Main has full access. */
@@ -50,6 +55,7 @@ export interface MxcProcessInput {
   timeoutMs: number;
   signal: AbortSignal;
   onOutput?: (stream: 'stdout' | 'stderr', text: string) => void;
+  stdin?: string;
 }
 export interface MxcProcessResult {
   exitCode: number | null;
@@ -91,6 +97,24 @@ function within(root: string, target: string): boolean {
   return relative === '' || (relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative));
 }
 const digest = (bytes: Buffer) => createHash('sha256').update(bytes).digest('hex');
+function validateProcess(request: ProjectExecutionRequest) {
+  if (request.executable === undefined) return;
+  if (
+    !request.executable ||
+    /[\0\r\n]/.test(request.executable) ||
+    !Array.isArray(request.args) ||
+    request.args.length > 100 ||
+    request.args.some((arg) => typeof arg !== 'string' || arg.includes('\0')) ||
+    (request.stdin?.length ?? 0) > 512000
+  )
+    throw new Error(
+      'Invalid structured process. Supply an executable, argument strings and at most 512,000 characters of stdin.',
+    );
+}
+/** Windows CreateProcess quoting, never shell escaping. */
+function processArgument(value: string): string {
+  return '"' + value.replace(/(\\*)"/g, '$1$1\\"').replace(/(\\+)$/, '$1$1') + '"';
+}
 
 /** Do not inherit environment-based MXC test/fallback controls or provider credentials. */
 export function mxcHostEnvironment(): NodeJS.ProcessEnv {
@@ -149,8 +173,10 @@ export const executeMxcProcess: MxcTransport = (input) =>
       windowsHide: true,
       env: input.env,
       shell: false,
-      stdio: ['ignore', 'pipe', 'pipe'],
+      stdio: [input.stdin === undefined ? 'ignore' : 'pipe', 'pipe', 'pipe'],
     });
+    child.stdin?.on('error', () => {}); // Early child exit can close stdin before consumption.
+    if (input.stdin !== undefined) child.stdin?.end(input.stdin, 'utf8');
     let stdout = '',
       stderr = '',
       timedOut = false,
@@ -255,6 +281,7 @@ export class ProjectExecutionAdapter {
   }
 
   async policy(request: ProjectExecutionRequest, scratch: string): Promise<object> {
+    validateProcess(request);
     if (
       ![1, 2, 3].includes(request.mode) ||
       !request.command.trim() ||
@@ -270,9 +297,11 @@ export class ProjectExecutionAdapter {
     const workspace = await canonical(request.workspaceRoot);
     const cwd = await canonical(request.cwd);
     const write = await Promise.all((request.writableRoots ?? [workspace]).map(canonical));
-    const runtime = [process.env.SystemRoot, ...(this.options.runtimeReadRoots ?? [])].filter(
-      (value): value is string => Boolean(value),
-    );
+    const runtime = [
+      process.env.SystemRoot,
+      ...(request.executable ? [path.dirname(process.execPath)] : []),
+      ...(this.options.runtimeReadRoots ?? []),
+    ].filter((value): value is string => Boolean(value));
     const device = request.mode === 2 || request.mode === 3 ? await this.volumes() : [];
     const read = await Promise.all([workspace, ...runtime, ...device, ...(request.readableRoots ?? [])].map(canonical));
     const work = await canonical(scratch);
@@ -280,23 +309,52 @@ export class ProjectExecutionAdapter {
     for (const [key, value] of Object.entries(request.environment ?? {}))
       if (!/^(?:ELECTRON_RUN_AS_NODE|npm_config_[a-z_]+)$/.test(key) || value.includes('\0'))
         throw new Error('Unsupported host execution environment override.');
-    const environment = Object.entries({
-      PATH: hostEnvironment.PATH ?? '',
-      PATHEXT: hostEnvironment.PATHEXT ?? '',
-      SystemRoot: hostEnvironment.SystemRoot ?? '',
-      WINDIR: hostEnvironment.WINDIR ?? hostEnvironment.SystemRoot ?? '',
-      ComSpec: hostEnvironment.ComSpec ?? '',
-      TEMP: work,
-      TMP: work,
-      HOME: work,
-      USERPROFILE: work,
-      APPDATA: work,
-      LOCALAPPDATA: work,
-      DOTNET_CLI_HOME: work,
-      npm_config_cache: path.join(work, 'npm-cache'),
-      ...request.environment,
-    }).map(([key, value]) => `${key}=${value}`);
+    const environment = Object.entries(
+      mercuryProjectGitEnvironment(
+        {
+          PATH: hostEnvironment.PATH ?? '',
+          PATHEXT: hostEnvironment.PATHEXT ?? '',
+          SystemRoot: hostEnvironment.SystemRoot ?? '',
+          WINDIR: hostEnvironment.WINDIR ?? hostEnvironment.SystemRoot ?? '',
+          ComSpec: hostEnvironment.ComSpec ?? '',
+          TEMP: work,
+          TMP: work,
+          HOME: work,
+          USERPROFILE: work,
+          APPDATA: work,
+          LOCALAPPDATA: work,
+          DOTNET_CLI_HOME: work,
+          npm_config_cache: path.join(work, 'npm-cache'),
+          ...request.environment,
+        },
+        workspace,
+        work,
+      ),
+    ).map(([key, value]) => `${key}=${value}`);
     const shell = process.env.SystemRoot ? path.join(process.env.SystemRoot, 'System32', 'cmd.exe') : 'cmd.exe';
+    let commandLine = `"${shell}" /d /s /c "${request.command}"`;
+    if (request.executable) {
+      // The host owns this launcher. Script source and stdin never pass through CMD.
+      const launcher = path.join(work, 'structured-process.cjs');
+      await fs.writeFile(
+        launcher,
+        `const {spawn}=require('node:child_process');\nconst request=${JSON.stringify({ executable: request.executable, args: request.args, stdin: request.stdin })};\nconst child=spawn(request.executable,request.args,{shell:false,windowsHide:true,stdio:['pipe','inherit','inherit']});\nchild.stdin.on('error',()=>{});child.stdin.end(request.stdin??'','utf8');child.on('error',error=>{console.error(error.message);process.exitCode=1});child.on('close',code=>{process.exitCode=code??1});`,
+        { flag: 'wx' },
+      );
+      if (!environment.some((value) => value.startsWith('ELECTRON_RUN_AS_NODE=')))
+        environment.push('ELECTRON_RUN_AS_NODE=1');
+      // Loading a main script makes Node realpath every ancestor, which would
+      // require reading drive roots in level 1. Read this exact authorized file
+      // instead of widening filesystem access for the module loader.
+      commandLine = [
+        process.execPath,
+        '-e',
+        "new Function('require',require('node:fs').readFileSync(process.argv[1],'utf8'))(require)",
+        launcher,
+      ]
+        .map(processArgument)
+        .join(' ');
+    }
     return {
       version: MXC_CONTRACT_VERSION,
       containment: 'processcontainer',
@@ -305,9 +363,12 @@ export class ProjectExecutionAdapter {
         readonlyPaths: [...new Set(read.filter((root) => !write.some((writable) => within(writable, root))))],
         readwritePaths: [...new Set([...write, work])],
       },
-      network: { egress: { default: request.network ?? 'deny' }, ingress: { default: 'deny', hostLoopback: 'deny' } },
+      network: {
+        egress: { default: request.network ?? 'deny' },
+        ingress: { default: 'deny', hostLoopback: request.loopback ? 'allow' : 'deny' },
+      },
       process: {
-        commandLine: `"${shell}" /d /s /c "${request.command}"`,
+        commandLine,
         cwd,
         env: environment,
         inheritDefaultEnv: false,
@@ -421,6 +482,7 @@ export class ProjectExecutionAdapter {
     onOutput?: MxcProcessInput['onOutput'],
   ): Promise<ProjectExecutionResult> {
     signal.throwIfAborted();
+    validateProcess(request);
     const controller = new AbortController();
     const combined = AbortSignal.any([signal, controller.signal]);
     const native = request.mode === 3 && !request.confined;
@@ -444,9 +506,10 @@ export class ProjectExecutionAdapter {
               : '/bin/sh';
           const args = process.platform === 'win32' ? ['/d', '/s', '/c', request.command] : ['-c', request.command];
           const result = await executeMxcProcess({
-            executable: shell,
-            args,
-            env: process.env,
+            executable: request.executable ?? shell,
+            args: request.executable ? request.args! : args,
+            stdin: request.stdin,
+            env: mercuryProjectGitEnvironment({ ...process.env, ...request.environment }, request.workspaceRoot),
             timeoutMs: timeout,
             signal: combined,
             onOutput,

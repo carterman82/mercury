@@ -31,9 +31,10 @@ export function isIntentOnly(text: string, request = ''): boolean {
 
 export class AnswerCompletion {
   private repairs = 0;
-  constructor(private request: string, private maximum = 2) {}
+  constructor(private request: string, private maximum = 2, private recover?: (reason: string) => void) {}
   continue(messages: { role: string; content?: any }[], text: string, allowEmpty = false): boolean {
     if ((text.trim() || allowEmpty) && !isIntentOnly(text, this.request)) return false;
+    this.recover?.('The model ended with an announcement instead of completing the request');
     if (this.repairs >= this.maximum) throw new Error('The model stopped without completing the answer after two continuation attempts. Partial output is saved. Try another model or send a follow-up.');
     this.repairs++;
     // Retain the real conversation and tool evidence; no tool action is replayed.

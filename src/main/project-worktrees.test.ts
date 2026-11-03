@@ -1,4 +1,5 @@
 import { execFile } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -9,7 +10,23 @@ import { ProjectWorktreeService } from './project-worktrees';
 const execute = promisify(execFile);
 const temporary: string[] = [];
 async function command(root: string, ...args: string[]) {
-  return (await execute('git', ['-C', root, ...args], { windowsHide: true })).stdout;
+  return (await execute('git', ['-C', root, ...args], { windowsHide: true, env: { ...process.env, GIT_OPTIONAL_LOCKS: '0' } })).stdout;
+}
+async function mercury(root: string, ...args: string[]) {
+  return command(root, '--git-dir', path.join(root, '.mercury', 'git'), '--work-tree', root, ...args);
+}
+async function snapshot(directory: string): Promise<Record<string, string>> {
+  const result: Record<string, string> = {};
+  const walk = async (current: string) => {
+    for (const item of await fs.readdir(current, { withFileTypes: true })) {
+      const filename = path.join(current, item.name);
+      if (item.isDirectory()) await walk(filename);
+      else if (item.isFile()) result[path.relative(directory, filename).replaceAll('\\', '/')] = createHash('sha256').update(await fs.readFile(filename)).digest('hex');
+      else throw new Error(`Unexpected Git metadata link: ${filename}`);
+    }
+  };
+  await walk(directory);
+  return result;
 }
 async function fixture(repository = true) {
   const base = await fs.mkdtemp(path.join(os.tmpdir(), 'mercury-git-safety-'));
@@ -29,6 +46,19 @@ async function fixture(repository = true) {
 afterEach(async () => { for (const directory of temporary.splice(0)) await fs.rm(directory, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
 
 describe('project Git safety', () => {
+  it('initializes on opening without a chat and preserves existing ignore rules', async () => {
+    const { root, service } = await fixture(false);
+    await fs.writeFile(path.join(root, '.gitignore'), 'node_modules/');
+    await fs.mkdir(path.join(root, '.mercury'));
+    await fs.writeFile(path.join(root, '.mercury', 'state.json'), '{}');
+    await service.initialize(root);
+    await service.initialize(root);
+    expect(await fs.readFile(path.join(root, '.gitignore'), 'utf8')).toBe('node_modules/\n/.mercury/\n');
+    expect(await mercury(root, 'ls-files')).not.toContain('.mercury');
+    expect(await mercury(root, 'log', '-1', '--format=%s')).toContain('Mercury safety baseline');
+    expect((await mercury(root, 'rev-list', '--count', 'HEAD')).trim()).toBe('1');
+    await expect(fs.stat(path.join(root, '.git'))).rejects.toMatchObject({ code: 'ENOENT' });
+  });
   it('uses the selected checkout instead of creating a duplicate project', async () => {
     const { root, service } = await fixture();
     const workspace = await service.prepare({ projectRoot: root, chatId: 'chat' });
@@ -39,10 +69,14 @@ describe('project Git safety', () => {
     const { root, service } = await fixture(false);
     await fs.writeFile(path.join(root, '.env.local'), 'TOKEN=secret');
     await service.prepare({ projectRoot: root, chatId: 'chat' });
-    expect(await command(root, 'log', '-1', '--format=%s')).toBe('Mercury safety baseline\n');
-    expect(await command(root, 'ls-files')).toContain('app.ts');
-    expect(await command(root, 'ls-files')).not.toContain('.env.local');
-    expect((await command(root, 'log', '-1', '--format=%an|%ae|%cn|%ce')).trim()).toBe('Mercury AI|ai@mercury.local|Mercury AI|ai@mercury.local');
+    expect(await mercury(root, 'log', '-1', '--format=%s')).toBe('Mercury safety baseline\n');
+    expect(await mercury(root, 'ls-files')).toContain('app.ts');
+    expect(await mercury(root, 'ls-files')).not.toContain('.env.local');
+    expect((await mercury(root, 'log', '-1', '--format=%an|%ae|%cn|%ce')).trim()).toBe('Mercury AI|ai@mercury.local|Mercury AI|ai@mercury.local');
+    expect((await mercury(root, 'config', '--local', 'user.name')).trim()).toBe('Mercury AI');
+    expect((await mercury(root, 'config', '--local', 'user.email')).trim()).toBe('ai@mercury.local');
+    expect(await mercury(root, 'remote')).toBe('');
+    await expect(fs.stat(path.join(root, '.git'))).rejects.toMatchObject({ code: 'ENOENT' });
   });
 
   it('commits eligible response changes and leaves sensitive files unstaged', async () => {
@@ -52,11 +86,12 @@ describe('project Git safety', () => {
     await fs.writeFile(path.join(root, '.env.local'), 'TOKEN=secret');
     const saved = await service.commitResponse(workspace);
     expect(saved).toMatchObject({ committed: true });
-    expect((await command(root, 'log', '-1', '--format=%an|%ae|%cn|%ce')).trim()).toBe('Mercury AI|ai@mercury.local|Mercury AI|ai@mercury.local');
+    expect((await mercury(root, 'log', '-1', '--format=%an|%ae|%cn|%ce')).trim()).toBe('Mercury AI|ai@mercury.local|Mercury AI|ai@mercury.local');
     expect((await command(root, 'config', 'user.name')).trim()).toBe('Git safety tests');
     expect((await command(root, 'config', 'user.email')).trim()).toBe('tests@example.invalid');
-    expect(await command(root, 'log', '-1', '--format=%s')).toBe('Mercury: save response for 12345678\n');
-    expect(await command(root, 'show', 'HEAD:app.ts')).toBe('export const value = 2;\n');
+    expect(await mercury(root, 'log', '-1', '--format=%s')).toBe('Mercury: save response for 12345678\n');
+    expect(await mercury(root, 'show', 'HEAD:app.ts')).toBe('export const value = 2;\n');
+    expect(await command(root, 'show', 'HEAD:app.ts')).toBe('export const value = 1;\n');
     expect(await command(root, 'status', '--porcelain')).toContain('.env.local');
   });
 
@@ -66,13 +101,14 @@ describe('project Git safety', () => {
     expect(await service.commitResponse(workspace)).toEqual({ committed: false });
   });
 
-  it('detects and commits a file deletion from Git status', async () => {
+  it('detects and records a file deletion only in Mercury history', async () => {
     const { root, service } = await fixture();
     const workspace = await service.prepare({ projectRoot: root, chatId: 'deletion' });
     await fs.unlink(path.join(root, 'app.ts'));
     expect(await service.changedPaths(workspace)).toEqual(['app.ts']);
     expect((await service.commitResponse(workspace)).committed).toBe(true);
-    expect(await command(root, 'ls-files')).not.toContain('app.ts');
+    expect(await mercury(root, 'ls-files')).not.toContain('app.ts');
+    expect(await command(root, 'ls-files')).toContain('app.ts');
   });
 
   it('does not commit unrelated changes that predate the response', async () => {
@@ -81,7 +117,62 @@ describe('project Git safety', () => {
     const workspace = await service.prepare({ projectRoot: root, chatId: 'chat' });
     await fs.writeFile(path.join(root, 'app.ts'), 'export const value = 3;\n');
     await service.commitResponse(workspace);
-    expect(await command(root, 'show', 'HEAD:app.ts')).toBe('export const value = 3;\n');
+    expect(await mercury(root, 'show', 'HEAD:app.ts')).toBe('export const value = 3;\n');
+    expect((await mercury(root, 'diff', 'HEAD^', 'HEAD', '--name-only')).trim()).toBe('app.ts');
     expect(await command(root, 'status', '--porcelain')).toContain('unrelated.ts');
+  });
+
+  it('never changes the personal Git metadata or remote when preparing and saving project responses', async () => {
+    const { root, service } = await fixture();
+    const remote = path.join(path.dirname(root), 'personal-remote.git');
+    await fs.mkdir(remote);
+    await command(remote, 'init', '--bare');
+    await command(root, 'remote', 'add', 'origin', remote);
+    await command(root, 'push', 'origin', 'HEAD:refs/heads/main');
+    await fs.writeFile(path.join(root, 'app.ts'), 'user staged version\n');
+    await fs.writeFile(path.join(root, 'staged.txt'), 'user staged addition\n');
+    await command(root, 'add', 'app.ts', 'staged.txt');
+    await fs.writeFile(path.join(root, 'app.ts'), 'user unstaged version\n');
+    await fs.writeFile(path.join(root, 'untracked.txt'), 'user untracked addition\n');
+    const personalBefore = await snapshot(path.join(root, '.git'));
+    const remoteBefore = await snapshot(remote);
+    expect(personalBefore).toHaveProperty('HEAD');
+    expect(personalBefore).toHaveProperty('index');
+    expect(personalBefore).toHaveProperty('config');
+    expect(Object.keys(personalBefore).some(name => name.startsWith('refs/heads/'))).toBe(true);
+    expect(Object.keys(personalBefore).some(name => name.startsWith('logs/'))).toBe(true);
+
+    await service.initialize(root);
+    const workspace = await service.prepare({ projectRoot: root, chatId: 'personal-isolation' });
+    expect(await snapshot(path.join(root, '.git'))).toEqual(personalBefore);
+    await fs.writeFile(path.join(root, 'app.ts'), 'Mercury response edit\n');
+    await service.commitResponse(workspace);
+    expect(await snapshot(path.join(root, '.git'))).toEqual(personalBefore);
+    expect(await snapshot(remote)).toEqual(remoteBefore);
+    expect(await command(root, 'show', ':app.ts')).toBe('user staged version\n');
+    expect(await command(root, 'show', ':staged.txt')).toBe('user staged addition\n');
+    expect(await command(root, 'show', 'HEAD:app.ts')).toBe('export const value = 1;\n');
+    expect(await fs.readFile(path.join(root, 'untracked.txt'), 'utf8')).toBe('user untracked addition\n');
+    expect(await mercury(root, 'show', 'HEAD:app.ts')).toBe('Mercury response edit\n');
+    expect(await mercury(root, 'remote')).toBe('');
+    expect((await mercury(root, 'log', '-1', '--format=%an|%ae|%cn|%ce')).trim()).toBe('Mercury AI|ai@mercury.local|Mercury AI|ai@mercury.local');
+    expect(await command(root, 'remote', 'get-url', 'origin')).toBe(remote + '\n');
+  });
+
+  it('rejects alternate Git directories linked to the personal repository', async () => {
+    const { root, service } = await fixture();
+    const before = await snapshot(path.join(root, '.git'));
+    await fs.mkdir(path.join(root, '.mercury'));
+    await fs.symlink(path.join(root, '.git'), path.join(root, '.mercury', 'git'), process.platform === 'win32' ? 'junction' : 'dir');
+    await expect(service.initialize(root)).rejects.toThrow();
+    expect(await snapshot(path.join(root, '.git'))).toEqual(before);
+  });
+  it('rejects linked-worktree metadata that would share the personal repository', async () => {
+    const { root, service } = await fixture();
+    const before = await snapshot(path.join(root, '.git'));
+    await fs.mkdir(path.join(root, '.mercury', 'git'), { recursive: true });
+    await fs.writeFile(path.join(root, '.mercury', 'git', 'commondir'), path.join(root, '.git'));
+    await expect(service.initialize(root)).rejects.toThrow('share metadata');
+    expect(await snapshot(path.join(root, '.git'))).toEqual(before);
   });
 });

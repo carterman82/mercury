@@ -54,8 +54,8 @@ export function assessProjectAction(context: ProjectPolicyContext, action: Proje
   if (action.kind === 'command' || action.kind === 'plugin') {
     if (!options.isolationAvailable) return decision('deny', 'Restricted execution is unavailable: no verified filesystem confinement adapter is installed. Approval cannot substitute unrestricted execution.');
     if (action.kind === 'plugin') return decision('approval', 'Review the plugin and its requested capabilities.');
-    if (context.mode === 1 || !options.boundedLowRisk || action.destructive || !within(context.workspaceRoot, action.cwd!) || action.paths?.some(target => !within(context.workspaceRoot, target))) return decision('approval', 'This command requires review of its effects and scope.');
-    return decision('allow', 'The host verified bounded command effects within the confined workspace.');
+    if (context.mode === 1 || action.destructive || !within(context.workspaceRoot, action.cwd!) || action.paths?.some(target => !within(context.workspaceRoot, target))) return decision('approval', 'This command requires review of its effects and scope.');
+    return decision('allow', 'The command is confined to the assigned workspace.');
   }
   if (action.kind === 'integrate') return decision('approval', 'Review the combined changes and verification before integration.');
   if (action.destructive) return decision('approval', 'Destructive filesystem actions require review.');

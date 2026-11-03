@@ -2,11 +2,25 @@ import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, expect, it, vi } from 'vitest';
 import type { ChatMessage } from '../shared/types';
-import { workSeconds } from './work-timing';
+import { formatWorkDuration, workSeconds } from './work-timing';
 import { ThinkingPanel } from './ThinkingPanel';
 
 const message: ChatMessage = { id: 'reply', role: 'assistant', content: 'Let me check.', startedAt: 1000, thinkingEndedAt: 2000, completedAt: 31000 };
 afterEach(() => vi.useRealTimers());
+
+it.each([
+  [0, '0s'], [59, '59s'], [60, '1m 0s'], [61, '1m 1s'],
+  [3599, '59m 59s'], [3600, '1h 0m 0s'], [3661, '1h 1m 1s'], [90061, '25h 1m 1s'],
+])('formats %s seconds as %s', (seconds, expected) => {
+  expect(formatWorkDuration(seconds)).toBe(expected);
+});
+
+it('shows readable minutes and hours for both active and saved work counters', () => {
+  vi.useFakeTimers(); vi.setSystemTime(3662000);
+  const longMessage = { ...message, completedAt: 3662000 };
+  expect(renderToStaticMarkup(<ThinkingPanel message={longMessage} active />)).toContain('Working for 1h 1m 1s');
+  expect(renderToStaticMarkup(<ThinkingPanel message={longMessage} active={false} />)).toContain('Worked for 1h 1m 1s');
+});
 
 it('includes tools, queueing, subagents and final streaming after the first text output', () => {
   expect(workSeconds(message, false, 999000)).toBe(30);

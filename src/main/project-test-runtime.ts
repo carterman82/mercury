@@ -6,7 +6,8 @@ import type { ModelProvider } from './providers';
 export function projectTestRuntime(provider: ModelProvider): ProjectAgentRuntime {
   return {
     async run(input) {
-      const messages: any[] = [...input.messages];
+      const messages: any[] = input.messages.map((message) => ({ ...message }));
+      if (input.context) messages.at(-1).content = `${input.context}\n${messages.at(-1).content}`;
       for (let turn = 0; turn < 32; turn++) {
         input.signal.throwIfAborted();
         const result = await provider.chat({

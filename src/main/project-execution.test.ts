@@ -65,6 +65,71 @@ async function fixture(
   return { root, runtime, workspace, scratch, adapter, request, transport };
 }
 
+it('executes structured arguments and multiline stdin without shell interpretation', async () => {
+  const { adapter, request, workspace } = await fixture();
+  const input = 'quotes " [data-view=] & | $ `\n你好';
+  const executed = await adapter.execute(
+    {
+      ...request,
+      mode: 3,
+      executable: process.execPath,
+      args: [
+        '-e',
+        'process.stdin.setEncoding("utf8");let s="";process.stdin.on("data",v=>s+=v);process.stdin.on("end",()=>console.log(JSON.stringify({s,args:process.argv.slice(1)})))',
+        'literal & | " $',
+      ],
+      stdin: input,
+    },
+    new AbortController().signal,
+  );
+  expect(executed.exitCode).toBe(0);
+  expect(JSON.parse(executed.output)).toEqual({ s: input, args: ['literal & | " $'] });
+  expect(workspace).toBeTruthy();
+});
+
+it('confines structured execution with a host-owned launcher instead of shell source', async () => {
+  const { adapter, request, root } = await fixture();
+  const scratch = path.join(root, 'launcher-work');
+  await fs.mkdir(scratch);
+  const policy: any = await adapter.policy(
+    { ...request, executable: 'node', args: ['-'], stdin: 'console.log("[data-view=]")' },
+    scratch,
+  );
+  expect(policy.process.commandLine).not.toContain('cmd.exe');
+  const launcher = await fs.readFile(path.join(scratch, 'structured-process.cjs'), 'utf8');
+  expect(launcher).toContain('shell:false');
+  expect(launcher).toContain('data-view');
+});
+
+it.runIf(process.env.MERCURY_LIVE_MXC === '1')(
+  'runs structured stdin in real Windows confinement',
+  async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'mercury-structured-live-'));
+    temporary.push(root);
+    const workspace = path.join(root, 'workspace');
+    await fs.mkdir(workspace);
+    const adapter = new ProjectExecutionAdapter(
+      path.resolve('.build-resources/mxc-runtime'),
+      path.join(root, 'scratch'),
+    );
+    const request: ProjectExecutionRequest = {
+      command: 'structured stdin fixture',
+      executable: process.execPath,
+      args: ['-'],
+      stdin:
+        'require("fs").writeFileSync("written.txt","你好 [data-view=] & quotes");console.log("structured confined success")',
+      cwd: workspace,
+      workspaceRoot: workspace,
+      mode: 1,
+      win32k: true,
+    };
+    const result = await adapter.execute(request, new AbortController().signal);
+    expect(result, JSON.stringify(result)).toMatchObject({ exitCode: 0, confined: true });
+    expect(await fs.readFile(path.join(workspace, 'written.txt'), 'utf8')).toBe('你好 [data-view=] & quotes');
+  },
+  45000,
+);
+
 it('constructs a fixed native containment policy without DACL fallback or inherited credentials', async () => {
   const { adapter, request, root, workspace } = await fixture();
   const scratch = path.join(root, 'work');
@@ -83,6 +148,9 @@ it('constructs a fixed native containment policy without DACL fallback or inheri
   expect(policy.filesystem.readwritePaths).toEqual([workspace, scratch]);
   expect(policy.process.inheritDefaultEnv).toBe(false);
   expect(policy.process.env).toContain(`TEMP=${scratch}`);
+  expect(policy.process.env).toContain(`GIT_DIR=${path.join(workspace, '.mercury', 'git')}`);
+  expect(policy.process.env).toContain(`GIT_WORK_TREE=${workspace}`);
+  expect(policy.process.env).toContain(`GIT_INDEX_FILE=${path.join(workspace, '.mercury', 'git', 'index')}`);
   expect(JSON.stringify(policy)).not.toContain('permissiveLearningMode');
 });
 

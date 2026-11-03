@@ -27,8 +27,9 @@ describe('project action policy', () => {
     expect(assessProjectAction({ ...context, mode: 3 }, command).status).toBe('allow');
     expect(assessProjectAction({ ...context, mode: 3 }, { kind: 'plugin' }).status).toBe('allow');
   });
-  it('requires host confinement and bounded-effect proof for automatic commands', () => {
-    expect(assessProjectAction(context, command, { isolationAvailable: true }).status).toBe('approval');
+  it('allows confined workspace commands in level 2 and reviews broader effects', () => {
+    expect(assessProjectAction(context, command, { isolationAvailable: true }).status).toBe('allow');
+    expect(assessProjectAction(context, { ...command, command: 'mkdir src && echo created > src/new.txt' }, { isolationAvailable: true }).status).toBe('allow');
     expect(assessProjectAction(context, command, { isolationAvailable: true, boundedLowRisk: true }).status).toBe('allow');
     expect(assessProjectAction({ ...context, mode: 1 }, command, { isolationAvailable: true, boundedLowRisk: true }).status).toBe('approval');
     expect(assessProjectAction(context, { ...command, cwd: outside }, { isolationAvailable: true, boundedLowRisk: true }).status).toBe('approval');

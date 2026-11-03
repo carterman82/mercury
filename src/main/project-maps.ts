@@ -539,6 +539,16 @@ export class ProjectMaps {
       throw error;
     }
   }
+  /** Load the persisted dependency graph without scanning or rebuilding maps. */
+  async readGraph(root: string): Promise<ProjectDependencyGraph> {
+    const canonical = await fs.realpath(root);
+    const cached = this.graphs.get(canonical)?.graph;
+    if (cached) return cached;
+    const graph = await this.load(canonical);
+    if (!graph) throw new Error('No persisted dependency graph is available. Refresh dependency maps first.');
+    this.graphs.set(canonical, { graph, persisted: true });
+    return graph;
+  }
   private async manifest(root: string): Promise<Manifest | null> {
     try {
       const filename = await mapPath(root, 'manifest.json');

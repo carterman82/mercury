@@ -1,5 +1,6 @@
 import { spawn } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
+import { mercuryProjectGitEnvironment } from './project-git-environment';
 import type { CommandRequest } from '../shared/types';
 
 export interface CommandDecision { allow: boolean; remember: boolean; }
@@ -31,9 +32,9 @@ export class CommandGate {
   cancel(): void { if (this.pending) this.answer(this.pending.request.id, false, false); }
 }
 
-export function runCommand(command: string, cwd: string, signal: AbortSignal): Promise<{ exitCode: number | null; output: string }> {
+export function runCommand(command: string, cwd: string, signal: AbortSignal, projectRoot = cwd): Promise<{ exitCode: number | null; output: string }> {
   return new Promise((resolve, reject) => {
-    const child = spawn(command, { cwd, shell: true, windowsHide: true, env: process.env });
+    const child = spawn(command, { cwd, shell: true, windowsHide: true, env: mercuryProjectGitEnvironment(process.env, projectRoot) });
     let output = '';
     const append = (chunk: Buffer) => { output = (output + chunk.toString()).slice(-40_000); };
     child.stdout?.on('data', append);

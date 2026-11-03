@@ -4,9 +4,11 @@ import { validateReportDiagram } from './report-diagram';
 import { reserveAgent } from './delegation';
 import { diagramHash, type DiagramAnalysis, type ReportReduction } from './project-report-cache';
 import { architectureFromMermaid, architectureSchema, reconcileArchitecture, renderArchitecture, type Architecture } from './project-architecture';
+import { buildArchitectureEvidence, serializeArchitectureEvidence } from './project-architecture-evidence';
+import type { ProjectDependencyGraph } from './project-map-types';
 
 /** Read every supplied diagram in context-sized batches before synthesizing concepts. */
-export async function generateProjectReport(provider: ModelProvider, profile: ModelProfile, diagrams: { path: string; content: string }[], signal: AbortSignal, options: { candidates?: ModelProfile[]; concurrency?: number; onProgress?: (message: string) => void; analyses?: DiagramAnalysis[]; reductions?: ReportReduction[]; onAnalyses?: (analyses: DiagramAnalysis[], reductions: ReportReduction[]) => void } = {}): Promise<{ content: string; diagram: string; sources: number }> {
+export async function generateProjectReport(provider: ModelProvider, profile: ModelProfile, diagrams: { path: string; content: string }[], signal: AbortSignal, options: { graph?: ProjectDependencyGraph; cacheSources?: { path: string; content: string }[]; candidates?: ModelProfile[]; concurrency?: number; onProgress?: (message: string) => void; analyses?: DiagramAnalysis[]; reductions?: ReportReduction[]; onAnalyses?: (analyses: DiagramAnalysis[], reductions: ReportReduction[]) => void } = {}): Promise<{ content: string; diagram: string; sources: number }> {
   if (!diagrams.length) throw new Error('No existing architecture diagrams were found. Generate dependency maps separately before requesting a report.');
   const fitLoadedContext = async (selected: ModelProfile) => {
     const loaded = await provider.loadedContextLimit?.(selected, signal);
@@ -63,7 +65,13 @@ export async function generateProjectReport(provider: ModelProvider, profile: Mo
   };
   let notes: string[];
   let savedAnalyses: DiagramAnalysis[] = [];
-  if (options.analyses) {
+  if (options.graph) {
+    const started = Date.now();
+    const evidence = buildArchitectureEvidence(options.graph);
+    notes = [serializeArchitectureEvidence(evidence)];
+    savedAnalyses = (options.cacheSources ?? diagrams).map(source => ({ path: source.path, hash: diagramHash(source.content), notes: ['deterministic architecture evidence'] }));
+    options.onProgress?.(`Reduced ${options.graph.edges.length} dependencies to ${evidence.relationships.length} boundary relationships in ${Date.now() - started}ms.`);
+  } else if (options.analyses) {
     // Cache each file independently; cross-file deduplication would make an
     // unchanged file's evidence depend on the contents of another file.
     const previous = new Map(options.analyses.map(entry => [entry.path, entry]));

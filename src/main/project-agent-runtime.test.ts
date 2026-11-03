@@ -97,6 +97,7 @@ it('runs the real pinned SDK through Mercury inference and executes only registe
   expect(sessions.at(-1)).toMatchObject({ runtime: 'claude-agent-sdk', version: '0.3.310' });
   const resumed = await runtime.run({
     ...input,
+    context: 'Updated project note: the fixture is verified. Preserve the previous tool results.',
     session: result.session,
     messages: [
       input.messages[0],
@@ -105,6 +106,7 @@ it('runs the real pinned SDK through Mercury inference and executes only registe
   });
   expect(resumed.session.sessionId).toBe(result.session.sessionId);
   expect(executed).toBe(2);
+  expect(JSON.stringify(seen.at(-1)?.messages)).toContain('Updated project note');
 }, 60000);
 
 it('cancels a real SDK session and releases the model request', async () => {

@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, webUtils } from 'electron';
-import type { DesktopApi, DiscoveryResult, Snapshot } from '../shared/types';
+import type { ChatUpdate, DesktopApi, DiscoveryResult, Snapshot } from '../shared/types';
 import { MAX_CHAT_ATTACHMENTS } from '../shared/chat-files';
 
 const call = <T>(name: string, ...args: unknown[]): Promise<T> => ipcRenderer.invoke(`api:${name}`, ...args);
@@ -9,6 +9,11 @@ const api: DesktopApi = {
     const listener = (_event: Electron.IpcRendererEvent, snapshot: Snapshot) => callback(snapshot);
     ipcRenderer.on('state:update', listener);
     return () => ipcRenderer.removeListener('state:update', listener);
+  },
+  onChatUpdate: (callback: (update: ChatUpdate) => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, update: ChatUpdate) => callback(update);
+    ipcRenderer.on('chat:update', listener);
+    return () => ipcRenderer.removeListener('chat:update', listener);
   },
   openProject: () => call('openProject'),
   updateProjectPermissions: (projectId, mode) => call('updateProjectPermissions', projectId, mode),

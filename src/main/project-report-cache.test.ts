@@ -4,6 +4,7 @@ import path from 'node:path';
 import os from 'node:os';
 import { ProjectReportCache, diagramHash, reportSourceCommit, type DiagramAnalysis } from './project-report-cache';
 import { generateProjectReport } from './project-report';
+const canonical = { components: [{ id: 'main', name: 'Main' }, { id: 'storage', name: 'Storage', kind: 'storage' }], relationships: [{ source: 'main', target: 'storage', type: 'writes', observed: true }] };
 import type { ModelProvider } from './providers';
 
 const directories: string[] = [];
@@ -33,6 +34,7 @@ it('reuses per-file findings, analyzes only edited/new files, and removes delete
   const inputs: any[] = [];
   const provider = { chat: async (input: any) => {
     inputs.push(input);
+    if (input.messages[0].content.includes('canonical architecture')) return { text: JSON.stringify(canonical), tools: [] };
     if (input.messages[0].content.includes('exactly one fenced')) return { text: report.content, tools: [] };
     const { fragments, statements } = JSON.parse(input.messages[1].content);
     return { text: JSON.stringify({ summaries: fragments.map((fragment: any) => ({ id: fragment.id, summary: `Findings for ${fragment.source}: ${fragment.lines.map((line: number) => statements[line]).join('\n')}` })) }), tools: [] };
@@ -85,6 +87,7 @@ it('caches intermediate summaries and bounds serialized batches for small model 
   const workerInputs: any[] = [];
   const provider = { chat: async (input: any) => {
     const instruction = input.messages[0].content;
+    if (instruction.includes('canonical architecture')) return { text: JSON.stringify(canonical), tools: [] };
     if (instruction.includes('exactly one fenced')) return { text: report.content, tools: [] };
     workerInputs.push(input);
     if (instruction.includes('Combine these architecture')) return { text: 'Main persists data in Storage.', tools: [] };

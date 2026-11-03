@@ -45,6 +45,15 @@ it('uses the native LM Studio reasoning control for reports without enabling too
   expect(JSON.parse(fetch.mock.calls[0][1].body)).toMatchObject({ reasoning: 'off', store: false, integrations: [] });
   expect(result.text).toBe('Architecture overview');
 });
+it('retries an LM Studio report without reasoning when the selected model rejects that control', async () => {
+  const fetch = vi.fn()
+    .mockResolvedValueOnce(new Response(JSON.stringify({ error: { message: "Model does not expose reasoning configuration." } }), { status: 400 }))
+    .mockResolvedValueOnce(new Response(JSON.stringify({ output: [{ type: 'message', content: 'Architecture overview' }], stats: { total_output_tokens: 10 } })));
+  vi.stubGlobal('fetch', fetch);
+  await expect(service('lmstudio').chat({ ...input('lmstudio'), reportMode: true, maxOutputTokens: 100 })).resolves.toMatchObject({ text: 'Architecture overview' });
+  expect(JSON.parse(fetch.mock.calls[0][1].body)).toMatchObject({ reasoning: 'off' });
+  expect(JSON.parse(fetch.mock.calls[1][1].body)).not.toHaveProperty('reasoning');
+});
 it.each<Provider>(['ollama', 'lmstudio'])('rejects %s output token exhaustion even with a terminal marker', async provider => {
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue(stream(provider, [provider === 'ollama'
     ? { message: { content: 'Cut off' }, done: true, done_reason: 'length' }

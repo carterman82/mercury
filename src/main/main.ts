@@ -4,7 +4,7 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { z } from 'zod';
 import { planMarkdown } from '../shared/plan';
-import type { DesktopApi, ModelConnection, ModelProfile, Session, Settings, Snapshot } from '../shared/types';
+import type { ChatThread, DesktopApi, ModelConnection, ModelProfile, Session, Settings, Snapshot } from '../shared/types';
 import { endpoint, LocalProviders } from './providers';
 import { autoDiscover } from './discovery';
 import { DiscoveryCache, discoveryKey } from './discovery-cache';
@@ -33,6 +33,8 @@ import { generateProjectReport } from './project-report';
 import { ProjectReportCache, reportSourceCommit, type DiagramAnalysis, type ReportReduction } from './project-report-cache';
 import { resolveCandidates } from './delegation';
 import { ProjectWorkers } from './project-workers';
+import { ProjectServers } from './project-servers';
+import { showResponseNotification } from './response-notifications';
 
 declare const MAIN_WINDOW_VITE_DEV_SERVER_URL: string | undefined;
 declare const MAIN_WINDOW_VITE_NAME: string;
@@ -64,6 +66,9 @@ function snapshot(): Snapshot {
 }
 function noChat(): void { if (chats.activeId) throw new Error('Stop the chat response before starting an agent run.'); }
 function notify(): void { if (window && !window.isDestroyed()) window.webContents.send('state:update', snapshot()); }
+function notifyChat(chat: ChatThread): void {
+  if (window && !window.isDestroyed()) window.webContents.send('chat:update', { chat, activeChatId: chats.activeId, activeChatIds: chats.activeIds, modelRequests: providers.requestCounts });
+}
 function authenticated(event: Electron.IpcMainInvokeEvent): void {
   if (!window || event.sender.id !== window.webContents.id || event.senderFrame !== window.webContents.mainFrame) throw new Error('Unauthorized application request.');
 }
@@ -72,6 +77,7 @@ function handle<T extends keyof DesktopApi>(name: T, handler: (event: Electron.I
 }
 
 app.whenReady().then(async () => {
+  if (process.platform === 'win32') app.setAppUserModelId('Mercury');
   app.setName('Mercury');
   // Keep existing projects, sessions and protected tokens through the rename.
   app.setPath('userData', path.join(app.getPath('appData'), 'Local Plan Agent'));
@@ -105,23 +111,31 @@ app.whenReady().then(async () => {
   const policy = new WebPolicy(fixtureOrigin);
   const web = new WebSearch(policy, process.env.LOCAL_PLAN_AGENT_USER_DATA ? process.env.MERCURY_TEST_WEB_SEARCH : undefined);
   runner = new Runner(store, providers, notify, web);
-  const browser = new ChatBrowser(app.isPackaged ? path.join(process.resourcesPath, 'browser-tools', 'node_modules') : path.join(app.getAppPath(), 'node_modules'), app.isPackaged ? path.join(process.resourcesPath, 'browser-runtime') : path.join(app.getAppPath(), '.build-resources', 'browser-runtime'), policy, approvals);
+  const browser = new ChatBrowser(app.isPackaged ? path.join(process.resourcesPath, 'browser-tools', 'node_modules') : path.join(app.getAppPath(), 'node_modules'), app.isPackaged ? path.join(process.resourcesPath, 'browser-runtime') : path.join(app.getAppPath(), '.build-resources', 'browser-runtime'), policy, approvals, undefined, chatId => {
+    const chat = store.chat(chatId);
+    return Boolean(chat.projectId && (store.project(chat.projectId).permissionMode ?? 2) >= 2);
+  });
   const plugins = new ChatPlugins(path.join(app.getPath('userData'), 'plugins'), app.isPackaged ? path.join(process.resourcesPath, 'file-runtime') : app.getAppPath(), policy, approvals, process.env.LOCAL_PLAN_AGENT_USER_DATA ? process.env.MERCURY_TEST_PLUGIN_REGISTRY : undefined);
   const capabilities = new ChatCapabilities(browser, plugins, web);
   const execution = new ProjectExecutionAdapter(app.isPackaged ? path.join(process.resourcesPath, 'mxc-runtime') : path.join(app.getAppPath(), '.build-resources', 'mxc-runtime'), path.join(app.getPath('userData'), 'execution'), {
     runtimeReadRoots: [path.dirname(process.execPath)],
   });
   const projectMaps = new ProjectMaps(app.isPackaged ? { runtimeRoot: path.join(process.resourcesPath, 'map-runtime'), grammarRoot: path.join(process.resourcesPath, 'map-runtime', 'grammars') } : {});
-  const projectTools = new ProjectTools(store, approvals, new ProjectWorktreeService(path.join(app.getPath('userData'), 'project-workspaces')), undefined, { execution, maps: projectMaps });
+  const projectServers = new ProjectServers(execution, policy);
+  const projectTools = new ProjectTools(store, approvals, new ProjectWorktreeService(path.join(app.getPath('userData'), 'project-workspaces')), undefined, { execution, maps: projectMaps, servers: projectServers });
   const agentModules = app.isPackaged ? path.join(process.resourcesPath, 'agent-runtime', 'node_modules') : path.join(app.getAppPath(), 'node_modules');
   const projectRuntime = new ClaudeProjectRuntime(providers, path.join(app.getPath('userData'), 'agent-sessions'), {
     sdkModulePath: path.join(agentModules, '@anthropic-ai', 'claude-agent-sdk', 'sdk.mjs'),
-    executablePath: path.join(agentModules, '@anthropic-ai', 'claude-agent-sdk-win32-x64', 'claude.exe'),
+    executablePath: path.join(agentModules, '@anthropic-ai', `claude-agent-sdk-${process.platform}-${process.arch}`, process.platform === 'win32' ? 'claude.exe' : 'claude'),
   });
-  const projectWorkers = new ProjectWorkers(store, providers, projectRuntime, projectTools, new ProjectWorktreeService(path.join(app.getPath('userData'), 'worker-workspaces')), notify);
-  chats = new ChatService(store, providers, notify, () => runner.running, chatFiles, capabilities, projectTools, projectRuntime, projectWorkers);
+  const projectWorkers = new ProjectWorkers(store, providers, projectRuntime, projectTools, new ProjectWorktreeService(path.join(app.getPath('userData'), 'worker-workspaces')), notifyChat);
+  chats = new ChatService(store, providers, notifyChat, () => runner.running, chatFiles, capabilities, projectTools, projectRuntime, projectWorkers, chat => showResponseNotification(chat, () => {
+    if (!window || window.isDestroyed()) return;
+    if (window.isMinimized()) window.restore();
+    window.show(); window.focus();
+  }));
   let quitting = false;
-  app.on('before-quit', event => { if (quitting) return; event.preventDefault(); quitting = true; codex.dispose(); void Promise.allSettled([capabilities.dispose(), projectRuntime.shutdown(), execution.shutdown()]).finally(() => app.quit()); });
+  app.on('before-quit', event => { if (quitting) return; event.preventDefault(); quitting = true; codex.dispose(); void Promise.allSettled([capabilities.dispose(), projectRuntime.shutdown(), projectServers.shutdown(), execution.shutdown()]).finally(() => app.quit()); });
   discovery = new DiscoveryCache(settings => autoDiscover(settings, providers), store.discoveryCache(), value => store.saveDiscoveryCache(value));
 
   window = new BrowserWindow({
@@ -186,6 +200,7 @@ app.whenReady().then(async () => {
     const chosen = await dialog.showOpenDialog(window!, { properties: ['openDirectory'] });
     if (chosen.canceled || !chosen.filePaths[0]) return null;
     const canonical = await fs.realpath(chosen.filePaths[0]);
+    await projectTools.initializeProject(canonical);
     const identity = (value: string) => process.platform === 'win32' ? value.toLowerCase() : value;
     let project = store.projects().find(item => identity(item.path) === identity(canonical));
     if (!project) {
@@ -219,13 +234,15 @@ app.whenReady().then(async () => {
       const progress = (message: string) => { if (!event.sender.isDestroyed()) event.sender.send('project-report:progress', chat.id, message); };
       progress('Checking for changed diagrams.');
       const lastCommit = await reportSourceCommit(root);
-      const diagrams = await projectTools.reportDiagrams(chat);
-      return reportCache.update(root, diagrams, lastCommit, async (previous, previousReductions) => {
+      const { diagrams, graph } = await projectTools.reportArchitecture(chat);
+      const cacheSources = graph ? [...diagrams, { path: '__architecture_graph__', content: `${graph.sourceFingerprint}:${graph.analyzerVersion}:${graph.schemaVersion}` }] : diagrams;
+      return reportCache.update(root, cacheSources, lastCommit, async (previous, previousReductions) => {
       const settings = store.settings();
       const candidates = resolveCandidates(settings, 'subagent', chat.profile);
       let analyses: DiagramAnalysis[] = [];
       let reductions: ReportReduction[] = [];
       const result = await generateProjectReport(providers, chat.profile, diagrams, new AbortController().signal, {
+        graph, cacheSources,
         candidates, concurrency: settings.projectWorkerConcurrency ?? 3, onProgress: progress,
         analyses: previous, reductions: previousReductions, onAnalyses: (value, combined) => { analyses = value; reductions = combined; },
       });

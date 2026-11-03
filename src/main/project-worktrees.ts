@@ -2,6 +2,7 @@ import { execFile } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
+import { mercuryGitEnvironment } from './project-git-environment';
 
 export interface ProjectWorkspace {
   id: string;
@@ -34,8 +35,7 @@ const digest = (data: Buffer | string) => createHash('sha256').update(data).dige
 
 function eligible(relative: string): boolean {
   const parts = relative.split(/[\\/]/);
-  const mapPath = parts.join('/');
-  if (mapPath.startsWith('.mercury/architecture/') && !mapPath.endsWith('.mmd')) return false;
+  if (parts[0].toLowerCase() === '.mercury') return false;
   return !parts.some(part => excludedDirectories.has(part.toLowerCase()))
     && !parts.some(part => /^(?:\.env(?:\..*)?|id_(?:rsa|dsa|ecdsa|ed25519)|credentials(?:\..*)?|secrets?(?:\..*)?)$/i.test(part))
     && !/\.(?:pem|p12|pfx|key)$/i.test(relative);
@@ -43,16 +43,27 @@ function eligible(relative: string): boolean {
 function aborted(signal?: AbortSignal): void { signal?.throwIfAborted(); }
 async function git(root: string, args: string[], signal?: AbortSignal): Promise<string> {
   aborted(signal);
+  // Never discover or reuse the checkout's .git (including linked worktrees).
+  const directory = path.join(root, '.mercury', 'git');
+  for (const target of [path.dirname(directory), directory]) {
+    const stat = await fs.lstat(target).catch((error: NodeJS.ErrnoException) => error.code === 'ENOENT' ? null : Promise.reject(error));
+    if (stat && (stat.isSymbolicLink() || !stat.isDirectory())) throw new Error('Mercury Git storage must be a separate regular directory, not a link.');
+  }
+  for (const relative of ['config', 'HEAD', 'index', 'refs', 'refs/heads', 'refs/heads/mercury', 'objects', 'logs', 'logs/HEAD', 'logs/refs', 'logs/refs/heads', 'logs/refs/heads/mercury', 'commondir', 'objects/info/alternates']) {
+    const stat = await fs.lstat(path.join(directory, relative)).catch((error: NodeJS.ErrnoException) => error.code === 'ENOENT' ? null : Promise.reject(error));
+    if (stat && (stat.isSymbolicLink() || relative === 'commondir' || relative === 'objects/info/alternates')) throw new Error('Mercury Git storage cannot link or share metadata with another repository.');
+  }
+  await fs.mkdir(path.dirname(directory), { recursive: true });
   return new Promise((resolve, reject) => {
-    const env = args[0] === 'commit' ? { ...process.env, GIT_AUTHOR_NAME: 'Mercury AI', GIT_AUTHOR_EMAIL: 'ai@mercury.local', GIT_COMMITTER_NAME: 'Mercury AI', GIT_COMMITTER_EMAIL: 'ai@mercury.local' } : process.env;
-    execFile('git', ['-c', 'core.hooksPath=', '-c', 'core.fsmonitor=false', '-c', 'submodule.recurse=false', '-c', 'commit.gpgSign=false', '-C', root, ...args], { signal, env, windowsHide: true, maxBuffer: 32 * 1024 * 1024 }, (error, stdout, stderr) => error ? reject(Object.assign(error, { stderr })) : resolve(stdout));
+    const env = mercuryGitEnvironment(process.env, path.join(root, '.mercury', 'identity'));
+    execFile('git', ['--literal-pathspecs', `--git-dir=${directory}`, `--work-tree=${root}`, '-c', 'core.hooksPath=', '-c', 'core.fsmonitor=false', '-c', 'submodule.recurse=false', '-c', 'commit.gpgSign=false', '-C', root, ...args], { signal, env, windowsHide: true, maxBuffer: 32 * 1024 * 1024 }, (error, stdout, stderr) => error ? reject(Object.assign(error, { stderr })) : resolve(stdout));
   });
 }
 async function succeeds(root: string, args: string[], signal?: AbortSignal): Promise<boolean> {
   try { await git(root, args, signal); return true; } catch { return false; }
 }
 
-/** A Git safety net that uses the selected checkout instead of copying projects. */
+/** Separate local safety history; the project's own Git repository is never used. */
 export class ProjectWorktreeService {
   private readonly pending = new Map<string, Promise<unknown>>();
   private readonly baselines = new Map<string, Map<string, string>>();
@@ -79,16 +90,7 @@ export class ProjectWorktreeService {
   }
   private async snapshotEligible(root: string, signal?: AbortSignal): Promise<Map<string, string>> {
     const snapshot = new Map<string, string>();
-    const records = (await git(root, ['status', '--porcelain=v1', '-z', '--untracked-files=all'], signal)).split('\0');
-    const dirty = new Set<string>();
-    for (let index = 0; index < records.length; index++) {
-      const record = records[index];
-      if (!record) continue;
-      const status = record.slice(0, 2);
-      dirty.add(record.slice(3));
-      if (/[RC]/.test(status) && records[index + 1]) dirty.add(records[++index]);
-    }
-    for (const relative of [...dirty].filter(eligible)) {
+    for (const relative of await this.eligiblePaths(root, signal)) {
       aborted(signal);
       const stat = await fs.lstat(path.join(root, relative)).catch((error: NodeJS.ErrnoException) => error.code === 'ENOENT' ? null : Promise.reject(error));
       if (stat && !stat.isFile()) continue;
@@ -99,22 +101,35 @@ export class ProjectWorktreeService {
   }
   private async ensureRepository(root: string, signal?: AbortSignal): Promise<void> {
     if (this.repositories.has(root)) return;
-    if (await succeeds(root, ['rev-parse', '--is-inside-work-tree'], signal)) {
-      const top = await fs.realpath((await git(root, ['rev-parse', '--show-toplevel'], signal)).trim());
-      if (top !== root) throw new Error('Choose the repository root, not a nested folder.');
-      this.repositories.add(root);
-      return;
-    }
-    await git(root, ['init'], signal);
+    await git(root, ['init', '--initial-branch=mercury', '--template='], signal);
+    await git(root, ['config', '--local', 'user.name', 'Mercury AI'], signal);
+    await git(root, ['config', '--local', 'user.email', 'ai@mercury.local'], signal);
+    if ((await git(root, ['remote'], signal)).trim()) throw new Error('Mercury safety history must not have remotes.');
+    if (await succeeds(root, ['rev-parse', '--verify', 'HEAD'], signal)) { this.repositories.add(root); return; }
     await this.stageEligible(root, signal);
     if (!(await succeeds(root, ['diff', '--cached', '--quiet'], signal))) await git(root, ['commit', '--no-verify', '-m', 'Mercury safety baseline'], signal);
     this.repositories.add(root);
+  }
+
+  async initialize(projectRoot: string, signal?: AbortSignal): Promise<void> {
+    const root = await fs.realpath(projectRoot);
+    await this.exclusive(root, async () => {
+      const filename = path.join(root, '.gitignore');
+      const stat = await fs.lstat(filename).catch((error: NodeJS.ErrnoException) => error.code === 'ENOENT' ? null : Promise.reject(error));
+      if (stat && (!stat.isFile() || stat.isSymbolicLink())) throw new Error('Project .gitignore must be a regular file.');
+      const content = stat ? await fs.readFile(filename, 'utf8') : '';
+      if (!content.split(/\r?\n/).some(line => line.trim() === '/.mercury/')) {
+        await fs.appendFile(filename, `${content && !content.endsWith('\n') ? '\n' : ''}/.mercury/\n`);
+      }
+      await this.ensureRepository(root, signal);
+    });
   }
 
   async prepare(input: { projectRoot: string; chatId: string; signal?: AbortSignal }): Promise<ProjectWorkspace> {
     if (!input.chatId.trim()) throw new Error('Chat identity is required.');
     const projectRoot = await fs.realpath(input.projectRoot);
     if (!(await fs.stat(projectRoot)).isDirectory()) throw new Error('Project must be a directory.');
+    await this.initialize(projectRoot, input.signal);
     return this.exclusive(projectRoot, async () => {
       aborted(input.signal);
       await this.ensureRepository(projectRoot, input.signal);

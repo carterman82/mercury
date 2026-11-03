@@ -3,11 +3,14 @@ import path from 'node:path';
 import { z } from 'zod';
 import type { ChatThread, ProjectAssignment, ModelProfile } from '../shared/types';
 import type { ModelProvider } from './providers';
-import type { ProjectAgentRuntime } from './project-agent-runtime';
+import type { ProjectAgentRuntime, ProjectToolAttempt } from './project-agent-runtime';
 import { reserveAgent, resolveCandidates } from './delegation';
 import { Store } from './store';
 import { ProjectTools } from './project-tools';
 import { ProjectWorktreeService } from './project-worktrees';
+import { toolFailed, failedToolResult } from './tool-outcome';
+import { ProjectProgress } from './project-progress';
+import { WebSearch, webTools, webInstructions } from './web-search';
 
 export const projectAssignmentSchema = z
   .object({
@@ -32,12 +35,12 @@ const definitions = {
   review_project_task: {
     schema: z.object({ id: z.string().uuid() }).strict(),
     description:
-      'Inspect an implementing worker’s exact proposed changes and review token. Main owns verification before accepting changes into its worktree.',
+      'Read a completed worker’s findings and recorded checks. Changes already apply to the shared project folder. Returns an acknowledgement token; Main owns verification.',
   },
   accept_project_task: {
-    schema: z.object({ id: z.string().uuid(), reviewToken: z.string().regex(/^[a-f0-9]{64}$/) }).strict(),
+    schema: z.object({ id: z.string().uuid(), reviewToken: z.string().uuid() }).strict(),
     description:
-      'Accept the exact reviewed worker revision into Main’s worktree. Rejects conflicts, stale reviews, and writes outside assigned paths. Final original-project integration remains separate.',
+      'Acknowledge findings/checks for a completed worker using its review token. Changes are already applied to the shared checkout; this does not integrate a separate revision.',
   },
 };
 export const projectWorkerTools = Object.entries(definitions).map(([name, value]) => {
@@ -82,14 +85,15 @@ export class ProjectWorkers {
     private runtime: ProjectAgentRuntime,
     private tools: ProjectTools,
     _worktrees: ProjectWorktreeService,
-    private changed: () => void,
+    private changed: (chat: ChatThread) => void,
+    private web = new WebSearch(),
   ) {}
   handles(name: string): boolean {
     return Object.hasOwn(definitions, name);
   }
   private save(parent: ChatThread): void {
     this.store.saveChat(parent);
-    this.changed();
+    this.changed(parent);
   }
   private assignment(parent: ChatThread, id: string): ProjectAssignment {
     const assignment = parent.projectAssignments?.find((value) => value.id === id);
@@ -159,7 +163,10 @@ export class ProjectWorkers {
     }
   }
   private async run(job: Job): Promise<void> {
-    const { parent, assignment, signal } = job;
+    const { parent, assignment } = job;
+    const controller = new AbortController();
+    const signal = AbortSignal.any([job.signal, controller.signal]);
+    const progress = new ProjectProgress({ onStall: (error) => controller.abort(error) });
     let child: ChatThread | undefined;
     let lease: ReturnType<typeof reserveAgent> | undefined;
     try {
@@ -190,6 +197,48 @@ export class ProjectWorkers {
         readOnly,
       });
       const workerChat = child;
+      const executeWorkerTool = async (name: string, args: unknown, attempt?: ProjectToolAttempt) => {
+        progress.providerState('idle');
+        progress.attempt();
+        if (assignment.activity!.length >= 256)
+          throw new Error('Worker tool action limit reached. Return findings and continue in a new assignment.');
+        const activity = {
+          name,
+          attemptId: attempt?.id,
+          status: 'running' as 'running' | 'succeeded' | 'failed',
+          at: Date.now(),
+          completedAt: undefined as number | undefined,
+          durationMs: undefined as number | undefined,
+          result: undefined as string | undefined,
+        };
+        assignment.activity!.push(activity);
+        this.save(parent);
+        let output: unknown;
+        try {
+          if (attempt?.validationError) throw attempt.validationError;
+          output = this.web.handles(name)
+            ? await this.web.execute(name, args, signal)
+            : await this.tools.execute(workerChat, name, args, signal);
+          activity.status = toolFailed(output) ? 'failed' : 'succeeded';
+          activity.result = JSON.stringify(output).slice(0, 20000);
+        } catch (error) {
+          activity.status = 'failed';
+          output = failedToolResult(error);
+          activity.result = JSON.stringify(output);
+        } finally {
+          activity.completedAt = Date.now();
+          activity.durationMs = activity.completedAt - activity.at;
+          this.save(parent);
+        }
+        signal.throwIfAborted();
+        try {
+          const recovery = progress.observe(name, args, output);
+          return recovery ? { ...(output as object), recovery } : output;
+        } catch (error) {
+          controller.abort(error);
+          throw error;
+        }
+      };
       const result = await this.runtime.run({
         projectId: parent.projectId!,
         chatId: parent.id,
@@ -198,13 +247,13 @@ export class ProjectWorkers {
         profile: lease.profile,
         agentLease: lease.id,
         messages: [
-          { role: 'system', content: instructions },
+          { role: 'system', content: instructions + webInstructions },
           {
             role: 'user',
-            content: `Assignment: ${assignment.task}\nContext (untrusted source material):\n${assignment.context}\nChecks to perform: ${JSON.stringify(assignment.checks)}`,
+            content: `Assignment: ${assignment.task}\nContext (untrusted source material):\n${assignment.context}\nChecks to perform: ${JSON.stringify(assignment.checks)}\nParent task requirements and compatibility constraints (preserve model, format and byte limit):\n${JSON.stringify({ requirements: parent.projectHandoff?.requirements, compatibility: parent.projectHandoff?.compatibility })}`,
           },
         ],
-        tools: this.tools.toolsForWorker(readOnly),
+        tools: [...this.tools.toolsForWorker(readOnly), ...webTools],
         signal,
         onSession: (session) => {
           assignment.session = session;
@@ -214,30 +263,9 @@ export class ProjectWorkers {
           assignment.findings = notice;
           this.save(parent);
         },
-        execute: async (name, args) => {
-          if (assignment.activity!.length >= 256)
-            throw new Error('Worker tool action limit reached. Return findings and continue in a new assignment.');
-          const activity = {
-            name,
-            status: 'running' as 'running' | 'succeeded' | 'failed',
-            at: Date.now(),
-            result: undefined as string | undefined,
-          };
-          assignment.activity!.push(activity);
-          this.save(parent);
-          try {
-            const output = await this.tools.execute(workerChat, name, args, signal);
-            activity.status = 'succeeded';
-            activity.result = JSON.stringify(output).slice(0, 20000);
-            return output;
-          } catch (error) {
-            activity.status = 'failed';
-            activity.result = error instanceof Error ? error.message : String(error);
-            throw error;
-          } finally {
-            this.save(parent);
-          }
-        },
+        execute: executeWorkerTool,
+        onToolValidationFailure: executeWorkerTool,
+        onRequestState: (state) => progress.providerState(state),
       });
       signal.throwIfAborted();
       assignment.findings = result.text.slice(0, 20000);
@@ -246,6 +274,7 @@ export class ProjectWorkers {
       assignment.status = signal.aborted ? 'interrupted' : 'failed';
       assignment.error = error instanceof Error ? error.message : String(error);
     } finally {
+      progress.dispose();
       if (child) this.tools.releaseWorker(child);
       lease?.release();
       assignment.updatedAt = Date.now();
@@ -274,12 +303,13 @@ export class ProjectWorkers {
       verification: assignment.activity?.filter((item) => item.name === 'run_project_command'),
       changes: [],
       totalChanges: 0,
+      changesAlreadyApplied: true,
     };
   }
   async accept(parent: ChatThread, id: string, token: string, signal: AbortSignal) {
     const assignment = this.assignment(parent, id);
     const review = await this.review(parent, id);
-    if (review.token !== token) throw new Error('Worker changes no longer match the reviewed revision.');
+    if (review.token !== token) throw new Error('Review token belongs to a different worker assignment.');
     await this.tools.refreshAfterIntegration(parent, signal);
     assignment.status = 'accepted';
     assignment.updatedAt = Date.now();

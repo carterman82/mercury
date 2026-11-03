@@ -34,7 +34,23 @@ export interface PlanRevision { revision: number; content: PlanContent; approved
 export interface RunEvent { id: string; at: number; role?: HistoricalAgentRole; kind: 'message' | 'status' | 'tool' | 'error' | 'command' | 'change'; text: string; }
 export interface ChangeRecord { path: string; before: string | null; after: string | null; at: number; }
 export interface CommandRequest { id: string; command: string; cwd: string; }
-export interface SourceEvidence { id: string; at: number; tool: string; label: string; input: string; result: string; }
+export interface SourceEvidence { id: string; at: number; tool: string; label: string; input: string; result: string; projectRevision?: number; }
+export interface ProjectRequirement { id?: string; text: string; status: 'passed' | 'failed' | 'blocked' | 'not_run'; evidenceIds: string[]; verification?: 'inspection' | 'command' | 'browser'; stage?: 'page' | 'model' | 'inference'; selector?: string; expectedText?: string; }
+export interface ProjectHandoff {
+  objective?: string;
+  generation?: number;
+  snapshots?: { path: string; hash: string }[];
+  blocker?: { tool: string; target: string; code: string; action?: string; sourceRevision?: string; message: string; nextAction: string; at: number };
+  failedApproaches?: { tool: string; target: string; code: string; input: string; sourceRevision?: string; message: string; at: number }[];
+  requiresModelVerification?: boolean;
+  compatibility?: { runtime: string; version: string; modelFormat: 'gguf' | 'onnx' | 'mlc'; modelId: string; maxBytes: number; evidenceIds: string[] };
+  requirements: ProjectRequirement[];
+  reads: { path: string; hash: string; startLine: number; endLine: number }[];
+  changedPaths: string[];
+  checks: { name: string; status: 'passed' | 'failed' | 'blocked' | 'not_run'; at: number; evidenceId?: string }[];
+  completedSteps: string[]; remaining: string; updatedAt: number; lastMutationAt?: number;
+  browser?: { url: string; openedAt: number; interacted: boolean; observed: boolean; errors?: string[]; interactedAt?: number; observationId?: string; selected?: { selector: string; text: string }; modelReady?: boolean; readyAtInteraction?: boolean; submitted?: boolean; responseSelector?: string; replyBefore?: string; replyAfter?: string };
+}
 export interface Session {
   id: string;
   projectId: string;
@@ -55,18 +71,19 @@ export interface Project { id: string; path: string; name: string; permissionMod
 export interface ChatFile { id: string; name: string; size: number; kind: 'upload' | 'generated'; format?: string; readStatus?: 'readable' | 'partial' | 'metadata'; note?: string; }
 export interface FilePreview { kind: 'image' | 'pdf' | 'text'; text?: string; image?: string; page?: number; pages?: number; note?: string; }
 export interface BrowserPreview { url: string; image?: string; }
-export interface ChatMessage { id: string; role: 'user' | 'assistant'; content: string; files?: ChatFile[]; sourceEvidence?: SourceEvidence[]; model?: string; reasoning?: string; notice?: string; queued?: boolean; toolActivity?: { name: string; label?: string; status: 'running' | 'succeeded' | 'failed'; at: number; result?: string }[]; startedAt?: number; thinkingEndedAt?: number; completedAt?: number; }
+export interface ChatMessage { id: string; role: 'user' | 'assistant'; content: string; files?: ChatFile[]; sourceEvidence?: SourceEvidence[]; model?: string; reasoning?: string; notice?: string; queued?: boolean; toolActivity?: { name: string; label?: string; status: 'running' | 'succeeded' | 'failed'; at: number; attemptId?: string; result?: string; completedAt?: number; durationMs?: number }[]; metrics?: { queuedMs: number; providerMs: number; toolMs: number; recoveries: number; recoveryMs?: number; inputTokens?: number; outputTokens?: number }; verification?: 'passed' | 'failed' | 'blocked' | 'not_run'; runtimeBuild?: string; recoveryPolicy?: string; delivery?: { status: 'completed' | 'blocked' | 'stopped' | 'failed'; reason?: string; at: number }; startedAt?: number; thinkingEndedAt?: number; completedAt?: number; }
 export interface ProjectAgentSession { runtime: 'claude-agent-sdk'; version: string; identity: string; sessionId?: string; status: 'running' | 'completed' | 'interrupted'; }
 export interface ProjectAssignment {
   id: string; kind: 'investigation' | 'implementation' | 'testing' | 'review'; task: string; context: string; ownedPaths: string[]; checks: string[];
   status: 'queued' | 'running' | 'completed' | 'failed' | 'interrupted' | 'accepted'; profile: ModelProfile; createdAt: number; updatedAt: number;
   workspaceId?: string; workspacePath?: string; session?: ProjectAgentSession; findings?: string; error?: string;
-  activity?: { name: string; status: 'running' | 'succeeded' | 'failed'; at: number; result?: string }[];
+  activity?: { name: string; status: 'running' | 'succeeded' | 'failed'; at: number; attemptId?: string; completedAt?: number; durationMs?: number; result?: string }[];
 }
-export interface ChatThread { id: string; title: string; profile: ModelProfile; usesMainPool?: boolean; projectId?: string; workspacePath?: string; executionSupport?: { available: boolean; reason?: string; version: string }; projectRuntime?: ProjectAgentSession; projectAssignments?: ProjectAssignment[]; messages: ChatMessage[]; status: 'idle' | 'streaming' | 'stopped' | 'failed' | 'interrupted'; error?: string; updatedAt: number; }
+export interface ChatThread { id: string; title: string; profile: ModelProfile; usesMainPool?: boolean; projectId?: string; workspacePath?: string; executionSupport?: { available: boolean; reason?: string; version: string }; projectRuntime?: ProjectAgentSession; projectAssignments?: ProjectAssignment[]; projectHandoff?: ProjectHandoff; messages: ChatMessage[]; status: 'idle' | 'streaming' | 'stopped' | 'failed' | 'interrupted'; error?: string; updatedAt: number; }
 export interface ChatApproval { id: string; chatId: string; title: string; details: string; at: number; projectId?: string; policyRevision?: number; kind?: 'read' | 'write' | 'command' | 'plugin' | 'integrate'; agentId?: string; paths?: string[]; }
 export interface ProjectMapSummary { available: boolean; fresh: boolean; persisted?: boolean; sourceFiles: number; languages: string[]; unresolvedReferences: number; diagrams: string[]; diagramLabels?: Record<string, string>; diagnostics: { file?: string; message: string }[]; }
 export interface Snapshot { projects: Project[]; sessions: Session[]; chats: ChatThread[]; settings: Settings; activeRole: AgentRole | null; activeChatId: string | null; activeChatIds?: string[]; modelRequests?: ModelRequestCount[]; chatApprovals?: ChatApproval[]; }
+export interface ChatUpdate { chat: ChatThread; activeChatId: string | null; activeChatIds: string[]; modelRequests: ModelRequestCount[]; }
 export interface ToolRequest { id: string; name: string; arguments: unknown; }
 
 export interface ProjectReport {
@@ -80,6 +97,7 @@ export interface ProjectReport {
 export interface DesktopApi {
   snapshot(): Promise<Snapshot>;
   onUpdate(callback: (snapshot: Snapshot) => void): () => void;
+  onChatUpdate(callback: (update: ChatUpdate) => void): () => void;
   openProject(): Promise<Project | null>;
   updateProjectPermissions(projectId: string, mode: ProjectPermissionMode): Promise<void>;
   projectMapStatus(chatId: string): Promise<ProjectMapSummary>;

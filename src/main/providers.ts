@@ -435,11 +435,21 @@ export class LocalProviders implements ModelProvider {
     const base = this.url(input.profile);
     if (input.reportMode && input.profile.provider === 'lmstudio' && !input.tools?.length) {
       const messages = input.messages as { role: string; content: string }[];
-      const response = await requestJson(`${base}/api/v1/chat`, {
+      const body = { model: input.profile.model, system_prompt: messages.filter(message => message.role === 'system').map(message => message.content).join('\n'), input: messages.filter(message => message.role !== 'system').map(message => message.content).join('\n'), store: false, integrations: [], max_output_tokens: input.maxOutputTokens };
+      const request = (reasoning: boolean) => requestJson(`${base}/api/v1/chat`, {
         method: 'POST', headers: { 'content-type': 'application/json', ...this.headers(input.profile.connectionId) },
         signal: AbortSignal.any([input.signal, AbortSignal.timeout(input.inactivityMs ?? 600000)]),
-        body: JSON.stringify({ model: input.profile.model, system_prompt: messages.filter(message => message.role === 'system').map(message => message.content).join('\n'), input: messages.filter(message => message.role !== 'system').map(message => message.content).join('\n'), reasoning: 'off', store: false, integrations: [], max_output_tokens: input.maxOutputTokens }),
+        body: JSON.stringify({ ...body, ...(reasoning ? { reasoning: 'off' } : {}) }),
       });
+      let response: any;
+      try { response = await request(true); }
+      catch (error) {
+        // Some OpenAI-compatible LM Studio backends expose this endpoint but
+        // reject its optional reasoning control. Retrying without it preserves
+        // report compatibility without masking unrelated 400 errors.
+        if (!(error instanceof ModelHttpError) || error.status !== 400 || !/(?:reasoning configuration|does not expose reasoning|reasoning.*(?:unsupported|invalid))/i.test(error.message)) throw error;
+        response = await request(false);
+      }
       if (input.maxOutputTokens && response.stats?.total_output_tokens >= input.maxOutputTokens - 1) throw new Error('The report reached its output token limit before finishing.');
       const text = (response.output ?? []).filter((item: any) => item.type === 'message').map((item: any) => item.content).join('\n');
       input.onText?.(text);

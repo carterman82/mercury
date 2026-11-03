@@ -1,6 +1,8 @@
 import { expect, it, vi } from 'vitest';
 import { LocalProviders } from './providers';
 import { generateProjectReport } from './project-report';
+import { architectureSchema, renderArchitecture } from './project-architecture';
+const canonical = architectureSchema.parse({ components: [{ id: 'main', name: 'Main' }, { id: 'formula', name: 'Formula' }, { id: 'storage', name: 'Storage', kind: 'storage' }], relationships: [{ source: 'main', target: 'formula', type: 'uses', observed: true }, { source: 'formula', target: 'storage', type: 'writes', observed: true }] });
 
 const profile = { provider: 'lmstudio' as const, connectionId: 'test', endpoint: 'http://127.0.0.1:1234', model: 'test', contextLimit: 32768 };
 const settings = { connections: [{ id: 'test', provider: 'lmstudio' as const, url: profile.endpoint, label: 'Test' }], mainModel: null, plannerModel: null, subagentModel: null };
@@ -19,7 +21,7 @@ it('finishes a report after slow prefill and more than ten minutes of progressin
         // No tokens for three minutes, then useful reasoning every minute.
         for (let minute = 3; minute <= 14; minute++) setTimeout(() => emit({ reasoning_content: `Inspecting relationship ${minute}` }), minute * 60000);
         setTimeout(() => {
-          emit({ content: request.messages[0].content.includes('exactly one fenced') ? '```mermaid\nflowchart LR\nMain --> Formula\nFormula --> Storage\n```' : 'Main evaluates formulas and stores results.' }, 'stop');
+          emit({ content: request.messages[0].content.includes('canonical architecture') ? JSON.stringify(canonical) : 'Main evaluates formulas and stores results.' }, 'stop');
           controller.close();
         }, 15 * 60000);
       } });
@@ -30,7 +32,7 @@ it('finishes a report after slow prefill and more than ten minutes of progressin
     streaming.chat = input => originalChat({ ...input, reportMode: false });
     const result = generateProjectReport(streaming, profile, diagrams, new AbortController().signal);
     for (let minute = 0; minute < 40; minute++) await vi.advanceTimersByTimeAsync(60000);
-    expect((await result).diagram).toContain('Main --> Formula');
+    expect((await result).diagram).toBe(renderArchitecture(canonical));
     expect(calls).toBe(2);
   } finally { vi.useRealTimers(); vi.unstubAllGlobals(); }
 }, 15000);

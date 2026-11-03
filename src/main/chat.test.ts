@@ -22,6 +22,48 @@ function fixture() {
 }
 afterEach(() => { stores.splice(0).forEach(store => store.close()); directories.splice(0).forEach(directory => rmSync(directory, { recursive: true, force: true })); });
 
+it('notifies once per completed response after it is saved, including follow-up turns', async () => {
+  const store = fixture();
+  const provider = { chat: async () => ({ text: 'Response complete.', tools: [] }) } as unknown as ModelProvider;
+  const completed = vi.fn(chat => {
+    expect(store.chat(chat.id).status).toBe('idle');
+    expect(store.chat(chat.id).messages.at(-1)?.completedAt).toEqual(expect.any(Number));
+  });
+  const service = new ChatService(store, provider, () => {}, () => false, undefined, undefined, undefined, undefined, undefined, completed);
+  const id = await service.send(null, profile, 'Hello');
+  expect(completed).toHaveBeenCalledOnce();
+  await service.send(id, profile, 'Another response');
+  expect(completed).toHaveBeenCalledTimes(2);
+});
+it('publishes only the saved chat to streaming listeners', async () => {
+  const store = fixture();
+  const updates: { id: string; status: string; messages: number }[] = [];
+  const provider = { chat: async (input: ChatInput) => { input.onText?.('Streaming'); return { text: 'Streaming', tools: [] }; } } as unknown as ModelProvider;
+  const id = await new ChatService(store, provider, chat => updates.push({ id: chat.id, status: chat.status, messages: chat.messages.length }), () => false).send(null, profile, 'Hello');
+  expect(updates).toContainEqual({ id, status: 'streaming', messages: 2 });
+  expect(updates.at(-1)).toEqual({ id, status: 'idle', messages: 2 });
+});
+it('keeps a completed response successful if the notification system fails', async () => {
+  const store = fixture();
+  const provider = { chat: async () => ({ text: 'Response complete.', tools: [] }) } as unknown as ModelProvider;
+  const service = new ChatService(store, provider, () => {}, () => false, undefined, undefined, undefined, undefined, undefined, () => { throw new Error('Notifications unavailable'); });
+  const id = await service.send(null, profile, 'Hello');
+  expect(store.chat(id).status).toBe('idle');
+  expect(store.chat(id).error).toBeUndefined();
+});
+it.each(['failure', 'stop'])('does not send a success notification on %s', async outcome => {
+  const store = fixture(), completed = vi.fn();
+  let service: ChatService;
+  const provider = { chat: async () => {
+    if (outcome === 'stop') service.stop(service.activeId!);
+    throw new Error('Generation ended');
+  } } as unknown as ModelProvider;
+  service = new ChatService(store, provider, () => {}, () => false, undefined, undefined, undefined, undefined, undefined, completed);
+  const id = await service.send(null, profile, 'Hello');
+  expect(store.chat(id).status).toBe(outcome === 'stop' ? 'stopped' : 'failed');
+  expect(completed).not.toHaveBeenCalled();
+});
+
 it('retains routing and billing notices in saved replies without duplicate notices', async () => {
   const store = fixture();
   const provider = { chat: async (input: ChatInput) => {

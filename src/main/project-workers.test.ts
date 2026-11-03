@@ -13,8 +13,33 @@ import { ChatApprovals } from './chat-approvals';
 import { ClaudeProjectRuntime } from './project-agent-runtime';
 import type { ChatThread } from '../shared/types';
 import type { ChatInput, ModelProvider } from './providers';
+import { projectTestRuntime } from './project-test-runtime';
 
 const cleanup: (() => Promise<void>)[] = [];
+
+it('lets a read-only research worker fetch public evidence without project writes', async () => {
+  const root=await fs.mkdtemp(path.join(os.tmpdir(),'mercury-worker-web-'));
+  cleanup.push(()=>fs.rm(root,{recursive:true,force:true,maxRetries:5,retryDelay:100}));
+  const store=new Store(path.join(root,'state.sqlite')); cleanup.push(async()=>store.close());
+  const profile={provider:'ollama' as const,connectionId:'fixture',model:'research',contextLimit:16000};
+  store.saveSettings({connections:[{id:'fixture',provider:'ollama',label:'Fixture',url:'http://127.0.0.1:11434'}],mainModel:profile,subagentModel:profile,plannerModel:null});
+  const project={id:randomUUID(),name:'Research',path:root,permissionMode:3 as const,policyRevision:1};store.saveProject(project);
+  const parent:ChatThread={id:randomUUID(),projectId:project.id,title:'Research',profile,messages:[],status:'idle',updatedAt:Date.now()};store.saveChat(parent);
+  const tools=new ProjectTools(store,new ChatApprovals(()=>{}),new ProjectWorktreeService(path.join(root,'workspaces')));
+  await tools.prepare(parent,new AbortController().signal);
+  let calls=0;
+  const provider={chat:async(input:ChatInput)=>{
+    expect(JSON.stringify(input.tools)).toContain('web_fetch');
+    if(++calls===1)return {text:'',tools:[{id:'fetch',name:'web_fetch',arguments:{url:'https://example.com/model'}}]};
+    expect(JSON.stringify(input.messages)).toContain('Verified model metadata');
+    return {text:'The model metadata is verified.',tools:[]};
+  }} as unknown as ModelProvider;
+  const web={handles:(name:string)=>name==='web_fetch',execute:async()=>({content:'Verified model metadata'})} as any;
+  const workers=new ProjectWorkers(store,provider,projectTestRuntime(provider),tools,new ProjectWorktreeService(path.join(root,'workers')),()=>{},web);
+  const assignment=await workers.start(parent,{kind:'investigation',task:'Research model',context:''},new AbortController().signal);
+  await workers.wait(parent,[assignment.id]);
+  expect(assignment.status).toBe('completed');expect(assignment.activity?.[0].name).toBe('web_fetch');expect(calls).toBe(2);
+});
 afterEach(async () => {
   for (const action of cleanup.splice(0).reverse()) await action();
 });
@@ -121,11 +146,17 @@ it('runs two actual SDK coding workers in the shared checkout with owned paths',
   expect(alpha.workspacePath).toBe(beta.workspacePath);
   expect(alpha.session?.runtime).toBe('claude-agent-sdk');
   expect(await fs.readFile(path.join(source, 'alpha.ts'), 'utf8')).toContain('alpha.ts');
-  const reviewed = await workers.review(chat, alpha.id);
-  await workers.accept(chat, alpha.id, reviewed.token, signal);
+  const reviewed: any = await workers.execute(chat, 'review_project_task', { id: alpha.id }, signal);
+  await expect(
+    workers.execute(chat, 'accept_project_task', { id: alpha.id, reviewToken: 'invalid' }, signal),
+  ).rejects.toThrow();
+  await workers.execute(chat, 'accept_project_task', { id: alpha.id, reviewToken: reviewed.token }, signal);
   for (const assignment of [beta]) {
-    const review = await workers.review(chat, assignment.id);
-    await workers.accept(chat, assignment.id, review.token, signal);
+    const review: any = await workers.execute(chat, 'review_project_task', { id: assignment.id }, signal);
+    await expect(
+      workers.execute(chat, 'accept_project_task', { id: assignment.id, reviewToken: alpha.id }, signal),
+    ).rejects.toThrow('different worker');
+    await workers.execute(chat, 'accept_project_task', { id: assignment.id, reviewToken: review.token }, signal);
   }
   const main = tools.getWorkspace(chat);
   expect(await fs.readFile(path.join(main.root, 'alpha.ts'), 'utf8')).toContain('alpha.ts');

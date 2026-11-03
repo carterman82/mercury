@@ -1,6 +1,7 @@
 import { expect, it, vi } from 'vitest';
 import { generateProjectReport } from './project-report';
 import type { ModelProvider } from './providers';
+import type { ProjectDependencyGraph } from './project-map-types';
 
 it('reads every diagram including large diagram tails before synthesizing a concept flowchart', async () => {
   const evidence: string[] = [];
@@ -118,4 +119,13 @@ it('extracts final answers rather than visible thought-channel drafts', async ()
   expect(result.diagram).toContain('|calls|');
   expect(result.content).not.toContain('Thinking Process');
   expect(chat).toHaveBeenCalledTimes(2);
+});
+
+it('uses one compact model interpretation when persisted graph evidence is available', async () => {
+  const graph: ProjectDependencyGraph = { schemaVersion: 1, analyzerVersion: 'test', sourceFingerprint: 'graph', files: [{ id: 'a', path: 'app/main.ts', language: 'typescript', fingerprint: 'a' }, { id: 'b', path: 'core/service.ts', language: 'typescript', fingerprint: 'b' }], symbols: [{ id: 'sa', name: 'run', qualifiedName: 'run', kind: 'function', file: 'app/main.ts', line: 1, column: 1, endLine: 1 }, { id: 'sb', name: 'save', qualifiedName: 'save', kind: 'function', file: 'core/service.ts', line: 1, column: 1, endLine: 1 }], edges: Array.from({ length: 100 }, (_, index) => ({ id: String(index), kind: 'calls' as const, from: 'sa', to: 'sb', label: 'calls save', confidence: 'confirmed' as const, file: 'app/main.ts', line: index + 1, column: 1 })), diagnostics: [], coverage: { languages: ['typescript'], parsedFiles: 2, totalFiles: 2, truncated: false, unresolvedReferences: 0 } };
+  const chat = vi.fn().mockResolvedValue({ text: JSON.stringify({ components: [{ id: 'app', name: 'Application', kind: 'application', evidence: ['app'] }, { id: 'core', name: 'Core Service', kind: 'application', evidence: ['core'] }], relationships: [{ source: 'app', target: 'core', type: 'calls', observed: true, evidence: ['app/main.ts:1'] }] }), tools: [] });
+  const result = await generateProjectReport({ chat } as unknown as ModelProvider, profile, diagrams, new AbortController().signal, { graph });
+  expect(chat).toHaveBeenCalledTimes(1);
+  expect(chat.mock.calls[0][0].messages[1].content.length).toBeLessThan(10_000);
+  expect(result.diagram).toContain('|calls|');
 });

@@ -3,8 +3,9 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import type { ChangeRecord } from '../shared/types';
 import { extractPdfText, makePdf } from './pdf';
+import { ToolFailure } from './tool-outcome';
 
-const excluded = new Set(['.git', 'node_modules', 'dist', 'build', 'out', '.vite', '.next', 'coverage']);
+const excluded = new Set(['.git', '.mercury', 'node_modules', 'dist', 'build', 'out', '.vite', '.next', 'coverage']);
 const MAX_FILE = 512_000;
 
 export function hash(content: string | null): string | null {
@@ -20,7 +21,8 @@ export class Workspace {
     return rel === '' || (rel !== '..' && !rel.startsWith(`..${path.sep}`) && !path.isAbsolute(rel));
   }
   async resolve(relative: string, write = false): Promise<string> {
-    if (!relative || path.isAbsolute(relative) || relative.split(/[\\/]+/).includes('..') || relative.split(/[\\/]+/).includes('.git')) throw new Error('Invalid workspace path.');
+    const parts = relative.toLowerCase().split(/[\\/]+/);
+    if (!relative || path.isAbsolute(relative) || parts.includes('..') || parts.includes('.git') || parts.some((part, index) => part === '.mercury' && parts[index + 1] === 'git')) throw new Error('Invalid workspace path. Git metadata is managed separately.');
     const root = await this.canonicalRoot();
     const target = path.resolve(root, relative);
     if (!this.within(root, target)) throw new Error('Path escapes the project.');
@@ -65,7 +67,7 @@ export class Workspace {
     await walk(await this.resolve(relative || '.'), 0);
     return output;
   }
-  async read(relative: string, startLine = 1, endLine = 200): Promise<{ content: string; hash: string }> {
+  async read(relative: string, startLine = 1, endLine = startLine + 199) {
     const filename = await this.resolve(relative);
     const stat = await fs.stat(filename);
     if (!stat.isFile() || stat.size > MAX_FILE) throw new Error('File is not a readable file or exceeds 512 KB.');
@@ -75,14 +77,30 @@ export class Workspace {
       const lines = full.split(/\r?\n/);
       const start = Math.max(1, Math.floor(startLine));
       const end = Math.min(lines.length, start + 199, Math.max(start, Math.floor(endLine)));
-      return { content: lines.slice(start - 1, end).map((line, i) => `${start + i}: ${line}`).join('\n').slice(0, 20_000), hash: hash(bytes.toString('base64'))! };
+      return this.page(lines, start, end, hash(bytes.toString('base64'))!);
     }
     const full = await fs.readFile(filename, 'utf8');
     if (full.includes('\0')) throw new Error('Binary files are not supported.');
     const lines = full.split(/\r?\n/);
     const start = Math.max(1, Math.floor(startLine));
     const end = Math.min(lines.length, start + 199, Math.max(start, Math.floor(endLine)));
-    return { content: lines.slice(start - 1, end).map((line, i) => `${start + i}: ${line}`).join('\n').slice(0, 20_000), hash: hash(full)! };
+    return this.page(lines, start, end, hash(full)!);
+  }
+  private page(lines: string[], start: number, end: number, revision: string) {
+    const selected: string[] = [];
+    let characters = 0;
+    for (let index = start - 1; index < end; index++) {
+      const line = `${index + 1}: ${lines[index]}`;
+      // Never silently cut a line and then claim the entire range was read.
+      if (characters + line.length + 1 > 20000) {
+        if (!selected.length) throw new Error(`Line ${start} exceeds the 20,000 character read limit. Use a bounded script to inspect this long line.`);
+        break;
+      }
+      selected.push(line); characters += line.length + 1;
+    }
+    const last = start + selected.length - 1;
+    return { content: selected.join('\n'), hash: revision, totalLines: lines.length, startLine: start,
+      endLine: last, truncated: last < lines.length, nextStartLine: last < lines.length ? last + 1 : null };
   }
   async search(query: string): Promise<string[]> {
     if (!query || query.length > 200) throw new Error('Search query must be 1–200 characters.');
@@ -98,12 +116,16 @@ export class Workspace {
     }
     return results;
   }
-  async edit(relative: string, expectedHash: string | null, next: string): Promise<ChangeRecord> {
+  async edit(relative: string, expectedHash: string | null, next: string, replacementIntent = false): Promise<ChangeRecord> {
     if (path.extname(relative).toLowerCase() === '.pdf') throw new Error('Use create_pdf for PDFs; existing binary PDFs are never overwritten.');
     if (Buffer.byteLength(next) > MAX_FILE) throw new Error('Edit exceeds the 512 KB file limit.');
     const filename = await this.resolve(relative, true);
     const before = await fs.readFile(filename, 'utf8').catch((error: any) => { if (error.code === 'ENOENT') return null; throw error; });
-    if (hash(before) !== expectedHash) throw new Error(`File changed since it was read: ${relative}`);
+    if (expectedHash === null && before !== null)
+      throw new ToolFailure('CREATE_TARGET_EXISTS', `File already exists: ${relative}. expectedHash:null (or omitted preconditions) is create-only. No file was changed or reverted. Read this file and pass its returned revision for an existing-file edit, or use patch_project_file.`, { sourceRevision: hash(before), target: relative });
+    if (hash(before) !== expectedHash) throw new ToolFailure('STALE_REVISION', `File changed since it was read: ${relative}`, {sourceRevision:hash(before),target:relative});
+    if (before !== null && next.length < before.length / 2 && !replacementIntent)
+      throw new Error('Replacement would remove more than half of this file. Use patch_project_file for a partial edit, or set replacementIntent:true for a deliberate full rewrite.');
     await fs.mkdir(path.dirname(filename), { recursive: true });
     const temporary = path.join(path.dirname(filename), `.${path.basename(filename)}.${randomUUID()}.tmp`);
     try {
@@ -111,6 +133,55 @@ export class Workspace {
       await fs.rename(temporary, filename);
     } finally { await fs.rm(temporary, { force: true }).catch(() => {}); }
     return { path: relative.replaceAll('\\', '/'), before, after: next, at: Date.now() };
+  }
+  async patch(relative: string, expectedHash: string, oldText: string, newText: string): Promise<ChangeRecord> {
+    const before = await fs.readFile(await this.resolve(relative, true), 'utf8');
+    if (hash(before) !== expectedHash) throw new ToolFailure('STALE_REVISION', `File changed since it was read: ${relative}`, {sourceRevision:hash(before),target:relative});
+    // Reads present logical lines; match those across Windows/Unix line endings
+    // while preserving every byte outside the targeted replacement.
+    const logical = before.replaceAll('\r\n', '\n'), search = oldText.replaceAll('\r\n', '\n');
+    const first = logical.indexOf(search);
+    if (!search || first < 0 || logical.indexOf(search, first + 1) >= 0) {
+      let diagnostic: Record<string, unknown> = {};
+      if (search && first < 0) {
+        const typography = (value: string) => value.replace(/[‘’]/g, "'").replace(/[“”]/g, '"');
+        for (const [reason, source, candidate] of [
+          ['TYPOGRAPHIC_QUOTES', typography(logical), typography(search)],
+          ['OVER_ESCAPED_BACKSLASHES', logical, search.replaceAll('\\\\', '\\')],
+        ]) {
+          const equivalent = source.indexOf(candidate);
+          if (candidate && equivalent >= 0 && source.indexOf(candidate, equivalent + 1) < 0) {
+            diagnostic = { reason, sourceLine: logical.slice(0, equivalent).split('\n').length, sourceExcerpt: logical.slice(equivalent, equivalent + Math.min(search.length, 2000)) };
+            break;
+          }
+        }
+        if (!Object.keys(diagnostic).length) {
+          const normalizeIndent = (value: string) => value.replace(/^[ \t]+/gm, '');
+          const source = normalizeIndent(logical), candidate = normalizeIndent(search);
+          const equivalent = source.indexOf(candidate);
+          if (candidate && equivalent >= 0 && source.indexOf(candidate, equivalent + 1) < 0) {
+            const sourceLine = source.slice(0, equivalent).split('\n').length;
+            const lines = logical.split('\n');
+            diagnostic = { reason: 'LINE_INDENTATION', sourceLine,
+              sourceExcerpt: lines.slice(sourceLine - 1, sourceLine - 1 + search.split('\n').length).join('\n').slice(0, 2000),
+              sourceLeadingWhitespace: lines[sourceLine - 1].match(/^[ \t]*/)?.[0].length,
+              searchLeadingWhitespace: search.match(/^[ \t]*/)?.[0].length };
+          }
+        }
+      }
+      throw new ToolFailure('PATCH_NO_MATCH', first < 0
+        ? 'Patch text matched no source region; the file still matches your read hash. No change was made. Copy exact source characters without changing quotes or doubling backslashes; prefer a small unique anchor.'
+        : 'Patch text matched multiple source regions; it must match exactly one. Include enough unchanged surrounding text for one unique match.',
+        { sourceRevision: hash(before), target: relative, ...diagnostic });
+    }
+    const rawIndex = (position: number) => {
+      let raw = 0;
+      for (let index = 0; index < position; index++, raw++) if (before[raw] === '\r' && before[raw + 1] === '\n') raw++;
+      return raw;
+    };
+    const newline = before.includes('\r\n') ? '\r\n' : '\n';
+    const replacement = newText.replaceAll('\r\n', '\n').replaceAll('\n', newline);
+    return this.edit(relative, expectedHash, before.slice(0, rawIndex(first)) + replacement + before.slice(rawIndex(first + search.length)), true);
   }
   async createPdf(relative: string, content: string): Promise<ChangeRecord> {
     if (path.extname(relative).toLowerCase() !== '.pdf') throw new Error('PDF files must use the .pdf extension.');

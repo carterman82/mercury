@@ -9,6 +9,7 @@ import './style.css';
 import { ChatPanel } from './ChatPanel';
 import { Markdown } from './Markdown';
 import { RoleModels } from './RoleModels';
+import { applyChatUpdate } from './chat-state';
 
 const modelRoles = [
   { key: 'plannerModel', label: 'Planner model', description: 'Plans project infrastructure and the approach to project changes.' },
@@ -152,7 +153,16 @@ function App() {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [error, setError] = useState('');
-  useEffect(() => { window.desktop.snapshot().then(setState).catch(error => setError(String(error))); return window.desktop.onUpdate(setState); }, []);
+  useEffect(() => {
+    let receivedChatUpdate = false;
+    const removeSnapshotListener = window.desktop.onUpdate(setState);
+    const removeChatListener = window.desktop.onChatUpdate(update => {
+      receivedChatUpdate = true;
+      setState(current => applyChatUpdate(current, update));
+    });
+    window.desktop.snapshot().then(snapshot => { if (!receivedChatUpdate) setState(snapshot); }).catch(error => setError(String(error)));
+    return () => { removeSnapshotListener(); removeChatListener(); };
+  }, []);
   useEffect(() => { if (!projectId && state.projects[0]) { setProjectId(state.projects[0].id); setExpanded(current => new Set([...current, state.projects[0].id])); } }, [state.projects, projectId]);
   const session = state.sessions.find(item => item.id === sessionId);
   const project = state.projects.find(item => item.id === projectId);

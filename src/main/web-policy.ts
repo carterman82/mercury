@@ -7,11 +7,21 @@ export function publicAddress(address: string): boolean {
 
 /** No credentials, local files, loopback, LAN, metadata services, or implicit redirects. */
 export class WebPolicy {
+  private localOrigins = new Map<string, Set<string>>();
+  isLocalOrigin(chatId: string, origin: string): boolean { return this.localOrigins.get(chatId)?.has(origin) ?? false; }
+  allowLocalOrigin(chatId: string, raw: string): void {
+    const url = new URL(raw);
+    if (url.protocol !== 'http:' || url.hostname !== '127.0.0.1' || !url.port || url.username || url.password) throw new Error('Only owned HTTP loopback origins can be registered.');
+    const origins = this.localOrigins.get(chatId) ?? new Set<string>();
+    origins.add(url.origin); this.localOrigins.set(chatId, origins);
+  }
+  revokeLocalOrigin(chatId: string, raw: string): void { this.localOrigins.get(chatId)?.delete(new URL(raw).origin); }
   constructor(private testOrigin?: string) {}
-  async check(raw: string): Promise<URL> {
+  async check(raw: string, chatId?: string): Promise<URL> {
     const url = new URL(raw);
     if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password) throw new Error('Only public HTTP/HTTPS URLs without credentials are allowed.');
     if (this.testOrigin && url.origin === this.testOrigin) return url;
+    if (chatId && this.localOrigins.get(chatId)?.has(url.origin)) return url;
     const host = url.hostname.replace(/^\[|\]$/g, '').toLowerCase();
     if (!host.includes('.') || host.endsWith('.local') || host.endsWith('.localhost') || host === 'localhost') throw new Error('Local/private network addresses are not allowed.');
     const addresses = await lookup(host, { all: true });

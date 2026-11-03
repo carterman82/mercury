@@ -6,6 +6,23 @@ import { ChatPanel } from './ChatPanel';
 
 const initial = (): Snapshot => ({ projects: [{ id: 'project', name: 'Mercury project', path: 'D:\\Mercury' }], sessions: [], chats: [], settings: { connections: [], mainModel: null, plannerModel: null, subagentModel: null }, activeRole: null, activeChatId: null });
 const render = (state: Snapshot, projectId?: string, chatId: string | null = null) => renderToStaticMarkup(<ChatPanel state={state} projectId={projectId} chatId={chatId} onSelect={() => {}} openSettings={() => {}} />);
+it('keeps a blocked historical response prominent even after a successful follow-up',()=>{
+  const state=initial();state.chats.push({id:'chat',projectId:'project',title:'Task',profile:{provider:'ollama',model:'test',contextLimit:8192},status:'idle',updatedAt:1,messages:[{id:'blocked',role:'assistant',content:'Everything works perfectly.',delivery:{status:'blocked',reason:'Model loading failed; no inference was tested.',at:1}},{id:'later',role:'assistant',content:'Later response.'}]});
+  const html=render(state,undefined,'chat');expect(html).toContain('Work saved; not complete');expect(html).toContain('Model loading failed');expect(html).toContain('Partial model output · unverified');expect(html).toContain('Later response.');
+});
+
+it.each(['idle', 'streaming'] as const)('hides thinking in %s project replies while retaining tool activity and ordinary chat thinking', status => {
+  const state = initial();
+  state.chats.push({ id: 'chat', projectId: 'project', title: 'Task', profile: { provider: 'ollama', model: 'test', contextLimit: 32000 }, messages: [{ id: 'reply', role: 'assistant', content: 'Done.', reasoning: 'Model reasoning', startedAt: 1000, completedAt: 62000, toolActivity: [{ name: 'edit_project_file', status: 'succeeded', at: 1 }] }], status, updatedAt: 1 });
+  const project = render(state, undefined, 'chat');
+  expect(project).not.toContain('thinking-panel');
+  expect(project).not.toContain('Model reasoning');
+  expect(project).toContain('work-duration');
+  if (status === 'idle') expect(project).toContain('Worked for 1m 1s');
+  expect(project).toContain('Replace entire project file');
+  state.chats[0].projectId = undefined;
+  expect(render(state, undefined, 'chat')).toContain('thinking-panel');
+});
 
 it('shows the selected project, default restricted permissions, and current command limitation', () => {
   const html = render(initial(), 'project');
@@ -14,6 +31,16 @@ it('shows the selected project, default restricted permissions, and current comm
   expect(html).toContain('aria-label="Project permission mode"');
   expect(html).toContain('value="2" selected=""');
   expect(html).toContain('Restricted commands are unavailable');
+});
+
+it('hides generated file cards in projects while preserving uploads and ordinary chat cards', () => {
+  const state = initial();
+  const files = [{ id: 'generated', name: 'generated.txt', size: 20, kind: 'generated' as const }, { id: 'upload', name: 'input.txt', size: 20, kind: 'upload' as const }];
+  state.chats.push({ id: 'chat', projectId: 'project', title: 'Files', profile: { provider: 'ollama', model: 'test', contextLimit: 32000 }, messages: [{ id: 'message', role: 'assistant', content: 'Created files.', files }], status: 'idle', updatedAt: 1 });
+  expect(render(state, 'project', 'chat')).not.toContain('Preview generated.txt');
+  expect(render(state, 'project', 'chat')).toContain('Preview input.txt');
+  state.chats[0].projectId = undefined;
+  expect(render(state, undefined, 'chat')).toContain('Preview generated.txt');
 });
 
 it('resolves an existing chat header from persisted ownership and shows its worktree', () => {

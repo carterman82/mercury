@@ -1,6 +1,16 @@
 import { expect, it, vi, afterEach } from 'vitest';
 import { WebPolicy, publicAddress } from './web-policy';
 afterEach(() => vi.unstubAllGlobals());
+it('allows only registered localhost origins for the owning chat and revokes them', async () => {
+  const policy = new WebPolicy();
+  policy.allowLocalOrigin('owner', 'http://127.0.0.1:5173');
+  expect((await policy.check('http://127.0.0.1:5173/app', 'owner')).pathname).toBe('/app');
+  await expect(policy.check('http://127.0.0.1:5173', 'other')).rejects.toThrow();
+  await expect(policy.check('http://127.0.0.1:5173')).rejects.toThrow();
+  await expect(policy.check('http://127.0.0.1:5174', 'owner')).rejects.toThrow();
+  policy.revokeLocalOrigin('owner', 'http://127.0.0.1:5173');
+  await expect(policy.check('http://127.0.0.1:5173', 'owner')).rejects.toThrow();
+});
 it.each(['127.0.0.1', '10.0.0.1', '172.16.1.1', '192.168.1.1', '169.254.169.254', '100.80.53.57', '0.0.0.0', '224.0.0.1', '::1', '::', 'fc00::1', 'fe80::1', '::ffff:127.0.0.1'])('blocks nonpublic IP %s', address => expect(publicAddress(address)).toBe(false));
 it.each(['1.1.1.1', '8.8.8.8', '2606:4700:4700::1111'])('allows public IP %s', address => expect(publicAddress(address)).toBe(true));
 it.each(['file:///C:/secret.txt', 'data:text/html,test', 'javascript:alert(1)', 'http://user:password@example.com', 'http://localhost/', 'http://foo.local/', 'http://127.1/', 'http://2130706433/', 'http://[::ffff:127.0.0.1]/'])('rejects unsafe URL %s', async url => { await expect(new WebPolicy().check(url)).rejects.toThrow(); });
