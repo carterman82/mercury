@@ -156,7 +156,7 @@ it.each(['claude', 'openai'] as const)('recovers through the actual %s request a
     const events = provider === 'claude'
       ? [{ type: 'content_block_delta', delta: { type: 'text_delta', text } }, { type: 'message_delta', delta: { stop_reason: 'end_turn' } }, { type: 'message_stop' }]
       : [{ type: 'response.output_text.delta', delta: text }, { type: 'response.completed', response: {} }];
-    return new Response(events.map(event => 'data: ' + JSON.stringify(event) + '\n\n').join(''));
+    return new Response(events.map(event => 'event: ' + event.type + '\ndata: ' + JSON.stringify(event) + '\n\n').join(''), { headers: { 'content-type': 'text/event-stream' } });
   }));
   try {
     const model = { chat: (input: ChatInput) => cloudChat(connection, 'fixture-key', input) } as unknown as ModelProvider;

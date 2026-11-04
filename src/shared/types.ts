@@ -111,7 +111,10 @@ export interface ProjectReport {
   lastCommit?: string | null;
 }
 
+export interface PluginConfigurationCandidate { candidateId: string; name: string; url: string; headers: string[]; configured: boolean; }
 export interface DesktopApi {
+  pluginConfigurationCandidates(): Promise<PluginConfigurationCandidate[]>;
+  configurePlugin(candidateId: string, headers: Record<string, string>): Promise<void>;
   snapshot(): Promise<Snapshot>;
   onUpdate(callback: (snapshot: Snapshot) => void): () => void;
   onChatUpdate(callback: (update: ChatUpdate) => void): () => void;

@@ -1,3 +1,4 @@
+import { PluginSetup } from './PluginSetup';
 import { ConnectionProgress } from './ConnectionProgress';
 import { refreshModelContext } from '../shared/model-context';
 import { useDiscovery } from './useDiscovery';
@@ -92,7 +93,7 @@ function SettingsPanel({ settings, onClose, onSave, run }: { settings: Settings;
     if (codexSignIn) run(() => window.desktop.cancelCodexSignIn());
     onClose();
   }}>Close</button></header>
-    <section className="cloud-accounts"><h3>Cloud accounts</h3><h4>ChatGPT sign-in</h4>
+    <PluginSetup /><section className="cloud-accounts"><h3>Cloud accounts</h3><h4>ChatGPT sign-in</h4>
       <button disabled={connecting} onClick={() => void signIn()}>{signingIn ? 'Waiting for browser sign-in…' : 'Continue with ChatGPT'}</button>
       {signingIn && <button onClick={() => void window.desktop.cancelChatGPTSignIn().catch(error => setManualError(String(error)))}>Cancel sign-in</button>}
       <button disabled={connecting} aria-describedby="codex-description" onClick={() => void connectCodex()}>{codexSignIn ? 'Waiting for Codex sign-in…' : 'Connect with Codex'}</button>

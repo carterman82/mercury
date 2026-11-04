@@ -40,10 +40,14 @@ const config: ForgeConfig = {
   buildIdentifier: () => process.env.LOCAL_PLAN_AGENT_BUILD_ID ?? '',
   // Playwright is a built-in capability rather than an import in the UI bundle,
   // so copy its runtime explicitly into every packaged app.
-  packagerConfig: { asar: true, name: 'Mercury', extraResource: process.env.MERCURY_BUNDLE_ONLY === '1' ? [] : ['browser-tools', 'pdf-runtime', 'file-runtime', 'browser-runtime', 'agent-runtime', 'map-runtime', ...(targetPlatform === 'win32' ? ['mxc-runtime'] : [])].map(name => path.join(resourceRoot, name)) },
+  packagerConfig: { asar: true, name: 'Mercury', extraResource: process.env.MERCURY_BUNDLE_ONLY === '1' ? [] : ['browser-tools', 'pdf-runtime', 'file-runtime', 'browser-runtime', 'agent-runtime', 'map-runtime', 'search-runtime', ...(targetPlatform === 'win32' ? ['mxc-runtime'] : [])].map(name => path.join(resourceRoot, name)) },
   hooks: { packageAfterCopy: async (_config, buildPath) => {
     await copyRuntimePackages(path.join(buildPath, 'node_modules'), ['jsdom']);
   }, generateAssets: async () => {
+    const searchPackage = `@vscode/ripgrep-${targetPlatform}-${targetArch}`;
+    const searchTarget = path.join(resourceRoot, 'search-runtime', 'node_modules', searchPackage);
+    if (targetPlatform === process.platform && targetArch === process.arch) await copyRuntimePackages(path.join(resourceRoot, 'search-runtime', 'node_modules'), [searchPackage]);
+    await fs.access(path.join(searchTarget, 'bin', targetPlatform === 'win32' ? 'rg.exe' : 'rg'));
     const browserEntries = await fs.readdir(path.join(resourceRoot, 'browser-runtime')).catch(() => []);
     if (!browserEntries.some(name => name.startsWith('chromium_headless_shell-'))) throw new Error('Install the bundled Chromium runtime: set PLAYWRIGHT_BROWSERS_PATH=.build-resources/browser-runtime and run npx playwright install chromium --only-shell.');
     for (const dependency of ['playwright', 'playwright-core']) await fs.cp(path.join('node_modules', dependency), path.join(resourceRoot, 'browser-tools', 'node_modules', dependency), { recursive: true });

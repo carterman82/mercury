@@ -11,16 +11,40 @@ import { ChatApprovals } from './chat-approvals';
 import { WebPolicy } from './web-policy';
 import { pluginSearchQueries, pluginSearchScore } from './plugin-search';
 
-const installedSchema = z.object({ id: z.string().regex(/^[a-f0-9]{32}$/), name: z.string().max(200), description: z.string().max(2000), version: z.string().min(1).max(120), source: z.string().url(), plan: z.discriminatedUnion('kind', [z.object({ kind: z.literal('remote'), url: z.string().url() }), z.object({ kind: z.literal('npm'), identifier: z.string().regex(/^(?:@[a-z0-9_.-]+\/)?[a-z0-9_.-]+$/i), version: z.string().regex(/^\d+\.\d+\.\d+(?:-[a-zA-Z0-9.-]+)?$/) })]) });
+const installedSchema = z.object({ id: z.string().regex(/^[a-f0-9]{32}$/), name: z.string().max(200), description: z.string().max(2000), version: z.string().min(1).max(120), source: z.string().url(), plan: z.discriminatedUnion('kind', [z.object({ kind: z.literal('remote'), url: z.string().url(), headerNames: z.array(z.string().regex(/^[A-Za-z0-9-]{1,100}$/)).max(20).optional() }), z.object({ kind: z.literal('npm'), identifier: z.string().regex(/^(?:@[a-z0-9_.-]+\/)?[a-z0-9_.-]+$/i), version: z.string().regex(/^\d+\.\d+\.\d+(?:-[a-zA-Z0-9.-]+)?$/) })]) });
 type Installed = z.infer<typeof installedSchema>;
 type Candidate = Omit<Installed, 'id'> & { candidateId: string; chatId: string; expires: number };
+export interface PluginSecretStore { read(id: string): string | undefined; write(id: string, value: string | null): void; }
 
 export class ChatPlugins {
   private candidates = new Map<string, Candidate>();
   private installing = new Set<string>();
   private require: NodeJS.Require;
-  constructor(private root: string, private runtime: string, private policy: WebPolicy, private approvals: ChatApprovals, private registry = 'https://registry.modelcontextprotocol.io/v0.1/servers', private node = process.execPath) { this.require = createRequire(path.join(runtime, 'package.json')); }
+  constructor(private root: string, private runtime: string, private policy: WebPolicy, private approvals: ChatApprovals, private registry = 'https://registry.modelcontextprotocol.io/v0.1/servers', private node = process.execPath, private secrets?: PluginSecretStore) { this.require = createRequire(path.join(runtime, 'package.json')); }
   private filename(id: string) { if (!/^[a-f0-9]{32}$/.test(id)) throw new Error('Invalid plugin ID.'); return path.join(this.root, id); }
+  private configurationKey(record: Pick<Installed, 'name' | 'version' | 'plan'>): string { return 'mcp-config:' + createHash('sha256').update(JSON.stringify([record.name, record.version, record.plan])).digest('hex'); }
+  configurationCandidates() {
+    return [...this.candidates.values()].filter(candidate => candidate.expires > Date.now() && candidate.plan.kind === 'remote' && candidate.plan.headerNames?.length).map(candidate => ({ candidateId: candidate.candidateId, name: candidate.name, url: candidate.plan.kind === 'remote' ? candidate.plan.url : '', headers: candidate.plan.kind === 'remote' ? candidate.plan.headerNames ?? [] : [], configured: Boolean(this.secrets?.read(this.configurationKey(candidate))) }));
+  }
+  configure(candidateId: string, raw: unknown): void {
+    const candidate = this.candidates.get(candidateId);
+    if (!candidate || candidate.expires < Date.now() || candidate.plan.kind !== 'remote' || !candidate.plan.headerNames?.length) throw new Error('Discover this configurable plugin again first.');
+    if (!this.secrets) throw new Error('Secure plugin credential storage is unavailable.');
+    const endpoint = new URL(candidate.plan.url);
+    if (endpoint.protocol !== 'https:' && !(endpoint.hostname === '127.0.0.1' && endpoint.origin === new URL(this.registry).origin)) throw new Error('Credentials require an HTTPS plugin endpoint.');
+    const parsed = z.record(z.string().regex(/^[A-Za-z0-9-]{1,100}$/), z.string().min(1).max(8192).regex(/^[^\r\n\0]+$/)).safeParse(raw);
+    if (!parsed.success) throw new Error('Connection headers must be nonempty single-line values.');
+    const headers = parsed.data;
+    const names = candidate.plan.headerNames;
+    if (Object.keys(headers).length !== names.length || names.some(name => !Object.hasOwn(headers, name))) throw new Error('Provide exactly the required connection headers.');
+    this.secrets.write(this.configurationKey(candidate), JSON.stringify(headers));
+  }
+  private headers(record: Installed): Record<string, string> {
+    if (record.plan.kind !== 'remote' || !record.plan.headerNames?.length) return {};
+    const saved = this.secrets?.read(this.configurationKey(record));
+    if (!saved) throw new Error('Configure this plugin in Settings before installation or use.');
+    return JSON.parse(saved);
+  }
   beginTurn(chatId: string): void { this.approvals.beginTurn(chatId); }
   async installed() {
     const entries = await fs.readdir(this.root).catch(() => []); const result: Installed[] = [];
@@ -71,8 +95,8 @@ export class ChatPlugins {
       const server = entry.server; if (!server || typeof server.name !== 'string' || typeof server.version !== 'string') continue;
       const basic = { name: server.name.slice(0, 200), version: server.version.slice(0, 120), description: String(server.description ?? '').slice(0, 2000), source: `${new URL(this.registry).origin}/v0.1/servers/${encodeURIComponent(server.name)}/versions/${encodeURIComponent(server.version)}` };
       const plans: Installed['plan'][] = [];
-      for (const remote of (server.remotes ?? []).slice(0, 4)) if (remote.type === 'streamable-http' && typeof remote.url === 'string' && !remote.url.includes('{') && !(remote.headers ?? []).some((header: any) => header.isRequired)) {
-        try { await this.policy.check(remote.url); plans.push({ kind: 'remote', url: remote.url }); } catch { /* Reject nonpublic remote transports. */ }
+      for (const remote of (server.remotes ?? []).slice(0, 4)) if (remote.type === 'streamable-http' && typeof remote.url === 'string' && !remote.url.includes('{')) {
+        try { await this.policy.check(remote.url); const headerNames = (remote.headers ?? []).filter((header: any) => header.isRequired).map((header: any) => header.name); const plan = { kind: 'remote' as const, url: remote.url, ...(headerNames.length ? { headerNames } : {}) }; if (installedSchema.shape.plan.safeParse(plan).success && new Set(headerNames.map((name: string) => name.toLowerCase())).size === headerNames.length && !headerNames.some((name: string) => /^(host|cookie|content-length|connection|transfer-encoding|proxy-.*|mcp-.*)$/i.test(name))) plans.push(plan); } catch { /* Reject nonpublic remote transports. */ }
       }
       for (const pkg of (server.packages ?? []).slice(0, 3)) if (pkg.registryType === 'npm' && pkg.transport?.type === 'stdio' && (!pkg.registryBaseUrl || pkg.registryBaseUrl === 'https://registry.npmjs.org') && !(pkg.environmentVariables ?? []).some((variable: any) => variable.isRequired) && !(pkg.packageArguments?.length || pkg.runtimeArguments?.length)) {
         const plan = { kind: 'npm' as const, identifier: pkg.identifier, version: pkg.version };
@@ -81,7 +105,8 @@ export class ChatPlugins {
       for (const plan of plans.slice(0, 4)) {
         const candidateId = randomUUID(); const record = { ...basic, plan, candidateId, chatId, expires: Date.now() + 15 * 60_000 };
         this.candidates.set(candidateId, record);
-        matches.push({ candidateId, ...basic, plan, installable: true, warning: plan.kind === 'npm' ? 'Third-party code runs with your user account, not a security sandbox. Install/activation and every tool call require approval.' : 'Third-party service; queries and approved tool arguments are sent to its endpoint. Approval required.' });
+        const configurationRequired = plan.kind === 'remote' && Boolean(plan.headerNames?.length) && !this.secrets?.read(this.configurationKey(record));
+        matches.push({ candidateId, ...basic, plan, installable: !configurationRequired, configurationRequired, ...(configurationRequired ? { reason: 'Enter the required connection headers in Settings / MCP connection setup. Never paste credentials into chat.' } : {}), warning: plan.kind === 'npm' ? 'Third-party code runs with your user account, not a security sandbox. Install/activation and every tool call require approval.' : 'Third-party service; queries and approved tool arguments are sent to its endpoint. Approval required.' });
       }
       if (!plans.length) matches.push({ ...basic, installable: false, reason: 'No supported no-configuration transport. This server may require credentials, parameters, Python/Docker, or legacy SSE. No credentials are guessed or sent.' });
     }
@@ -91,6 +116,7 @@ export class ChatPlugins {
   async install(chatId: string, candidateId: string, signal: AbortSignal, project?: ProjectPluginPolicy) {
     const candidate = this.candidates.get(candidateId);
     if (!candidate || candidate.chatId !== chatId || candidate.expires < Date.now()) throw new Error('Discover this plugin in the current chat first; the candidate may have expired.');
+    this.headers({ ...candidate, id: '' });
     const id = createHash('sha256').update(JSON.stringify([candidate.name, candidate.version, candidate.plan])).digest('hex').slice(0, 32);
     if ((await this.installed()).some(plugin => plugin.id === id)) return { installed: true, alreadyInstalled: true, pluginId: id };
     if (this.installing.has(id)) throw new Error('This plugin is already being installed in another chat.');
@@ -133,13 +159,15 @@ export class ChatPlugins {
   }
   private async withClient<T>(record: Installed, signal: AbortSignal, action: (client: Client) => Promise<T>, project?: ProjectPluginPolicy, details = 'Start plugin'): Promise<T> {
     const { Client } = this.require('@modelcontextprotocol/sdk/client/index.js') as typeof import('@modelcontextprotocol/sdk/client/index.js');
+    const configuredHeaders = this.headers(record);
+    const redact = (text: string) => Object.values(configuredHeaders).reduce((result, value) => result.replaceAll(value, '[redacted]'), text);
     const client = new Client({ name: 'Mercury', version: '0.1.0' }, { capabilities: {} });
     let transport;
     if (record.plan.kind === 'remote') {
       if (project) await project.authorize(`${details}\nRemote endpoint: ${record.plan.url}`, null, signal);
       await this.policy.check(record.plan.url);
       const { StreamableHTTPClientTransport } = this.require('@modelcontextprotocol/sdk/client/streamableHttp.js') as typeof import('@modelcontextprotocol/sdk/client/streamableHttp.js');
-      transport = new StreamableHTTPClientTransport(new URL(record.plan.url), { fetch: (url, init) => this.policy.fetch(url, { ...init, signal: AbortSignal.any([signal, init?.signal ?? signal, AbortSignal.timeout(30_000)]) }), reconnectionOptions: { maxRetries: 0, initialReconnectionDelay: 1000, maxReconnectionDelay: 1000, reconnectionDelayGrowFactor: 1 } });
+      transport = new StreamableHTTPClientTransport(new URL(record.plan.url), { requestInit: { headers: configuredHeaders }, fetch: (url, init) => this.policy.fetch(url, { ...init, signal: AbortSignal.any([signal, init?.signal ?? signal, AbortSignal.timeout(30_000)]) }), reconnectionOptions: { maxRetries: 0, initialReconnectionDelay: 1000, maxReconnectionDelay: 1000, reconnectionDelayGrowFactor: 1 } });
     } else {
       const directory = this.filename(record.id); const packageRoot = path.join(directory, 'node_modules', record.plan.identifier);
       const manifest = JSON.parse(await fs.readFile(path.join(packageRoot, 'package.json'), 'utf8'));
@@ -176,7 +204,8 @@ export class ChatPlugins {
     }
     const stop = () => { void client.close(); void transport.close(); };
     signal.addEventListener('abort', stop, { once: true });
-    try { signal.throwIfAborted(); await client.connect(transport, { signal, timeout: 25_000 }); return await action(client); }
+    try { signal.throwIfAborted(); await client.connect(transport, { signal, timeout: 25_000 }); const result = await action(client); return Object.keys(configuredHeaders).length ? JSON.parse(JSON.stringify(result), (_key, value) => typeof value === 'string' ? redact(value) : value) : result; }
+    catch (error) { throw new Error(redact(error instanceof Error ? error.message : String(error))); }
     finally { signal.removeEventListener('abort', stop); await client.close().catch(() => {}); await transport.close().catch(() => {}); }
   }
   async call(chatId: string, pluginId: string, tool: string | null, args: Record<string, unknown>, signal: AbortSignal, project?: ProjectPluginPolicy) {

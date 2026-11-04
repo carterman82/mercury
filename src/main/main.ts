@@ -115,7 +115,7 @@ app.whenReady().then(async () => {
     const chat = store.chat(chatId);
     return Boolean(chat.projectId && (store.project(chat.projectId).permissionMode ?? 2) >= 2);
   });
-  const plugins = new ChatPlugins(path.join(app.getPath('userData'), 'plugins'), app.isPackaged ? path.join(process.resourcesPath, 'file-runtime') : app.getAppPath(), policy, approvals, process.env.LOCAL_PLAN_AGENT_USER_DATA ? process.env.MERCURY_TEST_PLUGIN_REGISTRY : undefined);
+  const plugins = new ChatPlugins(path.join(app.getPath('userData'), 'plugins'), app.isPackaged ? path.join(process.resourcesPath, 'file-runtime') : app.getAppPath(), policy, approvals, process.env.LOCAL_PLAN_AGENT_USER_DATA ? process.env.MERCURY_TEST_PLUGIN_REGISTRY : undefined, process.execPath, { read: readSecret, write: writeSecret });
   const capabilities = new ChatCapabilities(browser, plugins, web);
   const execution = new ProjectExecutionAdapter(app.isPackaged ? path.join(process.resourcesPath, 'mxc-runtime') : path.join(app.getAppPath(), '.build-resources', 'mxc-runtime'), path.join(app.getPath('userData'), 'execution'), {
     runtimeReadRoots: [path.dirname(process.execPath)],
@@ -145,6 +145,8 @@ app.whenReady().then(async () => {
   });
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   window.webContents.on('will-navigate', event => event.preventDefault());
+  handle('pluginConfigurationCandidates', () => plugins.configurationCandidates());
+  handle('configurePlugin', (candidateId, headers) => plugins.configure(z.string().uuid().parse(candidateId), headers));
   handle('snapshot', () => snapshot());
   const checkModels = async () => {
     const settings = store.settings();

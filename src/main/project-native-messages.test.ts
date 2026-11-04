@@ -158,7 +158,7 @@ it.each(['ollama', 'lmstudio', 'claude', 'openai'] as const)(
         : kind === 'lmstudio'
           ? new Response('data: {"choices":[{"delta":{"content":"Done"},"finish_reason":"stop"}]}\n\ndata: [DONE]\n\n')
           : kind === 'claude'
-            ? new Response('data: {"type":"message_stop"}\n\n')
+            ? new Response('event: message_stop\ndata: {"type":"message_stop"}\n\n', { headers: { 'content-type': 'text/event-stream' } })
             : new Response('data: {"type":"response.completed"}\n\n'),
     );
     vi.stubGlobal('fetch', fetch);

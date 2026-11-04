@@ -4,6 +4,8 @@ import { MAX_CHAT_ATTACHMENTS } from '../shared/chat-files';
 
 const call = <T>(name: string, ...args: unknown[]): Promise<T> => ipcRenderer.invoke(`api:${name}`, ...args);
 const api: DesktopApi = {
+  pluginConfigurationCandidates: () => call('pluginConfigurationCandidates'),
+  configurePlugin: (candidateId, headers) => call('configurePlugin', candidateId, headers),
   snapshot: () => call('snapshot'),
   onUpdate: (callback: (snapshot: Snapshot) => void) => {
     const listener = (_event: Electron.IpcRendererEvent, snapshot: Snapshot) => callback(snapshot);

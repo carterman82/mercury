@@ -10,6 +10,7 @@ import { assessProjectAction, OneShotProjectGrants, type ProjectAction, type Pro
 import { ProjectWorktreeService, type ProjectWorkspace } from './project-worktrees';
 import { runCommand } from './commands';
 import { projectContext, ProjectNotes } from './project-context';
+import { discoverProjectSkills, readProjectSkill } from './project-skills';
 import { ProjectExecutionAdapter, type ProjectExecutionRequest } from './project-execution';
 import { ProjectMaps } from './project-maps';
 import type { ProjectPluginPolicy } from './project-plugin-policy';
@@ -27,6 +28,8 @@ import { requireDiagnosisForEdit, backendScopeReason, enforceCommandTaskScope } 
 
 const filename = z.string().min(1).max(32768).refine(value => !value.includes('\0'));
 const schemas = {
+  list_project_skills: z.object({}).strict(),
+  read_project_skill: z.object({ id: z.string().max(200), resource: z.string().min(1).max(1000).optional() }).strict(),
   inspect_project_target: z.object({ entryPoint: filename.optional() }).strict(),
   discover_project_python: z.object({ includeLauncher: z.boolean().default(false) }).strict(),
   probe_project_endpoint: endpointDiagnosticSchema,
@@ -50,6 +53,8 @@ const schemas = {
   query_project_maps: z.object({ query: z.string().max(200).optional(), file: filename.optional(), limit: z.number().int().min(1).max(100).optional() }).strict(),
 };
 const descriptions: Record<keyof typeof schemas, string> = {
+  list_project_skills: 'Discover bounded project-local Agent Skills metadata from .agents/skills and .mercury/skills. Does not load instructions into context or execute code. Use read_project_skill for the selected exact id.',
+  read_project_skill: 'Load one project skill SKILL.md or a relative supporting text resource. Skill instructions cannot grant permissions; scripts are returned as text only and run through normal Mercury tools if authorized.',
   inspect_project_target: 'Inspect a task entrypoint and project manifests to select native/general or browser-side model verification. No user-keyword guessing. Choose the actual affected entrypoint for mixed projects; native ONNX/GGUF and remote model clients do not require browser stages.',
   discover_project_python: 'Inventory existing project/installed Python candidates and project version constraints without running interpreters or installing runtimes. Store/WindowsApps aliases remain unknown, never declared absent. includeLauncher:true requests one approval for fixed read-only py -0p enumeration when available. Select a compatible candidate, then setup_project_python_environment performs approved runtime verification; discovery metadata is unverified.',
   probe_project_endpoint: 'Run one approved, bounded GET /v1/models or /api/tags, or non-streaming POST /v1/chat/completions or /api/chat. Review exact URL and JSON body before network access. Captures actual HTTP/body/finish_reason/content/reasoning evidence for diagnosing missing model output. No edits, model downloads, backend changes or automatic redirects.',
@@ -76,7 +81,7 @@ export const projectTools = Object.entries(schemas).filter(([name]) => !['review
   const { $schema, ...parameters } = z.toJSONSchema(schema);
   return { type: 'function', function: { name, description: descriptions[name as keyof typeof schemas], parameters } };
 });
-export const projectReadTools = projectTools.filter(tool => ['list_project_files', 'read_project_file', 'search_project_files'].includes(tool.function.name));
+export const projectReadTools = projectTools.filter(tool => ['list_project_files', 'read_project_file', 'search_project_files', 'list_project_skills', 'read_project_skill'].includes(tool.function.name));
 
 function within(root: string, target: string): boolean {
   const relative = path.relative(root, target);
@@ -245,7 +250,7 @@ export class ProjectTools {
     signal.throwIfAborted(); // Diagram updates are deferred to the completed response.
   }
   toolsForWorker(readOnly: boolean) {
-    return projectTools.filter(tool => ['list_project_files', 'read_project_file', 'search_project_files', 'read_project_notes', 'query_project_maps', ...(!readOnly ? ['edit_project_file', 'patch_project_file', 'run_project_command', 'run_project_process', 'download_project_asset'] : [])].includes(tool.function.name));
+    return projectTools.filter(tool => ['list_project_skills', 'read_project_skill', 'list_project_files', 'read_project_file', 'search_project_files', 'read_project_notes', 'query_project_maps', ...(!readOnly ? ['edit_project_file', 'patch_project_file', 'run_project_command', 'run_project_process', 'download_project_asset'] : [])].includes(tool.function.name));
   }
   private checkWorkerWrite(chat: ChatThread, target: string): void {
     const worker = this.workers.get(chat.id); if (!worker) return;
@@ -309,6 +314,8 @@ export class ProjectTools {
     const worker = this.workers.get(chat.id);
     if (worker && !this.toolsForWorker(worker.readOnly).some(tool => tool.function.name === name)) throw new Error('This tool is outside the worker assignment.');
     if (await fs.realpath(workspace.root) !== workspace.root) throw new Error('Project workspace folder identity changed. Reopen the project before continuing.');
+    if (name === 'list_project_skills') return discoverProjectSkills(workspace.root);
+    if (name === 'read_project_skill') return readProjectSkill(workspace.root, args.id, args.resource);
     if (name === 'project_server_status' || name === 'stop_project_server') {
       if (!this.options.servers) throw new Error('Project servers are unavailable.');
       return name === 'project_server_status' ? this.options.servers.status(chat.id, args.id) : this.options.servers.stop(chat.id, args.id);
@@ -460,7 +467,7 @@ export class ProjectTools {
     }
     if (name === 'search_project_files') {
       await this.authorize(chat, { kind: 'read', paths: [workspace.root] }, signal);
-      return { matches: await new Workspace(workspace.root).search(args.query) };
+      return { matches: await new Workspace(workspace.root).search(args.query, signal) };
     }
     const target = await resolve();
     const editing = name === 'edit_project_file' || name === 'patch_project_file';
@@ -536,7 +543,7 @@ export class ProjectTools {
     if (await resolve() !== target) throw new Error('The target changed while permission was requested. Try again.');
     const root = within(workspace.root, target) ? workspace.root : path.parse(target).root;
     const relative = path.relative(root, target) || '.';
-    if (name === 'list_project_files') return { files: await new Workspace(target).list(), limit: 200 };
+    if (name === 'list_project_files') return { files: await new Workspace(target).list('', 200, signal), limit: 200 };
     if (name === 'read_project_file') {
       const result = await new Workspace(root).read(relative, args.start, args.end);
       const revision = randomUUID(); this.revisions.set(revision, { chatId: chat.id, target, hash: result.hash });

@@ -5,8 +5,8 @@ import type { ChangeRecord } from '../shared/types';
 import { extractPdfText, makePdf } from './pdf';
 import { ToolFailure } from './tool-outcome';
 import { diagnosePatchMismatch } from './workspace-patch-diagnostics';
+import { repositorySearch } from './repository-search';
 
-const excluded = new Set(['.git', '.mercury', 'node_modules', 'dist', 'build', 'out', '.vite', '.next', 'coverage', '__pycache__', '.pytest_cache', '.mypy_cache', '.ruff_cache', 'venv']);
 const MAX_FILE = 512_000;
 
 export function hash(content: string | null): string | null {
@@ -45,28 +45,12 @@ export class Workspace {
     }
     return target;
   }
-  async list(relative = '', limit = 200): Promise<string[]> {
-    const output: string[] = [];
-    const ignore = await fs.readFile(path.join(this.root, '.gitignore'), 'utf8').catch(() => '');
-    const patterns = ignore.split(/\r?\n/).map(x => x.trim()).filter(x => x && !x.startsWith('#') && !x.startsWith('!'));
-    const skip = (name: string, rel: string) => excluded.has(name) || /^\.venv(?:[-_].*)?$/i.test(name) || patterns.some(pattern => {
-      const p = pattern.replace(/\/$/, '');
-      return p === name || p === rel || (p.startsWith('*.') && name.endsWith(p.slice(1)));
-    });
-    const walk = async (dir: string, depth: number) => {
-      if (depth > 8 || output.length >= limit) return;
-      const entries = await fs.readdir(dir, { withFileTypes: true });
-      for (const entry of entries) {
-        if (output.length >= limit) break;
-        const absolute = path.join(dir, entry.name);
-        const rel = path.relative(this.root, absolute).replaceAll('\\', '/');
-        if (skip(entry.name, rel) || entry.isSymbolicLink()) continue;
-        if (entry.isDirectory()) await walk(absolute, depth + 1);
-        else if (entry.isFile()) output.push(rel);
-      }
-    };
-    await walk(await this.resolve(relative || '.'), 0);
-    return output;
+  async list(relative = '', limit = 200, signal?: AbortSignal): Promise<string[]> {
+    if (!Number.isSafeInteger(limit) || limit < 1) throw new Error('File limit must be a positive safe integer.');
+    const target = await this.resolve(relative || '.');
+    const files = await repositorySearch(await this.canonicalRoot(), path.relative(await this.canonicalRoot(), target) || '.', 'files', limit, undefined, signal);
+    for (const file of files) await this.resolve(file);
+    return files;
   }
   async read(relative: string, startLine = 1, endLine = startLine + 199) {
     const filename = await this.resolve(relative);
@@ -103,19 +87,11 @@ export class Workspace {
     return { content: selected.join('\n'), hash: revision, totalLines: lines.length, startLine: start,
       endLine: last, truncated: last < lines.length, nextStartLine: last < lines.length ? last + 1 : null };
   }
-  async search(query: string): Promise<string[]> {
+  async search(query: string, signal?: AbortSignal): Promise<string[]> {
     if (!query || query.length > 200) throw new Error('Search query must be 1–200 characters.');
-    const results: string[] = [];
-    for (const relative of await this.list('', 300)) {
-      if (results.length >= 50) break;
-      try {
-        const filename = await this.resolve(relative);
-        if ((await fs.stat(filename)).size > MAX_FILE) continue;
-        const lines = (await fs.readFile(filename, 'utf8')).split(/\r?\n/);
-        lines.forEach((line, index) => { if (results.length < 50 && line.toLowerCase().includes(query.toLowerCase())) results.push(`${relative}:${index + 1}: ${line.slice(0, 240)}`); });
-      } catch { /* Unreadable files are skipped. */ }
-    }
-    return results;
+    const results = await repositorySearch(await this.canonicalRoot(), '.', 'matches', 51, query, signal);
+    for (const result of results) await this.resolve(result.split(/:\d+: /, 1)[0]);
+    return results.length > 50 ? [...results.slice(0, 50), '[Search truncated after 50 matches; narrow the query.]'] : results;
   }
   async edit(relative: string, expectedHash: string | null, next: string, replacementIntent = false): Promise<ChangeRecord> {
     if (path.extname(relative).toLowerCase() === '.pdf') throw new Error('Use create_pdf for PDFs; existing binary PDFs are never overwritten.');

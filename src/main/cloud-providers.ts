@@ -5,6 +5,29 @@ import { ModelHttpError, visualInputText, type ChatImage, type ChatDocument } fr
 import { InactivityWatchdog } from './inactivity';
 import { ThinkingLimitError } from './thinking-guard';
 import { validContextLimit, withContextLimit } from '../shared/cloud-context';
+import Anthropic from '@anthropic-ai/sdk';
+
+/** SDK transport for API-key Claude calls; Mercury retains routing and tool execution. */
+async function* cloudEvents(connection: ModelConnection, token: string, body: any, signal: AbortSignal): AsyncGenerator<any> {
+  if (connection.provider === 'claude') {
+    const client = new Anthropic({ apiKey: token, baseURL: cloudEndpoint(connection), maxRetries: 0,
+      fetch: (url, init) => fetch(url, { ...init, redirect: 'error' }) });
+    try {
+      const events = await client.messages.create({ ...body, stream: true } as Anthropic.MessageCreateParamsStreaming, { signal });
+      for await (const event of events) yield event;
+    } catch (error) {
+      if (error instanceof Anthropic.APIError) throw new ModelHttpError(error.status ?? 400, error.message);
+      throw error;
+    }
+    return;
+  }
+  const response = await fetch(`${cloudEndpoint(connection)}/v1/responses`, { method: 'POST', headers: headers(connection, token), body: JSON.stringify(body), signal, redirect: 'error' });
+  for await (const line of streamLines(response, signal)) {
+    if (!line.startsWith('data:')) continue;
+    const value = line.slice(5).trim();
+    if (value && value !== '[DONE]') yield JSON.parse(value);
+  }
+}
 
 export function cloudEndpoint(connection: ModelConnection): string {
   const expected = connection.provider === 'openai' ? 'https://api.openai.com' : 'https://api.anthropic.com';
@@ -81,17 +104,12 @@ export async function cloudChat(connection: ModelConnection, token: string, inpu
   const idle = new InactivityWatchdog(input.inactivityMs ?? 120_000, new ThinkingLimitError('timeout'));
   const signal = AbortSignal.any([input.signal, idle.signal]);
   try {
-  const response = await fetch(`${cloudEndpoint(connection)}/v1/${claude ? 'messages' : 'responses'}`, { method: 'POST', headers: headers(connection, token), body: JSON.stringify(body), signal, redirect: 'error' });
   let text = '';
   let reasoning = '';
   let completed = false;
   let usage: ChatResult['usage'];
   const calls = new Map<number, { id: string; name: string; arguments: string }>();
-  for await (const line of streamLines(response, signal)) {
-    if (!line.startsWith('data:')) continue;
-    const value = line.slice(5).trim();
-    if (!value || value === '[DONE]') continue;
-    const event = JSON.parse(value);
+  for await (const event of cloudEvents(connection, token, body, signal)) {
     const meaningful = event.delta?.text ?? event.delta?.thinking ?? event.delta?.partial_json ?? (typeof event.delta === 'string' ? event.delta : '');
     if ((typeof meaningful === 'string' && meaningful.trim()) || (event.type === 'content_block_start' && event.content_block?.type === 'tool_use') || (event.type === 'response.output_item.added' && event.item?.type === 'function_call')) idle.progress();
     if (event.type === 'error' || event.type === 'response.failed' || event.type === 'response.incomplete') throw new ModelHttpError(400, event.error?.message ?? event.response?.error?.message ?? `Model request failed: ${event.type}.`);

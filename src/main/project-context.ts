@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { z } from 'zod';
+import { projectSkillsContext } from './project-skills';
 
 const MAX_CONTENT = 24_000;
 const MAX_HISTORY = 20;
@@ -45,6 +46,8 @@ export async function projectContext(root: string): Promise<string> {
       else throw error;
     }
   }
+  const skills = await projectSkillsContext(canonical);
+  if (skills) sections.push(skills);
   return sections.join('\n\n');
 }
 

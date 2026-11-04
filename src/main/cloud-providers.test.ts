@@ -6,10 +6,26 @@ import type { ModelConnection, ModelProfile } from '../shared/types';
 const openai: ModelConnection = { id: 'chatgpt-test', provider: 'openai', label: 'ChatGPT', url: 'https://api.openai.com', auth: 'chatgpt' };
 const claude: ModelConnection = { id: 'claude-test', provider: 'claude', label: 'Claude', url: 'https://api.anthropic.com' };
 const profile = (connection = openai): ModelProfile => ({ provider: connection.provider, connectionId: connection.id, model: 'account-model', contextLimit: 8192 });
-const stream = (events: any[]) => new Response(events.map(event => `data: ${JSON.stringify(event)}\n\n`).join(''), { status: 200 });
+const stream = (events: any[]) => new Response(events.map(event => `event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`).join(''), { status: 200, headers: { 'content-type': 'text/event-stream' } });
 afterEach(() => vi.unstubAllGlobals());
 
 describe('cloud model providers', () => {
+  it('uses SDK SSE framing for multiline Claude events', async () => {
+    const fetch = vi.fn().mockResolvedValue(new Response('event: content_block_delta\ndata: {"type":"content_block_delta",\ndata: "delta":{"type":"text_delta","text":"Framed"}}\n\nevent: message_stop\ndata: {"type":"message_stop"}\n\n', { headers: { 'content-type': 'text/event-stream' } }));
+    vi.stubGlobal('fetch', fetch);
+    const result = await cloudChat(claude, 'secret', { profile: profile(claude), messages: [], signal: new AbortController().signal });
+    expect(result.text).toBe('Framed');
+    expect(String(fetch.mock.calls[0][0])).toBe('https://api.anthropic.com/v1/messages');
+  });
+
+  it('does not retry Claude rate limits or follow redirects', async () => {
+    const fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify({ error: { type: 'rate_limit_error', message: 'Try later' } }), { status: 429, headers: { 'content-type': 'application/json' } }));
+    vi.stubGlobal('fetch', fetch);
+    await expect(cloudChat(claude, 'secret', { profile: profile(claude), messages: [], signal: new AbortController().signal })).rejects.toMatchObject({ status: 429 });
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(fetch.mock.calls[0][1].redirect).toBe('error');
+  });
+
   it('resolves Claude legacy catalogs with absent or null input limits', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ data: [
       { id: 'claude-sonnet-5', display_name: 'Claude Sonnet 5', max_input_tokens: null, max_tokens: 128_000 },

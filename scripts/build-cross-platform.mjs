@@ -62,6 +62,11 @@ async function verifyNative(file, target) {
 async function prepare(name) {
   const target = targets[name], resources = resourcesFor(name);
   await fs.mkdir(resources, { recursive: true }); console.log(`Preparing ${name} native agent, PDF and browser runtimes...`);
+  const ripgrepVersion = JSON.parse(await fs.readFile(path.join(root, 'node_modules/@vscode/ripgrep/package.json'), 'utf8')).version;
+  const searchPackage = `@vscode/ripgrep-${target.platform}-${target.arch}`;
+  await packageFromRegistry(searchPackage, ripgrepVersion, path.join(resources, 'search-runtime/node_modules', searchPackage));
+  await fs.chmod(path.join(resources, 'search-runtime/node_modules', searchPackage, 'bin/rg'), 0o755);
+  await verifyNative(path.join(resources, 'search-runtime/node_modules', searchPackage, 'bin/rg'), target);
   await packageFromRegistry(`@anthropic-ai/claude-agent-sdk-${name}`, manifest.dependencies['@anthropic-ai/claude-agent-sdk'], path.join(resources, 'agent-runtime/node_modules/@anthropic-ai', `claude-agent-sdk-${name}`));
   await packageFromRegistry(`@napi-rs/canvas-${target.canvas}`, canvas.version, path.join(resources, 'pdf-runtime/node_modules/@napi-rs', `canvas-${target.canvas}`));
   const env = { MERCURY_BUILD_PLATFORM: target.platform, MERCURY_BUILD_ARCH: target.arch, MERCURY_BUILD_RESOURCES: resources, PLAYWRIGHT_HOST_PLATFORM_OVERRIDE: target.browser, PLAYWRIGHT_BROWSERS_PATH: path.join(resources, 'browser-runtime'), PLAYWRIGHT_SKIP_BROWSER_GC: '1' };
@@ -150,7 +155,7 @@ async function archiveMac(name, archive) {
   for (const resource of ['browser-tools', 'file-runtime', 'map-runtime', 'agent-runtime', 'pdf-runtime']) {
     const from = posix(path.relative(root, path.join(common, resource))); entries.push(from); mappings.push({ from, to: `Mercury-${name}/Mercury.app/Contents/Resources/${resource}` });
   }
-  for (const resource of ['browser-runtime', 'agent-runtime', 'pdf-runtime']) {
+  for (const resource of ['browser-runtime', 'agent-runtime', 'pdf-runtime', 'search-runtime']) {
     const from = posix(path.relative(root, path.join(resourcesFor(name), resource))); entries.push(from); mappings.push({ from, to: `Mercury-${name}/Mercury.app/Contents/Resources/${resource}` });
   }
   let restoredLinks = 0;
@@ -176,7 +181,7 @@ for (const name of requested) {
   if (target.platform === 'darwin') restoredLinks = await archiveMac(name, archive);
   else {
     const resourceBase = posix(path.relative(root, resourcesFor(name)));
-    const resources = ['browser-tools', 'pdf-runtime', 'file-runtime', 'browser-runtime', 'agent-runtime', 'map-runtime'].map(resource => resourceBase + '/' + resource);
+    const resources = ['browser-tools', 'pdf-runtime', 'file-runtime', 'browser-runtime', 'agent-runtime', 'map-runtime', 'search-runtime'].map(resource => resourceBase + '/' + resource);
     await tar.c({ cwd: root, file: archive, gzip: true, portable: true, filter: (file, stat) => allowedNativeFile(file, name) && portableMode(file, stat), onWriteEntry(entry) {
       const original = posix(entry.path);
       entry.path = original.startsWith(resourceBase + '/') ? 'Mercury-' + name + '/resources/' + original.slice(resourceBase.length + 1) : original.replace(/^out\//, '');
