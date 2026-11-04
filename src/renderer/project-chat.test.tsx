@@ -8,7 +8,7 @@ const initial = (): Snapshot => ({ projects: [{ id: 'project', name: 'Mercury pr
 const render = (state: Snapshot, projectId?: string, chatId: string | null = null) => renderToStaticMarkup(<ChatPanel state={state} projectId={projectId} chatId={chatId} onSelect={() => {}} openSettings={() => {}} />);
 it('keeps a blocked historical response prominent even after a successful follow-up',()=>{
   const state=initial();state.chats.push({id:'chat',projectId:'project',title:'Task',profile:{provider:'ollama',model:'test',contextLimit:8192},status:'idle',updatedAt:1,messages:[{id:'blocked',role:'assistant',content:'Everything works perfectly.',delivery:{status:'blocked',reason:'Model loading failed; no inference was tested.',at:1}},{id:'later',role:'assistant',content:'Later response.'}]});
-  const html=render(state,undefined,'chat');expect(html).toContain('Work saved; not complete');expect(html).toContain('Model loading failed');expect(html).toContain('Partial model output · unverified');expect(html).toContain('Later response.');
+  const html=render(state,undefined,'chat');expect(html).toContain('Work saved; not complete');expect(html).toContain('Model loading failed');expect(html).not.toContain('<details>');expect(html).toContain('Everything works perfectly.');expect(html).toContain('Later response.');
 });
 
 it.each(['idle', 'streaming'] as const)('hides thinking in %s project replies while retaining tool activity and ordinary chat thinking', status => {
@@ -30,7 +30,9 @@ it('shows the selected project, default restricted permissions, and current comm
   expect(html).toContain('D:\\Mercury');
   expect(html).toContain('aria-label="Project permission mode"');
   expect(html).toContain('value="2" selected=""');
-  expect(html).toContain('Restricted commands are unavailable');
+  expect(html).toContain('Automatic isolated commands are unavailable');
+  expect(html).toContain('You can approve individual commands to run with your user permissions.');
+  expect(html).toContain('EXE launches and software installations always need approval.');
 });
 
 it('hides generated file cards in projects while preserving uploads and ordinary chat cards', () => {

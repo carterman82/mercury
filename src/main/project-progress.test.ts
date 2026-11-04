@@ -183,6 +183,7 @@ it('limits unresolved recovery attempts and shares its allowance with completion
 });
 it('requires contracts before writes and keeps browser model criteria from being downgraded', () => {
   const handoff = newHandoff(undefined, 'Run a local model in the browser');
+  handoff.requiresModelVerification = true; // Established by inspect_project_target, not request wording.
   expect(() => requireProjectContract(handoff)).toThrow('acceptance criteria');
   const registration = updateProjectTask(
     handoff,
@@ -220,6 +221,7 @@ it('requires contracts before writes and keeps browser model criteria from being
 
 it('allows implementation with documented compatibility but requires all browser stages at delivery', () => {
   const handoff=newHandoff(undefined,'Run a local model in the browser');
+  handoff.requiresModelVerification=true;
   handoff.requirements=[{text:'Browser inference works',verification:'browser',status:'not_run',evidenceIds:[]}];
   handoff.compatibility={runtime:'Transformers.js',version:'3.6.1',modelFormat:'onnx',modelId:'qwen',maxBytes:500000000,evidenceIds:['observed']};
   expect(()=>requireProjectContract(handoff)).not.toThrow();

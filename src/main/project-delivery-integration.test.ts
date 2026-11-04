@@ -83,9 +83,28 @@ it.each([true, false])(
     expect(chat.messages.at(-1)?.delivery?.status).toBe(repair ? 'completed' : 'blocked');
     expect(commitResponse).toHaveBeenCalledTimes(repair ? 1 : 0);
     if (!repair) {
-      expect(chat.messages.at(-1)?.content).toContain('Work saved; not complete');
-      expect(chat.messages.at(-1)?.content).not.toContain('Implemented the requested fix and checked the behavior.');
+      expect(chat.messages.at(-1)?.content).toContain('Verification remains incomplete');
+      expect(chat.messages.at(-1)?.content).toContain('Implemented the requested fix and checked the behavior.');
     }
     expect(chat.messages.at(-1)?.toolActivity?.filter((item) => item.name === 'patch_project_file')).toHaveLength(1);
   },
 );
+
+it('answers an inspection follow-up without completing historical failed requirements or committing them', async () => {
+  const profile = { provider: 'ollama' as const, connectionId: 'fixture', model: 'main', contextLimit: 16000 };
+  const handoff = newHandoff(undefined, 'Implement old feature');
+  handoff.changedPaths = ['main.py']; handoff.generation = 2;
+  handoff.requirements = [{ text: 'Old implementation tests', status: 'blocked', verification: 'command', evidenceIds: [] }];
+  handoff.blocker = { tool: 'run_project_process', target: '.', code: 'OLD_FAILURE', message: 'Old dependency issue', nextAction: 'Install later', at: 1 };
+  const chat = { id: 'chat', projectId: 'p', title: 'Task', profile, messages: [], status: 'idle', updatedAt: 1, projectHandoff: handoff } as ChatThread;
+  const store = { settings: () => ({ connections: [{ id: 'fixture', provider: 'ollama', url: 'http://unused.invalid' }] }), chat: () => chat, project: () => ({ id: 'p', permissionMode: 2 }), saveChat: vi.fn() } as unknown as Store;
+  const commitResponse = vi.fn();
+  const projects = { prepare: async () => 'Project', generation: () => 0, commitResponse } as unknown as ProjectTools;
+  const run = vi.fn(async input => { const text = 'The previous run failed because the environment was incompatible. No runtime absence was established.'; input.onText(text); return { text }; });
+  await new ChatService(store, {} as ModelProvider, () => {}, () => false, undefined, undefined, projects, { run } as unknown as ProjectAgentRuntime).send(chat.id, profile, 'Read main.py and explain the previous failure');
+  expect(run).toHaveBeenCalledTimes(1); expect(commitResponse).not.toHaveBeenCalled();
+  expect(chat.status).toBe('idle'); expect(chat.messages.at(-1)?.delivery?.status).toBe('completed');
+  expect(chat.messages.at(-1)?.verification).toBe('not_run');
+  expect(chat.projectHandoff?.requirements[0].status).toBe('blocked');
+  expect(chat.messages.at(-1)?.content).toContain('No runtime absence was established');
+});

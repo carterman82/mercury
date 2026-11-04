@@ -6,7 +6,7 @@ import { extractPdfText, makePdf } from './pdf';
 import { ToolFailure } from './tool-outcome';
 import { diagnosePatchMismatch } from './workspace-patch-diagnostics';
 
-const excluded = new Set(['.git', '.mercury', 'node_modules', 'dist', 'build', 'out', '.vite', '.next', 'coverage']);
+const excluded = new Set(['.git', '.mercury', 'node_modules', 'dist', 'build', 'out', '.vite', '.next', 'coverage', '__pycache__', '.pytest_cache', '.mypy_cache', '.ruff_cache', 'venv']);
 const MAX_FILE = 512_000;
 
 export function hash(content: string | null): string | null {
@@ -49,7 +49,7 @@ export class Workspace {
     const output: string[] = [];
     const ignore = await fs.readFile(path.join(this.root, '.gitignore'), 'utf8').catch(() => '');
     const patterns = ignore.split(/\r?\n/).map(x => x.trim()).filter(x => x && !x.startsWith('#') && !x.startsWith('!'));
-    const skip = (name: string, rel: string) => excluded.has(name) || patterns.some(pattern => {
+    const skip = (name: string, rel: string) => excluded.has(name) || /^\.venv(?:[-_].*)?$/i.test(name) || patterns.some(pattern => {
       const p = pattern.replace(/\/$/, '');
       return p === name || p === rel || (p.startsWith('*.') && name.endsWith(p.slice(1)));
     });

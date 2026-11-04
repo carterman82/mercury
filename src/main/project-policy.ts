@@ -53,7 +53,7 @@ export function assessProjectAction(context: ProjectPolicyContext, action: Proje
   }
   if ((action.kind === 'read' || action.kind === 'write') && !action.paths?.length) return decision('deny', 'Filesystem actions require explicit paths.');
   if (action.kind === 'command' && (!action.command?.trim() || !action.cwd)) return decision('deny', 'Commands require a command and working directory.');
-  if (action.kind === 'command' && action.approvalReason) return decision('approval', action.approvalReason);
+  if (action.approvalReason) return decision('approval', action.approvalReason);
   if (context.mode === 3) return decision('allow', 'Full access is enabled for this project.');
   if (action.kind === 'command' || action.kind === 'plugin') {
     if (!options.isolationAvailable) return options.reviewedNativeAvailable && action.kind === 'command'

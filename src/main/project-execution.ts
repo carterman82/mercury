@@ -309,7 +309,8 @@ export class ProjectExecutionAdapter {
     const work = await canonical(scratch);
     const hostEnvironment = mxcHostEnvironment();
     for (const [key, value] of Object.entries(request.environment ?? {}))
-      if (!/^(?:ELECTRON_RUN_AS_NODE|npm_config_[a-z_]+)$/.test(key) || value.includes('\0'))
+      if (!/^(?:ELECTRON_RUN_AS_NODE|npm_config_[a-z_]+|PIP_CONFIG_FILE)$/.test(key) || value.includes('\0') ||
+          (key === 'PIP_CONFIG_FILE' && value !== (process.platform === 'win32' ? 'nul' : '/dev/null')))
         throw new Error('Unsupported host execution environment override.');
     const environment = Object.entries(
       mercuryProjectGitEnvironment(

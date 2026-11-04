@@ -25,8 +25,9 @@ function commandFailureFamily(name: string, args: any, code: string) {
  * a failed action. A successful unrelated command must not erase its blocker. */
 export function projectActionIdentity(name: string, args: any, failureCode = 'COMMAND_EXIT_OPERATION') {
   args = args && typeof args === 'object' ? args : {};
+  if (name === 'setup_project_python_environment') args = { ...args, environmentPath: args.environmentPath ?? '.venv_test' };
   const command = ['run_project_command', 'run_project_process', 'start_project_server'].includes(name);
-  const target = String(args.path ?? args.destination ?? args.cwd ?? '.').replaceAll('\\', '/');
+  const target = String(args.path ?? args.destination ?? args.environmentPath ?? args.cwd ?? '.').replaceAll('\\', '/');
   return fingerprint([
     command ? 'project_command' : name,
     target,
@@ -254,7 +255,7 @@ export class ProjectProgress {
   observe(name: string, args: any, result: any): string | undefined {
     if (this.terminal) throw this.terminal;
     args = args && typeof args === 'object' ? args : {};
-    let target = String(result?.target ?? args.path ?? args.destination ?? args.cwd ?? '.').replaceAll('\\', '/');
+    let target = String(result?.target ?? args.path ?? args.destination ?? args.environmentPath ?? args.cwd ?? '.').replaceAll('\\', '/');
     if (process.platform === 'win32') target = target.toLowerCase();
     const entry: { failure?: string; read?: string } = {};
     const failed = toolFailed(result);

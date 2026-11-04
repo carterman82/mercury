@@ -3,6 +3,7 @@ import { newHandoff, recordProjectAction } from './project-progress';
 
 it('preserves durable handoff scope while omitting prior turn observations and blockers', () => {
   const previous = newHandoff(undefined, 'Run a local model in the browser');
+  previous.verificationTarget = { kind: 'browser_model', sources: [{ path: 'index.html', hash: 'inspected' }], reason: 'Inspected browser inference runtime' };
   previous.generation = 3;
   previous.snapshots = [{ path: 'app.ts', hash: 'old' }];
   previous.requirements = [{ id: 'criterion', text: 'Works', status: 'passed', verification: 'inspection', evidenceIds: ['evidence'] }];

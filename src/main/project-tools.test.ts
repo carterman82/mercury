@@ -23,6 +23,8 @@ import { ChatBrowser } from './chat-browser';
 import { WebPolicy } from './web-policy';
 import { createServer } from 'node:http';
 import { once } from 'node:events';
+import { newHandoff } from './project-handoff';
+import { beginProjectRequest } from './project-task-policy';
 
 const cleanups: (() => Promise<void>)[] = [];
 const profile = { provider: 'ollama' as const, connectionId: 'fixture', model: 'main', contextLimit: 16000 };
@@ -56,6 +58,71 @@ async function fixture(mode: 1 | 2 | 3 = 2, repository = false) {
   await projects.prepare(chat, controller.signal);
   return { directory, root, store, project, chat, approvals, projects, controller };
 }
+
+it('keeps answer and undiagnosed debugging commands read-only, without a native escape', async () => {
+  const { root, directory, store, chat, approvals, controller } = await fixture(3);
+  const execute = vi.fn(async (_request: import('./project-execution').ProjectExecutionRequest) => ({ exitCode: 0, output: 'inspected', confined: true }));
+  let available = true;
+  const execution = { probe: async () => ({ available }), execute } as unknown as ProjectExecutionAdapter;
+  const tools = new ProjectTools(store, approvals, new ProjectWorktreeService(path.join(directory, 'scope-workspaces')), undefined, { execution });
+  await tools.prepare(chat, controller.signal);
+  chat.projectHandoff = newHandoff(undefined, 'Inspect');
+  for (const request of ['Do not edit; inspect only', 'Debug and fix the server', 'Install pytest using existing Python']) {
+    chat.projectHandoff.taskPolicy = beginProjectRequest(undefined, request, randomUUID());
+    await tools.execute(chat, 'run_project_command', { command: 'dir', purpose: 'test' }, controller.signal);
+    expect(execute.mock.calls.at(-1)?.[0]).toMatchObject({ confined: true, writableRoots: [] });
+    available = false;
+    await expect(tools.execute(chat, 'run_project_command', { command: 'dir', purpose: 'test' }, controller.signal)).rejects.toMatchObject({ code: 'DIAGNOSTIC_EXECUTION_BLOCKED' });
+    available = true;
+  }
+  chat.projectHandoff.taskPolicy = beginProjectRequest(undefined, 'Read main.py', randomUUID());
+  await expect(tools.execute(chat, 'download_project_asset', { url: 'https://example.invalid/file', destination: 'note.txt', format: 'binary', maxBytes: 100 }, controller.signal)).rejects.toMatchObject({ code: 'TASK_SCOPE_EDIT_BLOCKED' });
+  await expect(tools.pluginPolicy(chat).authorize('opaque operation', null, controller.signal)).rejects.toMatchObject({ code: 'TASK_SCOPE_PLUGIN_BLOCKED' });
+  expect(await fs.readFile(path.join(root, 'note.txt'), 'utf8')).toBe('old');
+});
+
+it('does not run writable debugging commands or write an alternative backend after denied scope review', async () => {
+  const { root, directory, store, chat, approvals, controller } = await fixture(2);
+  const execute = vi.fn(async () => ({ exitCode: 0, output: 'ran', confined: true }));
+  const execution = { probe: async () => ({ available: true }), execute } as unknown as ProjectExecutionAdapter;
+  const tools = new ProjectTools(store, approvals, new ProjectWorktreeService(path.join(directory, 'diagnosed-workspaces')), undefined, { execution });
+  await tools.prepare(chat, controller.signal);
+  chat.projectHandoff = newHandoff(undefined, 'Debug and fix empty output');
+  chat.projectHandoff.taskPolicy = beginProjectRequest(undefined, 'Debug and fix empty output', randomUUID());
+  chat.projectHandoff.taskPolicy.diagnosis = { symptom: 'empty output', hypothesis: 'response field mismatch', testToConfirm: 'probe original endpoint', proposedChange: 'parse actual content', affectedPaths: ['note.txt'], evidenceIds: ['unit-policy-tested'], at: Date.now(), revision: 0, executionConfirmed: true };
+  for (const [name, args] of [
+    ['run_project_command', { command: 'node --test', purpose: 'test' }],
+    ['edit_project_file', { path: 'note.txt', expectedHash: hash('old'), content: 'from gpt4all import GPT4All' }],
+  ] as const) {
+    approvals.beginTurn(chat.id); // Independent user turns; denial must not trigger another prompt in the same turn.
+    const outcome = tools.execute(chat, name, args, controller.signal).then(value => ({ value, error: undefined }), error => ({ value: undefined, error }));
+    await expect.poll(() => approvals.snapshot().length).toBe(1);
+    expect(execute).not.toHaveBeenCalled();
+    approvals.answer(approvals.snapshot()[0].id, false);
+    expect((await outcome).error.message).toContain('denied');
+    expect(await fs.readFile(path.join(root, 'note.txt'), 'utf8')).toBe('old');
+  }
+});
+
+it('retains explicit task entrypoints through preparation and unrelated test edits', async () => {
+  const { root, projects, chat, controller } = await fixture(3);
+  chat.projectHandoff = newHandoff(undefined, 'Implement feature');
+  await fs.writeFile(path.join(root, 'main.py'), 'print("native")');
+  await fs.writeFile(path.join(root, 'index.html'), '<script>import "onnxruntime-web"</script>');
+  await projects.execute(chat, 'inspect_project_target', { entryPoint: 'main.py' }, controller.signal);
+  await projects.prepare(chat, controller.signal);
+  expect(chat.projectHandoff.requiresModelVerification).toBe(false);
+  await projects.execute(chat, 'inspect_project_target', { entryPoint: 'index.html' }, controller.signal);
+  await projects.execute(chat, 'edit_project_file', { path: 'tests/test_model.py', content: '# browser app smoke harness' }, controller.signal);
+  expect(chat.projectHandoff.requiresModelVerification).toBe(true);
+  expect(chat.projectHandoff.verificationTarget?.entryPoint).toBe('index.html');
+  await fs.unlink(path.join(root, 'index.html'));
+  await expect(projects.prepare(chat, controller.signal)).resolves.toContain('PROJECT CODING CONTEXT');
+  expect(chat.projectHandoff.verificationTarget?.kind).toBe('unknown');
+  expect(chat.projectHandoff.requiresModelVerification).toBe(true);
+  await projects.execute(chat, 'inspect_project_target', { entryPoint: 'main.py' }, controller.signal);
+  expect(chat.projectHandoff.requiresModelVerification).toBe(false);
+});
 
 it('reads and edits the assigned project with hashes and preserves newer user content', async () => {
   const { projects, chat, root, controller } = await fixture();
@@ -251,7 +318,7 @@ it('retrieves the exact saved task contract without project notes or source rere
   expect(store.chat(id).projectHandoff?.requirements).toHaveLength(1);
 });
 
-it('requires model compatibility when a follow-up introduces browser inference',async()=>{
+it('requires model compatibility when inspected project files establish browser inference',async()=>{
   const {store,project,projects,root}=await fixture(3);let calls=0;
   const provider={chat:async(input:ChatInput)=>{
     calls++;
@@ -262,6 +329,7 @@ it('requires model compatibility when a follow-up introduces browser inference',
   }} as unknown as ModelProvider;
   const chats=service(store,provider,projects);
   const id=await chats.send(null,profile,'Inspect the note',[],undefined,project.id);
+  await fs.writeFile(path.join(root,'index.html'),'<script type="module">import * as webllm from "@mlc-ai/web-llm";</script>');
   await chats.send(id,profile,'Now implement GGUF inference in the browser.');
   expect(store.chat(id).projectHandoff?.requiresModelVerification).toBe(true);
   expect(store.chat(id).messages.at(-1)?.sourceEvidence?.[0].result).toContain('MODEL_CONTRACT_REQUIRED');

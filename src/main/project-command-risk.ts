@@ -38,7 +38,9 @@ export async function projectCommandApprovalReason(
   root: string,
   cwd: string,
   input: CommandInput,
+  inspectScope?: (text: string) => void,
 ): Promise<string | undefined> {
+  inspectScope?.([input.command, input.executable, ...(input.args ?? []), input.stdin].filter(Boolean).join(' '));
   const direct = commandApprovalReason(input);
   if (direct) return direct;
   const canonicalRoot = await fs.realpath(root);
@@ -46,6 +48,7 @@ export async function projectCommandApprovalReason(
     return 'Review this command before inspecting or running scripts outside the project.';
   const visited = new Set<string>();
   const inspect = async (command: string, directory: string, depth: number): Promise<string | undefined> => {
+    inspectScope?.(command);
     const risk = commandApprovalReason({ command });
     if (risk) return risk;
     if (depth > 8 || visited.size > 32)

@@ -30,13 +30,13 @@ export interface ProjectWorkspaceReview {
   changes: ProjectWorkspaceChange[];
 }
 
-const excludedDirectories = new Set(['.git', 'node_modules', 'dist', 'build', 'out', '.vite', '.next', 'coverage', '.cache', '__pycache__']);
+const excludedDirectories = new Set(['.git', 'node_modules', 'dist', 'build', 'out', '.vite', '.next', 'coverage', '.cache', '__pycache__', '.pytest_cache', '.mypy_cache', '.ruff_cache', 'venv']);
 const digest = (data: Buffer | string) => createHash('sha256').update(data).digest('hex');
 
 function eligible(relative: string): boolean {
   const parts = relative.split(/[\\/]/);
   if (parts[0].toLowerCase() === '.mercury') return false;
-  return !parts.some(part => excludedDirectories.has(part.toLowerCase()))
+  return !parts.some(part => excludedDirectories.has(part.toLowerCase()) || /^\.venv(?:[-_].*)?$/i.test(part))
     && !parts.some(part => /^(?:\.env(?:\..*)?|id_(?:rsa|dsa|ecdsa|ed25519)|credentials(?:\..*)?|secrets?(?:\..*)?)$/i.test(part))
     && !/\.(?:pem|p12|pfx|key)$/i.test(relative);
 }

@@ -46,6 +46,20 @@ async function fixture(repository = true) {
 afterEach(async () => { for (const directory of temporary.splice(0)) await fs.rm(directory, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
 
 describe('project Git safety', () => {
+  it('keeps created Python environments and test caches out of local checkpoints', async () => {
+    const { root, service } = await fixture(false);
+    const workspace = await service.prepare({ projectRoot: root, chatId: 'python-setup' });
+    for (const folder of ['.venv', '.venv_test', 'venv', '.pytest_cache', '.mypy_cache', '.ruff_cache']) {
+      await fs.mkdir(path.join(root, folder));
+      await fs.writeFile(path.join(root, folder, 'generated.py'), 'generated runtime/cache');
+    }
+    await fs.writeFile(path.join(root, 'app.ts'), 'export const value = 2;\n');
+    expect(await service.changedPaths(workspace)).toEqual(['app.ts']);
+    await service.commitResponse(workspace);
+    const tracked = await mercury(root, 'ls-files');
+    expect(tracked).toContain('app.ts');
+    expect(tracked).not.toMatch(/venv|pytest_cache|mypy_cache|ruff_cache/);
+  });
   it('initializes on opening without a chat and preserves existing ignore rules', async () => {
     const { root, service } = await fixture(false);
     await fs.writeFile(path.join(root, '.gitignore'), 'node_modules/');

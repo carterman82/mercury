@@ -5,9 +5,8 @@ import { browserEvidenceKind } from './browser-tool-registry';
 export function newHandoff(previous: ProjectHandoff | undefined, request: string): ProjectHandoff {
   return {
     objective: previous?.objective ?? request.slice(0, 4000),
-    requiresModelVerification:
-      previous?.requiresModelVerification ??
-      /\bgguf\b|\bonnx\b|local model|model.{0,120}browser|browser.{0,120}(?:model|inference)/i.test(request),
+    requiresModelVerification: previous?.verificationTarget?.kind === 'browser_model',
+    verificationTarget: previous?.verificationTarget,
     compatibility: previous?.compatibility,
     generation: previous?.generation,
     snapshots: previous?.snapshots,
@@ -45,7 +44,7 @@ export function recordProjectAction(
   }
   const mutation =
     (['patch_project_file', 'edit_project_file', 'download_project_asset'].includes(name) && !toolFailed(result)) ||
-    (['run_project_command', 'run_project_process'].includes(name) && result.projectChanged === true);
+    (['run_project_command', 'run_project_process', 'setup_project_python_environment'].includes(name) && result.projectChanged === true);
   if (mutation || result?.verificationUnknown) {
     if (result.path && result.hash) {
       handoff.reads = handoff.reads.filter((read) => read.path !== args.path);
@@ -63,7 +62,7 @@ export function recordProjectAction(
     if (!toolFailed(result) && mutation)
       handoff.completedSteps = [
         ...handoff.completedSteps,
-        `${name}: ${result.path ?? args.command ?? args.executable}`.slice(0, 300),
+        `${name}: ${result.path ?? result.environmentPath ?? args.environmentPath ?? args.command ?? args.executable}`.slice(0, 300),
       ].slice(-30);
   }
   if (['run_project_command', 'run_project_process'].includes(name))

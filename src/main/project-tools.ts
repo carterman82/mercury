@@ -19,9 +19,18 @@ import { ToolFailure } from './tool-outcome';
 import { projectCommandApprovalReason } from './project-command-risk';
 import { normalizeProjectToolInput } from './project-tool-input';
 import { projectAssetScript } from './project-assets';
+import { pythonEnvironmentSchema, planPythonEnvironment, revalidatePythonEnvironment, setupPythonEnvironment, pythonInstallNeedsNetwork } from './project-python-environment';
+import { discoverProjectPython, findPythonLauncher, pythonSearchRoots } from './project-python-discovery';
+import { inspectProjectTarget, reconcileProjectTarget } from './project-target';
+import { endpointDiagnosticSchema, endpointDiagnosticRequest, probeProjectEndpoint } from './project-endpoint-diagnostic';
+import { requireDiagnosisForEdit, backendScopeReason, enforceCommandTaskScope } from './project-task-policy';
 
 const filename = z.string().min(1).max(32768).refine(value => !value.includes('\0'));
 const schemas = {
+  inspect_project_target: z.object({ entryPoint: filename.optional() }).strict(),
+  discover_project_python: z.object({ includeLauncher: z.boolean().default(false) }).strict(),
+  probe_project_endpoint: endpointDiagnosticSchema,
+  setup_project_python_environment: pythonEnvironmentSchema,
   download_project_asset: z.object({ url: z.string().url().max(4000), destination: filename, format: z.enum(['json','gguf','wasm','binary']), maxBytes: z.number().int().min(1).max(1073741824), sha256: z.string().regex(/^[a-f0-9]{64}$/).optional() }).strict(),
   start_project_server: z.object({ command: z.string().trim().min(1).max(10000), port: z.number().int().min(1024).max(65535), cwd: filename.optional() }).strict(),
   project_server_status: z.object({ id: z.string().uuid().optional() }).strict(),
@@ -41,6 +50,10 @@ const schemas = {
   query_project_maps: z.object({ query: z.string().max(200).optional(), file: filename.optional(), limit: z.number().int().min(1).max(100).optional() }).strict(),
 };
 const descriptions: Record<keyof typeof schemas, string> = {
+  inspect_project_target: 'Inspect a task entrypoint and project manifests to select native/general or browser-side model verification. No user-keyword guessing. Choose the actual affected entrypoint for mixed projects; native ONNX/GGUF and remote model clients do not require browser stages.',
+  discover_project_python: 'Inventory existing project/installed Python candidates and project version constraints without running interpreters or installing runtimes. Store/WindowsApps aliases remain unknown, never declared absent. includeLauncher:true requests one approval for fixed read-only py -0p enumeration when available. Select a compatible candidate, then setup_project_python_environment performs approved runtime verification; discovery metadata is unverified.',
+  probe_project_endpoint: 'Run one approved, bounded GET /v1/models or /api/tags, or non-streaming POST /v1/chat/completions or /api/chat. Review exact URL and JSON body before network access. Captures actual HTTP/body/finish_reason/content/reasoning evidence for diagnosing missing model output. No edits, model downloads, backend changes or automatic redirects.',
+  setup_project_python_environment: 'Main-only Python environment setup with ONE mandatory approval covering the installed interpreter, project-local .venv_test-style destination, exact packages and internet access. Creates a venv or validates an existing matching one, installs PyPI wheels with isolated pip, checks dependencies/imports, and returns the interpreter for actual tests. No global/user installs, source builds, automatic interpreter switching, environment replacement, or additional setup prompts. Use this when Python tests need dependencies, rather than retrying pip without network access. Setup does not count as testing the project. Denial/timeout ends the run with a clear blocker.',
   download_project_asset: 'Download a project asset with a declared format and byte limit using authorized confined execution. Rejects HTTP errors, error pages, invalid JSON/GGUF/WASM, size/hash mismatches. Atomically replaces the destination only after validation. Prefer this over curl for model metadata/weights.',
   start_project_server: 'Start a managed website dev server for up to one hour. Run in the foreground, bind to 127.0.0.1 with the requested port (for Vite use --host 127.0.0.1 --port PORT --strictPort). Returns a URL usable with browser_open. Installs/builds use run_project_command first.',
   project_server_status: 'Read running status, expiry and bounded output from a server in this chat. Omit id to discover all owned servers; check before starting another.',
@@ -117,9 +130,10 @@ export class ProjectTools {
       for (const read of chat.projectHandoff.reads) {
         try {
           // Only reconcile project-local files here; external paths require a new authorized read.
-          if (path.isAbsolute(read.path)) continue;
-          const current = await new Workspace(workspace.root).read(read.path, read.startLine, read.endLine);
-          if (current.hash === read.hash) retained.push(read);
+          const relative = path.isAbsolute(read.path) ? path.relative(workspace.root, read.path) : read.path;
+          if (path.isAbsolute(relative) || relative === '..' || relative.startsWith(`..${path.sep}`)) { retained.push(read); continue; }
+          const current = await new Workspace(workspace.root).read(relative, read.startLine, read.endLine);
+          if (current.hash === read.hash) retained.push({ ...read, path: relative.replaceAll('\\', '/') });
         } catch { /* Missing or changed sources invalidate their old observations. */ }
       }
       if (retained.length !== chat.projectHandoff.reads.length) {
@@ -132,8 +146,10 @@ export class ProjectTools {
       const snapshots = [];
       for (const snapshot of chat.projectHandoff.snapshots ?? []) {
         try {
-          if (path.isAbsolute(snapshot.path) || (await new Workspace(workspace.root).read(snapshot.path)).hash !== snapshot.hash) throw new Error('Changed source');
-          snapshots.push(snapshot);
+          const relative = path.isAbsolute(snapshot.path) ? path.relative(workspace.root, snapshot.path) : snapshot.path;
+          if (path.isAbsolute(relative) || relative === '..' || relative.startsWith(`..${path.sep}`)) { snapshots.push(snapshot); continue; }
+          if ((await new Workspace(workspace.root).read(relative)).hash !== snapshot.hash) throw new Error('Changed source');
+          snapshots.push({ ...snapshot, path: relative.replaceAll('\\', '/') });
         } catch {
           chat.projectHandoff.generation = (chat.projectHandoff.generation ?? 0) + 1;
           chat.projectHandoff.lastMutationAt = Date.now(); chat.projectHandoff.browser = undefined;
@@ -141,6 +157,15 @@ export class ProjectTools {
         }
       }
       chat.projectHandoff.snapshots = snapshots;
+      const previous = chat.projectHandoff.verificationTarget;
+      const detected = await reconcileProjectTarget(workspace.root, previous?.entryPoint);
+      chat.projectHandoff.verificationTarget = detected;
+      chat.projectHandoff.requiresModelVerification = detected.kind === 'browser_model' || (detected.kind === 'unknown' && chat.projectHandoff.requiresModelVerification === true);
+      if (!previous && detected.kind === 'general' && detected.sources.some(source => /(?:requirements\.txt|pyproject\.toml|main\.py)$/.test(source.path)) && !/\bbrowser|website|web app\b/i.test(chat.projectHandoff.objective ?? '')) {
+        const legacy = chat.projectHandoff.requirements.filter(item => item.stage && item.verification === 'browser');
+        chat.projectHandoff.retiredRequirements = [...(chat.projectHandoff.retiredRequirements ?? []), ...legacy.map(requirement => ({ requirement, reason: 'Legacy phrase-based browser criteria do not apply to the inspected native Python task.' }))].slice(-40);
+        chat.projectHandoff.requirements = chat.projectHandoff.requirements.filter(item => !legacy.includes(item));
+      }
     }
     if (this.options.maps && !await this.options.maps.hasExistingDiagrams(workspace.root)) await this.options.maps.refresh(workspace.root, signal);
     const notes = await this.notes.read(project.id);
@@ -257,8 +282,11 @@ export class ProjectTools {
     const context = this.context(chat);
     return { mode: context.mode, workspaceRoot: context.workspaceRoot, execution: this.options.execution,
       authorize: async (details, request, signal) => {
+        const policy = chat.projectHandoff?.taskPolicy;
+        if (policy && ['answer', 'setup'].includes(policy.intent)) throw new ToolFailure('TASK_SCOPE_PLUGIN_BLOCKED', 'This request permits inspection or bounded setup only. Unbounded plugin execution needs a separate user request. Use project reads and the reviewed setup/diagnostic tools.');
+        if (policy?.intent === 'debug') requireDiagnosisForEdit(chat.projectHandoff);
         const support = request && this.options.execution ? await this.options.execution.probe(request, signal) : { available: request === null };
-        await this.authorize(chat, { kind: 'plugin', paths: request?.writableRoots, command: request?.command, contentHash: hash(JSON.stringify([details, request]))! }, signal, details, { isolationAvailable: support.available });
+        await this.authorize(chat, { kind: 'plugin', paths: request?.writableRoots, command: request?.command, approvalReason: policy?.intent === 'debug' ? 'Review this plugin operation as a separate debugging scope decision; plugin effects are not inferred from the diagnosis.' : undefined, contentHash: hash(JSON.stringify([details, request]))! }, signal, details, { isolationAvailable: support.available });
         const current = this.context(chat);
         if (current.mode !== context.mode || current.revision !== context.revision) throw new Error('Plugin permissions changed before execution.');
       },
@@ -293,7 +321,90 @@ export class ProjectTools {
       return { deferred: true, message: 'Changed source diagrams are updated automatically after the response completes, before its local safety commit.' };
     }
     const policy = this.context(chat);
+    const ownerHandoff = worker ? this.store.chat(worker.parentId).projectHandoff : chat.projectHandoff;
+    if (name === 'inspect_project_target') {
+      const result = await inspectProjectTarget(workspace.root, args.entryPoint);
+      if (ownerHandoff) { ownerHandoff.verificationTarget = result; ownerHandoff.requiresModelVerification = result.kind === 'browser_model'; }
+      return result;
+    }
+    if (name === 'discover_project_python') {
+      await this.authorize(chat, { kind: 'read', paths: [workspace.root, ...pythonSearchRoots()] }, signal);
+      let output: string | undefined;
+      let launcherStatus = args.includeLauncher ? 'unavailable' : 'not requested';
+      if (args.includeLauncher) {
+        const launcher = await findPythonLauncher();
+        if (launcher) {
+          const request: ProjectExecutionRequest = { command: 'List installed Python registrations', executable: launcher.path, args: ['-0p'], mode: policy.mode,
+            workspaceRoot: workspace.root, cwd: workspace.root, network: 'deny', approvedNative: true, timeoutMs: 15000 };
+          await this.authorize(chat, { kind: 'command', command: request.command, cwd: workspace.root,
+            approvalReason: 'Run the fixed read-only Python launcher listing (-0p) with your user permissions. This lists registrations; it does not install or select a runtime.', contentHash: hash(JSON.stringify([request, launcher.hash]))! }, signal, JSON.stringify({ executable: launcher.path, args: ['-0p'], purpose: 'Read-only interpreter inventory', scope: 'User account execution; no filesystem/network confinement. Fixed listing only; no runtime installation.' }), { reviewedNativeAvailable: true });
+          const current = await findPythonLauncher();
+          if (!current || current.path !== launcher.path || current.hash !== launcher.hash) throw new ToolFailure('PYTHON_LAUNCHER_CHANGED', 'The reviewed launcher changed before enumeration.');
+          if (!this.options.execution) throw new ToolFailure('PYTHON_DISCOVERY_EXECUTION', 'No execution adapter is available for the approved launcher listing.');
+          const result = await this.options.execution.execute(request, signal);
+          output = result.exitCode === 0 && !result.timedOut ? result.output : undefined;
+          launcherStatus = output ? 'listed; versions remain unverified metadata' : 'listing failed; installed runtimes remain unknown';
+        }
+      }
+      return { ...await discoverProjectPython(workspace.root, output), launcherStatus };
+    }
+    if (name === 'probe_project_endpoint') {
+      const request = endpointDiagnosticRequest(args);
+      await this.authorize(chat, { kind: 'command', command: `${request.method} ${request.url}`, cwd: workspace.root,
+        approvalReason: 'Review this exact model endpoint diagnostic request and payload. It uses the app network connection without executing project code.', contentHash: hash(JSON.stringify(request))! },
+        signal, JSON.stringify({ operation: 'Probe selected model endpoint', ...request, timeoutSeconds: 30, responseLimitBytes: 64000, redirects: 'disabled', filesystemWrites: 'none' }), { isolationAvailable: true });
+      return probeProjectEndpoint(request, signal);
+    }
+    if (name === 'setup_project_python_environment') {
+      if (ownerHandoff?.taskPolicy?.intent === 'answer') throw new ToolFailure('TASK_SCOPE_EDIT_BLOCKED', 'An inspection-only request does not authorize environment changes.');
+      if (!this.options.execution) throw new ToolFailure('ENVIRONMENT_EXECUTION_UNAVAILABLE', 'Python setup requires the project execution adapter.');
+      const plan = await planPythonEnvironment(workspace.root, args, canonicalProjectPath);
+      const request: ProjectExecutionRequest = { command: 'Set up project Python environment', executable: plan.interpreter, args: [],
+        cwd: workspace.root, workspaceRoot: workspace.root, mode: policy.mode, writableRoots: [plan.destination],
+        readableRoots: [path.dirname(plan.interpreter)], network: 'allow', win32k: true,
+        environment: { PIP_CONFIG_FILE: process.platform === 'win32' ? 'nul' : '/dev/null' } };
+      const support = await this.options.execution.probe(request, signal);
+      chat.executionSupport = support;
+      const nativeFallback = !support.available;
+      const details = JSON.stringify({ operation: 'Set up Python for this project', interpreter: plan.interpreter,
+        expectedVersion: args.expectedVersion ?? 'Python 3 (detected and reported before installation)',
+        projectRequirements: plan.requirements.constraints, existingEnvironmentVersion: plan.declaredEnvironmentVersion,
+        environment: plan.destination, existingEnvironment: plan.existing, packages: args.packages, verifyImports: args.imports,
+        network: 'allow for the package installation only; download PyPI wheels from https://pypi.org/simple',
+        steps: ['Inspect the selected interpreter', plan.existing ? 'Validate the existing virtual environment' : 'Create the virtual environment', 'Install the listed packages into this environment', 'Check dependency compatibility and requested imports'],
+        effectivePermissions: policy.mode === 3 || nativeFallback ? 'Runs with your user account filesystem and network access. Setup targets this virtual environment; OS isolation is not enforced.' : 'Isolated execution. Project environment writes; network access only during installation.',
+        preservesExistingEnvironment: true, tests: 'Project tests run separately after setup.' }, null, 2);
+      try {
+        await this.authorize(chat, { kind: 'command', command: request.command, cwd: workspace.root, paths: [plan.destination],
+          approvalReason: 'Review this Python environment setup, package installation and network access.', contentHash: hash(JSON.stringify([plan.fingerprint, args, request]))! },
+          signal, details, { isolationAvailable: support.available, reviewedNativeAvailable: nativeFallback });
+      } catch (error) {
+        signal.throwIfAborted();
+        const message = error instanceof Error ? error.message : String(error);
+        if (!/denied|approval timed out/i.test(message)) throw error;
+        throw new ToolFailure(/timed out/i.test(message) ? 'ENVIRONMENT_APPROVAL_TIMED_OUT' : 'ENVIRONMENT_APPROVAL_DENIED',
+          `Python environment setup did not run: ${message}`, { environmentPath: args.environmentPath, approvalRequired: true, stopProjectRun: true,
+            nextAction: 'Wait for a new user message and explicit setup approval. Preserve the tests; do not try other Python paths, pip commands or download workarounds.' });
+      }
+      if (nativeFallback) request.approvedNative = true;
+      return this.withWorkspaceWrite(chat, async () => {
+        const current = this.context(chat);
+        if (current.mode !== policy.mode || current.revision !== policy.revision) throw new ToolFailure('PERMISSION_CHANGED', 'Project permissions changed after setup review.');
+        const reviewed = await planPythonEnvironment(workspace.root, args, canonicalProjectPath);
+        if (reviewed.fingerprint !== plan.fingerprint) throw new ToolFailure('ENVIRONMENT_CHANGED', 'The interpreter or environment changed after review. Setup did not run.');
+        return setupPythonEnvironment(plan, request, {
+          signal, execute: step => this.options.execution!.execute(step, signal), mutated: () => this.mutated(chat),
+          revalidate: async () => {
+            const latest = this.context(chat);
+            if (latest.mode !== policy.mode || latest.revision !== policy.revision) throw new ToolFailure('PERMISSION_CHANGED', 'Project permissions changed during setup.');
+            await revalidatePythonEnvironment(plan, canonicalProjectPath);
+          },
+        });
+      });
+    }
     if (name === 'download_project_asset') {
+      requireDiagnosisForEdit(ownerHandoff, args.destination.replace(/\\/g, '/'));
+      if (ownerHandoff?.taskPolicy?.intent === 'setup') throw new ToolFailure('SETUP_TOOL_REQUIRED', 'Use the reviewed dependency setup tool; this setup request does not authorize model downloads.');
       const declaredExtension = /\.(json|gguf|wasm)$/i.exec(args.destination)?.[1].toLowerCase();
       if (declaredExtension && args.format !== declaredExtension) throw new ToolFailure('ASSET_FORMAT', `A .${declaredExtension} destination requires format:${declaredExtension} validation.`);
       const compatibility = (worker ? this.store.chat(worker.parentId).projectHandoff : chat.projectHandoff)?.compatibility;
@@ -309,7 +420,8 @@ export class ProjectTools {
       const writableRoots = worker ? [...await Promise.all(worker.ownedPaths.map(value => canonicalProjectPath(workspace.root, value))), temporary] : [workspace.root];
       const request: ProjectExecutionRequest = { command: `Download ${args.url} to ${destination}`, executable: process.execPath, args: ['-'], stdin: projectAssetScript({...args,destination,temporary}), cwd: workspace.root, workspaceRoot: workspace.root, mode: policy.mode, writableRoots, network: 'allow', win32k: true, confined: Boolean(worker), environment: { ELECTRON_RUN_AS_NODE: '1' } };
       const support = await this.options.execution.probe(request,signal);
-      await this.authorize(chat,{kind:'command',command:request.command,cwd:workspace.root,paths:[destination],contentHash:hash(JSON.stringify(request))!},signal,JSON.stringify({url:args.url,destination,format:args.format,maxBytes:args.maxBytes,sha256:args.sha256}),{isolationAvailable:support.available});
+      await this.authorize(chat,{kind:'command',command:request.command,cwd:workspace.root,paths:[destination],contentHash:hash(JSON.stringify(request))!,
+        approvalReason: ownerHandoff?.taskPolicy?.intent === 'debug' && !ownerHandoff.taskPolicy.backendChangeRequested ? 'Review this model/asset download separately from the requested debugging work.' : undefined },signal,JSON.stringify({url:args.url,destination,format:args.format,maxBytes:args.maxBytes,sha256:args.sha256}),{isolationAvailable:support.available});
       return this.withWorkspaceWrite(chat,async()=>{
         signal.throwIfAborted(); const current=this.context(chat);
         if(current.mode!==policy.mode||current.revision!==policy.revision)throw new ToolFailure('PERMISSION_CHANGED','Project permissions changed before asset download.');
@@ -354,6 +466,7 @@ export class ProjectTools {
     const editing = name === 'edit_project_file' || name === 'patch_project_file';
     if (editing) {
       this.checkWorkerWrite(chat, target);
+      requireDiagnosisForEdit(ownerHandoff, path.relative(workspace.root, target).replaceAll('\\', '/'));
       if (args.revision) {
         const revision = this.revisions.get(args.revision);
         if (!revision || revision.chatId !== chat.id || revision.target !== target) throw new Error('Unknown read revision for this file/chat. Read the file again.');
@@ -363,18 +476,26 @@ export class ProjectTools {
     }
     if (name === 'run_project_command' || name === 'run_project_process' || name === 'start_project_server') {
       if (worker?.readOnly) throw new Error('This worker cannot run commands.');
+      enforceCommandTaskScope(ownerHandoff?.taskPolicy, args.executable ? [args.executable, ...(args.args ?? []), args.stdin ?? ''].join(' ') : args.command, args.purpose);
+      if (pythonInstallNeedsNetwork(args)) throw new ToolFailure('ENVIRONMENT_SETUP_REQUIRED',
+        'This pip installation has no approved network access. Main should use setup_project_python_environment to review the interpreter, project environment, packages and network together.',
+        { nextAction: 'Call setup_project_python_environment with the selected interpreter, environmentPath and packages. Do not search caches or try alternate download commands.' });
       const read = await Promise.all((args.readPaths ?? []).map((value: string) => canonicalProjectPath(workspace.root, value)));
       const write = await Promise.all((args.writePaths ?? []).map((value: string) => canonicalProjectPath(workspace.root, value)));
       write.forEach(value => this.checkWorkerWrite(chat, value));
       const request: ProjectExecutionRequest = { command: args.command, cwd: target, mode: policy.mode, workspaceRoot: workspace.root, readableRoots: read,
         writableRoots: worker ? await Promise.all(worker.ownedPaths.map(value => canonicalProjectPath(workspace.root, value))) : [workspace.root, ...write], network: args.network ?? 'deny', win32k: args.win32k ?? true, confined: Boolean(worker), loopback: name === 'start_project_server' };
       if (name === 'run_project_process') Object.assign(request, { executable: args.executable, args: args.args, stdin: args.stdin });
+      const diagnosticOnly = ['answer', 'setup'].includes(ownerHandoff?.taskPolicy?.intent ?? '') || (ownerHandoff?.taskPolicy?.intent === 'debug' && !ownerHandoff.taskPolicy.diagnosis?.executionConfirmed);
+      if (diagnosticOnly) { request.writableRoots = []; request.confined = true; }
       const support = this.options.execution ? await this.options.execution.probe(request, signal) : { available: false };
       if ('version' in support) chat.executionSupport = support;
+      if (diagnosticOnly && !support.available) throw new ToolFailure('DIAGNOSTIC_EXECUTION_BLOCKED', 'Source edits need actual diagnostic evidence. Read-only command confinement is unavailable; use probe_project_endpoint for a reviewed HTTP diagnostic or explain the execution limitation.');
       const commandState = () => commandSnapshot(workspace.root, undefined, undefined, signal);
       const before = await commandState();
       const nativeFallback = !support.available && !worker && Boolean(this.options.execution);
-      const approvalReason = await projectCommandApprovalReason(workspace.root, target, request);
+      const approvalReason = await projectCommandApprovalReason(workspace.root, target, request, text => enforceCommandTaskScope(ownerHandoff?.taskPolicy, text, args.purpose)) ??
+        (ownerHandoff?.taskPolicy?.intent === 'debug' && !diagnosticOnly ? 'Review this debugging command and its possible file/backend changes. Source edits must follow the recorded diagnosis; this command has workspace write access.' : undefined);
       const commandAction: ProjectAction = { kind: 'command', command: args.command, cwd: target, paths: policy.mode === 1 ? [...read, ...write] : write, approvalReason, contentHash: hash(JSON.stringify([before.digest, request]))! };
       await this.authorize(chat, commandAction, signal, JSON.stringify({ ...request, sourceDigest: before.digest, effectivePermissions: nativeFallback ? 'Your user account filesystem and network access. Requested path and network limits cannot be enforced for this one-time command.' : 'Verified isolation with the requested scope.', reason: approvalReason ?? (nativeFallback ? 'Isolation is unavailable. This command will run once with your user permissions.' : 'Review command effects and requested filesystem/network scope.') }, null, 2), { isolationAvailable: support.available, reviewedNativeAvailable: nativeFallback });
       if ((policy.mode !== 3 || worker) && !support.available && !nativeFallback) throw new Error('Native confinement is unavailable for this command.');
@@ -404,8 +525,14 @@ export class ProjectTools {
         return { ...result, projectChanged, projectChange: comparison.state, verificationUnknown: comparison.state === 'unknown', changedPaths: comparison.changedPaths };
       });
     }
-    const action: ProjectAction = { kind: editing ? 'write' : 'read', paths: [target], ...(editing ? { contentHash: hash(JSON.stringify(args))! } : {}) };
-    await this.authorize(chat, action, signal, editing ? JSON.stringify({ operation: name === 'patch_project_file' ? 'Patch unique text' : 'Replace entire text file', path: target, proposedContent: args.content, ...args }, null, 2) : undefined);
+    let scopeReason: string | undefined;
+    if (editing) {
+      const before = await fs.readFile(target, 'utf8').catch((error: any) => { if (error.code === 'ENOENT') return ''; throw error; });
+      const after = name === 'patch_project_file' ? before.replace(args.oldText, args.newText) : args.content;
+      scopeReason = backendScopeReason(ownerHandoff?.taskPolicy, before, after);
+    }
+    const action: ProjectAction = { kind: editing ? 'write' : 'read', paths: [target], ...(editing ? { contentHash: hash(JSON.stringify([args, ownerHandoff?.taskPolicy?.requestId]))!, approvalReason: scopeReason } : {}) };
+    await this.authorize(chat, action, signal, editing ? JSON.stringify({ operation: name === 'patch_project_file' ? 'Patch unique text' : 'Replace entire text file', scopeReview: scopeReason, path: target, proposedContent: args.content, ...args }, null, 2) : undefined);
     if (await resolve() !== target) throw new Error('The target changed while permission was requested. Try again.');
     const root = within(workspace.root, target) ? workspace.root : path.parse(target).root;
     const relative = path.relative(root, target) || '.';
@@ -426,6 +553,10 @@ export class ProjectTools {
       const files = new Workspace(root);
       const change = name === 'patch_project_file' ? await files.patch(relative, args.expectedHash, args.oldText, args.newText) : await files.edit(relative, args.expectedHash, args.content, args.replacementIntent);
       this.mutated(chat);
+      if (ownerHandoff && within(workspace.root, target)) {
+        ownerHandoff.verificationTarget = await reconcileProjectTarget(workspace.root, ownerHandoff.verificationTarget?.entryPoint);
+        ownerHandoff.requiresModelVerification = ownerHandoff.verificationTarget.kind === 'browser_model' || (ownerHandoff.verificationTarget.kind === 'unknown' && ownerHandoff.requiresModelVerification === true);
+      }
       const nextHash = hash(change.after)!;
       const revision = randomUUID(); this.revisions.set(revision, { chatId: chat.id, target, hash: nextHash });
       if (this.revisions.size > 1000) this.revisions.delete(this.revisions.keys().next().value!);

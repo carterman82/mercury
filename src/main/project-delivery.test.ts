@@ -35,6 +35,7 @@ it('requires a real current test, not inspection, a build, missing exit status o
 
 it('returns missing browser delivery stages and compatibility to Main even when prior criteria passed', () => {
   const handoff = newHandoff(undefined, 'Run model inference in the browser');
+  handoff.requiresModelVerification = true; // Established by inspected browser runtime files.
   handoff.requirements = [
     { text: 'Source reviewed', verification: 'inspection', status: 'passed', evidenceIds: ['source'] },
   ];

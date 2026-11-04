@@ -36,7 +36,24 @@ export interface ChangeRecord { path: string; before: string | null; after: stri
 export interface CommandRequest { id: string; command: string; cwd: string; }
 export interface SourceEvidence { id: string; at: number; tool: string; label: string; input: string; result: string; projectRevision?: number; }
 export interface ProjectRequirement { id?: string; text: string; status: 'passed' | 'failed' | 'blocked' | 'not_run'; evidenceIds: string[]; verification?: 'inspection' | 'command' | 'browser'; stage?: 'page' | 'model' | 'inference'; selector?: string; expectedText?: string; }
+export interface ProjectTaskPolicy {
+  requestId: string;
+  request: string;
+  intent: 'answer' | 'setup' | 'debug' | 'implementation';
+  backendChangeRequested: boolean;
+  runtimeInstallRequested: boolean;
+  diagnosis?: { symptom: string; hypothesis: string; testToConfirm: string; proposedChange: string; affectedPaths: string[]; evidenceIds: string[]; at: number; revision: number; executionConfirmed: boolean };
+}
+export interface ProjectVerificationTarget {
+  kind: 'unknown' | 'general' | 'browser_model';
+  entryPoint?: string;
+  sources: { path: string; hash: string }[];
+  reason: string;
+}
 export interface ProjectHandoff {
+  taskPolicy?: ProjectTaskPolicy;
+  verificationTarget?: ProjectVerificationTarget;
+  retiredRequirements?: { requirement: ProjectRequirement; reason: string }[];
   objective?: string;
   generation?: number;
   snapshots?: { path: string; hash: string }[];

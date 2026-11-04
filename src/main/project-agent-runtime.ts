@@ -13,7 +13,7 @@ import { normalizeProjectToolInput } from './project-tool-input';
 
 export const PROJECT_SDK_VERSION = '0.3.310';
 export const PROJECT_RECOVERY_POLICY = '2.0.0';
-export const PROJECT_RUNTIME_BUILD = 'mercury-project-runtime-2026-11-02-r3';
+export const PROJECT_RUNTIME_BUILD = 'mercury-project-runtime-2026-11-04-r1';
 export interface ProjectToolAttempt {
   id: string;
   validationError?: unknown;

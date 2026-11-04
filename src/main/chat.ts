@@ -24,6 +24,7 @@ import { toolFailed, failedToolResult, ToolFailure } from './tool-outcome';
 import { ProjectProgress } from './project-recovery';
 import { newHandoff, recordProjectAction } from './project-handoff';
 import { hasCurrentProjectTest, projectDeliveryFeedback } from './project-delivery';
+import { beginProjectRequest, diagnosisTool, recordProjectDiagnosis, requireDiagnosisForEdit } from './project-task-policy';
 import { projectTaskTool, projectTaskReadTool, readProjectTask, projectTaskInstructions, updateProjectTask, requireProjectContract } from './project-task-state';
 import { observeProjectTool } from './project-tool-observation';
 
@@ -113,7 +114,7 @@ export class ChatService {
       if (chat.projectHandoff?.blocker?.code === 'INVALID_ARGUMENTS') delete chat.projectHandoff.blocker;
       // Follow-up chatter is retained as context without replacing the task contract.
       if (!chat.projectHandoff) chat.projectHandoff = newHandoff(undefined, message);
-      chat.projectHandoff.requiresModelVerification ||= newHandoff(undefined, message).requiresModelVerification;
+      chat.projectHandoff.taskPolicy = beginProjectRequest(chat.projectHandoff.taskPolicy, message, response.id);
       response.metrics = { queuedMs: 0, providerMs: 0, toolMs: 0, recoveries: 0 };
       response.runtimeBuild = PROJECT_RUNTIME_BUILD; response.recoveryPolicy = PROJECT_RECOVERY_POLICY;
     }
@@ -256,13 +257,16 @@ export class ChatService {
         try {
           if (attempt?.validationError) throw attempt.validationError;
           const args = call.arguments as any;
-          const mutating = ['edit_project_file','patch_project_file','run_project_command','run_project_process','start_project_server','download_project_asset','update_project_notes'].includes(call.name) || (call.name === 'start_project_task' && ['implementation','testing'].includes(args?.kind));
+          const mutating = ['edit_project_file','patch_project_file','run_project_command','run_project_process','start_project_server','download_project_asset','setup_project_python_environment','update_project_notes'].includes(call.name) || (call.name === 'start_project_task' && ['implementation','testing'].includes(args?.kind));
           if (chat.projectId && mutating) requireProjectContract(chat.projectHandoff);
+          if (chat.projectId && call.name === 'start_project_task' && args?.kind === 'implementation') requireDiagnosisForEdit(chat.projectHandoff);
           if (chat.projectId && call.name === 'download_project_asset' && chat.projectHandoff?.compatibility) {
             const expected=chat.projectHandoff.compatibility;
             if(args.maxBytes>expected.maxBytes || (args.format==='gguf' && expected.modelFormat!=='gguf') || (/\.onnx$/i.test(args.destination??'')&&expected.modelFormat!=='onnx')) throw new ToolFailure('MODEL_ASSET_SCOPE','Asset format/byte limit differs from the accepted model contract.');
           }
-          if (chat.projectId && call.name === 'update_project_task') {
+          if (chat.projectId && call.name === 'record_project_diagnosis') {
+            output = recordProjectDiagnosis(chat.projectHandoff!, call.arguments, chatEvidence(chat));
+          } else if (chat.projectId && call.name === 'update_project_task') {
             output = updateProjectTask(chat.projectHandoff!, call.arguments, chatEvidence(chat));
           } else if (chat.projectId && call.name === 'read_project_task') {
             if (!call.arguments || typeof call.arguments !== 'object' || Array.isArray(call.arguments) || Object.keys(call.arguments).length)
@@ -349,12 +353,20 @@ export class ChatService {
           }));
         }
         this.save(chat);
+        if (chat.projectId && call.name === 'setup_project_python_environment' && (output as any)?.stopProjectRun === true) {
+          const setup = output as any;
+          response.content += '\n\nWork saved; ' + (setup.approvalRequired
+            ? 'Python environment setup needs your approval. No setup command ran. '
+            : 'Python environment setup did not complete. ' + String(setup.error) + ' ') + String(setup.nextAction ?? '');
+          this.save(chat);
+          controller.abort(new ToolFailure(String((output as any).code), String((output as any).error)));
+        }
         controller.signal.throwIfAborted();
         return { role: 'tool', tool_call_id: call.id, content: JSON.stringify(output) };
       };
       const completion = new AnswerCompletion(message, chat.projectId ? 1 : 2, chat.projectId ? reason => { progress.recover(reason); response.metrics!.recoveries = progress.recoveries; } : undefined);
       if (chat.projectId) {
-        const tools = [delegationTool, recallContextTool, projectTaskTool, projectTaskReadTool, ...(this.files ? fileTools.filter(tool => tool.function.name === 'read_file') : []), ...(this.capabilities ? chatCapabilityTools : []), ...projectTools, ...projectWorkerTools];
+        const tools = [delegationTool, recallContextTool, projectTaskTool, projectTaskReadTool, diagnosisTool, ...(this.files ? fileTools.filter(tool => tool.function.name === 'read_file') : []), ...(this.capabilities ? chatCapabilityTools : []), ...projectTools, ...projectWorkerTools];
         const currentContext = (requestMessages: typeof messages) => {
           const budget = Math.max(2000, contextMaximum - messageTextLength(requestMessages) - 2500);
           const instructions = dynamicContext.slice(0, Math.floor(budget * .55));
@@ -416,13 +428,14 @@ export class ChatService {
           const feedback = projectDeliveryFeedback(chat.projectHandoff!, chatEvidence(chat), performedMutation);
           if (!feedback) break;
           addNotice('Finishing the remaining acceptance checks and tests.');
-          if (terminal.text && response.content.endsWith(terminal.text)) response.content = response.content.slice(0, -terminal.text.length);
+          // Production SDK terminal.text includes earlier findings as well as
+          // its final answer. Retain it if a continuation cannot verify delivery.
+          if (response.content.trim()) response.content += '\n\n';
           terminal = await runProject([...messages, { role: 'user', content: feedback }]);
           if (this.workers?.hasPending(chat)) await this.workers.wait(chat, undefined, controller.signal);
         }
         if (projectDeliveryFeedback(chat.projectHandoff!, chatEvidence(chat), performedMutation)) {
-          if (terminal.text && response.content.endsWith(terminal.text)) response.content = response.content.slice(0, -terminal.text.length);
-          response.content += '\n\nWork saved; not complete. Required acceptance checks or tests are still missing or blocked.';
+          response.content += '\n\nVerification remains incomplete. The findings above are preserved; implementation is not verified as complete. ' + (chat.projectHandoff?.blocker?.message ?? 'Required acceptance checks or tests have not passed.');
         }
         complete = true;
       }
@@ -491,13 +504,13 @@ export class ChatService {
       }
       if (!complete) throw new Error('Tool turn limit reached. Created files are saved; send a follow-up to continue.');
       if (!response.content.trim() && !response.files?.length) throw new Error('The model returned no answer. Try another model or send the message again.');
-      if (chat.projectId) {
+      if (chat.projectId && (performedMutation || chat.projectHandoff?.taskPolicy?.intent !== 'answer')) {
         if (this.projects!.generation(chat) !== observedGeneration)
           recordProjectAction(chat.projectHandoff!, 'run_project_command', { command: 'Shared project changed after verification' }, { projectChanged: true });
         if (performedMutation && !chat.projectHandoff?.requirements.length)
           throw new Error('Changes are preserved, but no acceptance criteria or verification were recorded. Use update_project_task and verify the result before declaring completion.');
         if (performedMutation) requireProjectContract(chat.projectHandoff, true);
-        if ((performedMutation || chat.projectHandoff!.changedPaths.length > 0) && !hasCurrentProjectTest(chat.projectHandoff!, chatEvidence(chat)))
+        if (performedMutation && !hasCurrentProjectTest(chat.projectHandoff!, chatEvidence(chat)))
           throw new ToolFailure('TESTS_REQUIRED', 'Work saved; not complete. Run a relevant test suite or functional smoke test after the latest changes before declaring completion.');
         const handoff = chat.projectHandoff;
         if (handoff?.blocker && handoff.requirements.length && handoff.requirements.every(item => item.status === 'passed')) {
@@ -537,6 +550,7 @@ export class ChatService {
       if (chat.projectHandoff) {
         const requirements = chat.projectHandoff.requirements;
         response.verification = requirements.some(item => item.status === 'failed') ? 'failed' : requirements.some(item => item.status === 'blocked') || chat.status !== 'idle' ? 'blocked' : requirements.length && requirements.every(item => item.status === 'passed') ? 'passed' : 'not_run';
+        if (!performedMutation && chat.projectHandoff.taskPolicy?.intent === 'answer' && chat.status === 'idle') response.verification = 'not_run';
         chat.projectHandoff.updatedAt = Date.now();
         response.delivery = { status: chat.status === 'idle' ? 'completed' : chat.status === 'stopped' ? 'stopped' : response.verification === 'blocked' ? 'blocked' : 'failed', reason: chat.error, at: Date.now() };
       }

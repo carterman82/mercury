@@ -24,7 +24,9 @@ interface ProjectToolObservation {
 export function observeProjectTool(input: ProjectToolObservation) {
   const { chat, response, call, attempt, activity, progress, getGeneration, notice, onStall } = input;
   let { output, observedGeneration, performedMutation } = input;
-  const args = (call.arguments ?? {}) as any;
+  const providedArgs = (call.arguments ?? {}) as any;
+  const args = call.name === 'setup_project_python_environment'
+    ? { ...providedArgs, environmentPath: providedArgs.environmentPath ?? '.venv_test' } : providedArgs;
   const validationFailure = Boolean(attempt?.validationError);
   const knownRead = [...(chat.projectHandoff!.snapshots ?? []), ...chat.projectHandoff!.reads].find(item => item.path === (args.path ?? args.destination));
   // The SDK has already returned malformed arguments to the model as a
@@ -34,12 +36,12 @@ export function observeProjectTool(input: ProjectToolObservation) {
   if (toolFailed(output) && !validationFailure) {
     output = { ...(output as object), code: toolFailureCode(output), sourceRevision: (output as any)?.sourceRevision ?? knownRead?.hash ?? 'unknown' };
     activity.result=JSON.stringify(output).slice(0,16000);
-    chat.projectHandoff!.blocker = { tool: call.name, target: String(args.path ?? args.destination ?? args.cwd ?? '.'), code: String((output as any).code ?? 'COMMAND_FAILED'), sourceRevision: (output as any)?.sourceRevision, message: String((output as any).error ?? (output as any).output ?? 'Failed action').slice(0, 1200), nextAction: 'Resolve this blocker with a different approach; do not repeat the failed attempt.', at: Date.now() };
+    chat.projectHandoff!.blocker = { tool: call.name, target: String(args.path ?? args.destination ?? args.environmentPath ?? args.cwd ?? '.'), code: String((output as any).code ?? 'COMMAND_FAILED'), sourceRevision: (output as any)?.sourceRevision, message: String((output as any).error ?? (output as any).output ?? 'Failed action').slice(0, 1200), nextAction: typeof (output as any)?.nextAction === 'string' ? (output as any).nextAction : 'Resolve this blocker with a different approach; do not repeat the failed attempt.', at: Date.now() };
     const blocker=chat.projectHandoff!.blocker;
     blocker.action=projectActionIdentity(call.name,args,blocker.code);
     chat.projectHandoff!.failedApproaches=[...(chat.projectHandoff!.failedApproaches??[]),{tool:blocker.tool,target:blocker.target,code:blocker.code,input:JSON.stringify(call.arguments).slice(0,1600),sourceRevision:blocker.sourceRevision,message:blocker.message,at:blocker.at}].slice(-30);
   } else if (chat.projectHandoff!.blocker) {
-    const blocker=chat.projectHandoff!.blocker,target=String(args.path ?? args.destination ?? args.cwd ?? '.');
+    const blocker=chat.projectHandoff!.blocker,target=String(args.path ?? args.destination ?? args.environmentPath ?? args.cwd ?? '.');
     // Reuse the exact recorded failed attempt; a truncated input cannot grant a
     // recovery route. No additional persisted blocker schema is needed.
     const failed = chat.projectHandoff!.failedApproaches?.slice().reverse().find(item => item.at === blocker.at && item.tool === blocker.tool && item.code === blocker.code && item.target === blocker.target);
@@ -53,8 +55,8 @@ export function observeProjectTool(input: ProjectToolObservation) {
   const generation = getGeneration();
   if (generation !== observedGeneration) performedMutation = true;
   if (generation !== observedGeneration && toolFailed(output)) output = { ...(output as object), verificationUnknown: true };
-  if (generation !== observedGeneration && (output as any)?.projectChange !== 'unknown' && ['run_project_command', 'run_project_process'].includes(call.name)) output = { ...(output as object), projectChanged: true };
-  if (generation !== observedGeneration && !['edit_project_file', 'patch_project_file', 'run_project_command', 'run_project_process', 'download_project_asset'].includes(call.name))
+  if (generation !== observedGeneration && (output as any)?.projectChange !== 'unknown' && ['run_project_command', 'run_project_process', 'setup_project_python_environment'].includes(call.name)) output = { ...(output as object), projectChanged: true };
+  if (generation !== observedGeneration && !['edit_project_file', 'patch_project_file', 'run_project_command', 'run_project_process', 'download_project_asset', 'setup_project_python_environment'].includes(call.name))
     recordProjectAction(chat.projectHandoff!, 'run_project_command', { command: 'Shared project changes (worker or another chat)' }, { projectChanged: true }, undefined, evidence.at);
   observedGeneration = generation;
   recordProjectAction(chat.projectHandoff!, call.name, call.arguments, output, evidence.id, evidence.at);

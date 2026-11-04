@@ -35,6 +35,7 @@ export const projectTaskReadTool = {
 
 export function readProjectTask(handoff: ProjectHandoff) {
   return { objective: handoff.objective, requirements: handoff.requirements, compatibility: handoff.compatibility,
+    taskPolicy: handoff.taskPolicy, verificationTarget: handoff.verificationTarget, retiredRequirements: handoff.retiredRequirements,
     remaining: handoff.remaining, generation: handoff.generation, blocker: handoff.blocker,
     browser: handoff.browser, nextAction: 'Send only new criteria/status updates. A compatibility-only repair uses requirements:[]; unchanged criteria are retained automatically.' };
 }

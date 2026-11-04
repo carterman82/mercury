@@ -12,7 +12,7 @@ function invokesTestRunner(args: any): boolean {
     .at(-1)!
     .replace(/\.(?:exe|cmd|bat)$/i, '')
     .toLowerCase();
-  if (tokens.some((token) => /^(?:--help|-h|--version|-v|--dry-run)$/.test(token))) return false;
+  if (tokens.some((token) => /^(?:--help|-h|--version|--dry-run)$/.test(token))) return false;
   if (['npm', 'pnpm', 'yarn', 'bun'].includes(program))
     return /^(?:test|smoke)(?::|$)/.test(tokens[0] === 'run' ? (tokens[1] ?? '') : (tokens[0] ?? ''));
   if (program === 'node')
@@ -60,6 +60,7 @@ export function projectDeliveryFeedback(
   evidence: SourceEvidence[],
   mutated: boolean,
 ): string | undefined {
+  if (!mutated && handoff.taskPolicy?.intent === 'answer') return;
   const pending = handoff.requirements.filter((item) => item.status !== 'passed');
   const missingCriteria = mutated && !handoff.requirements.length;
   const missingCompatibility = handoff.requiresModelVerification && !handoff.compatibility;
@@ -68,7 +69,7 @@ export function projectDeliveryFeedback(
         (stage) => !handoff.requirements.some((item) => item.stage === stage && item.verification === 'browser'),
       )
     : [];
-  const needsTest = (mutated || handoff.changedPaths.length > 0) && !hasCurrentProjectTest(handoff, evidence);
+  const needsTest = mutated && !hasCurrentProjectTest(handoff, evidence);
   const blockerResolved =
     handoff.blocker &&
     handoff.requirements.length > 0 &&
