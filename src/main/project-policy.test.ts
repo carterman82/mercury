@@ -10,6 +10,10 @@ const read: ProjectAction = { kind: 'read', paths: [inside] };
 const command: ProjectAction = { kind: 'command', command: 'npm test', cwd: root };
 
 describe('project action policy', () => {
+  it('offers a one-shot native command review only when Main has a host execution adapter', () => {
+    expect(assessProjectAction(context, command, { reviewedNativeAvailable: true }).status).toBe('approval');
+    expect(assessProjectAction(context, { kind: 'plugin' }, { reviewedNativeAvailable: true }).status).toBe('deny');
+  });
   it.each([1, 2, 3] as const)('allows ordinary workspace reads and edits in mode %i', mode => {
     for (const kind of ['read', 'write'] as const) expect(assessProjectAction({ ...context, mode }, { kind, paths: [inside] }).status).toBe('allow');
   });

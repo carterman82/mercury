@@ -16,6 +16,7 @@ import type { ProjectPluginPolicy } from './project-plugin-policy';
 import type { ProjectServers } from './project-servers';
 import { commandSnapshot, compareCommandSnapshots } from './project-command-state';
 import { ToolFailure } from './tool-outcome';
+import { projectCommandApprovalReason } from './project-command-risk';
 import { normalizeProjectToolInput } from './project-tool-input';
 import { projectAssetScript } from './project-assets';
 
@@ -30,8 +31,8 @@ const schemas = {
   search_project_files: z.object({ query: z.string().min(1).max(200) }).strict(),
   edit_project_file: z.object({ path: filename, expectedHash: z.string().regex(/^[a-f0-9]{64}$/, 'Copy the full 64-character hash, or use the returned revision token.').nullable().optional(), revision: z.string().uuid().optional(), content: z.string().max(512000), replacementIntent: z.boolean().optional() }).strict(),
   patch_project_file: z.object({ path: filename, expectedHash: z.string().regex(/^[a-f0-9]{64}$/).optional(), revision: z.string().uuid().optional(), oldText: z.string().min(1).max(512000), newText: z.string().max(512000) }).strict(),
-  run_project_command: z.object({ command: z.string().trim().min(1).max(10000), cwd: filename.optional(), readPaths: z.array(filename).max(20).optional(), writePaths: z.array(filename).max(20).optional(), network: z.enum(['deny', 'allow']).optional(), win32k: z.boolean().describe('Request reviewed Win32 initialization for Node/.NET workloads; clipboard and injection remain disabled.').optional() }).strict(),
-  run_project_process: z.object({ executable: filename, args: z.array(z.string().max(32768).refine(value => !value.includes('\0'))).max(100), stdin: z.string().max(512000).optional(), cwd: filename.optional(), readPaths: z.array(filename).max(20).optional(), writePaths: z.array(filename).max(20).optional(), network: z.enum(['deny', 'allow']).optional(), win32k: z.boolean().optional() }).strict(),
+  run_project_command: z.object({ purpose: z.enum(['test', 'build', 'inspect', 'other']).optional(), command: z.string().trim().min(1).max(10000), cwd: filename.optional(), readPaths: z.array(filename).max(20).optional(), writePaths: z.array(filename).max(20).optional(), network: z.enum(['deny', 'allow']).optional(), win32k: z.boolean().describe('Request reviewed Win32 initialization for Node/.NET workloads; clipboard and injection remain disabled.').optional() }).strict(),
+  run_project_process: z.object({ purpose: z.enum(['test', 'build', 'inspect', 'other']).optional(), executable: filename, args: z.array(z.string().max(32768).refine(value => !value.includes('\0'))).max(100), stdin: z.string().max(512000).optional(), cwd: filename.optional(), readPaths: z.array(filename).max(20).optional(), writePaths: z.array(filename).max(20).optional(), network: z.enum(['deny', 'allow']).optional(), win32k: z.boolean().optional() }).strict(),
   review_project_changes: z.object({}).strict(),
   integrate_project_changes: z.object({ reviewToken: z.string().min(1).max(200) }).strict(),
   read_project_notes: z.object({}).strict(),
@@ -49,8 +50,8 @@ const descriptions: Record<keyof typeof schemas, string> = {
   search_project_files: 'Search project text files for a literal substring, with bounded results.',
   edit_project_file: 'Replace an ENTIRE text file, not a snippet. Prefer patch_project_file for small changes. Pass revision from read_project_file unchanged, or expectedHash. Set replacementIntent:true when deliberately removing more than half of an existing file. For a missing file omit revision/expectedHash, or pass expectedHash:null (JSON null). This is create-only and rejects an existing path. Edits apply directly to the selected folder. Do not overwrite unrelated work.',
   patch_project_file: 'Change exactly one occurrence of oldText to newText. Include sufficient context for a unique match. Pass the revision token from read_project_file unchanged (or expectedHash). Preferred for partial edits; unrelated content is preserved.',
-  run_project_process: 'Run an executable with argument strings and optional UTF-8 stdin, without shell parsing. Prefer node with args:["-"] and stdin for scripts rather than shell-escaped source. Same filesystem/network policy and approvals as run_project_command.',
-  run_project_command: 'Run a command with recorded output/exit status. Restricted modes use native Windows isolation and real approvals. Request extra readPaths/writePaths or network only when required; these are requests, never automatic grants. Full access Main uses the current OS user rights.',
+  run_project_process: 'Run an executable with argument strings and optional UTF-8 stdin, without shell parsing. Prefer node with args:["-"] and stdin for scripts rather than shell-escaped source. Set purpose:test for test suites or custom smoke tests. Existing runtimes can run tests; explicit EXE launches and installations require approval. Same filesystem/network policy as run_project_command.',
+  run_project_command: 'Run a command with recorded output/exit status. Set purpose:test when running a test suite or smoke test. Ordinary workspace commands run automatically under isolation; EXE launches, software installation and network execution require approval in every mode. If isolation is unavailable, Main can request one-time approval to run with user permissions. Request extra readPaths/writePaths or network only when required; these are requests, never automatic grants. Full access Main uses the current OS user rights.',
   review_project_changes: 'Deprecated: project edits are made directly and automatically saved to Git after a successful response.',
   integrate_project_changes: 'Deprecated: project edits are already in the project checkout and are automatically saved to Git after a successful response.',
   read_project_notes: 'Read shared durable project notes with their revision and provenance. Other chat transcripts are private to their chats.',
@@ -240,7 +241,7 @@ export class ProjectTools {
     if (decision.status === 'deny') throw new Error(decision.reason);
     if (decision.status === 'approval') {
       await this.approvals.request(context.chatId, `Project ${action.kind}: ${this.store.project(chat.projectId!).name}`, details ?? JSON.stringify({ reason: decision.reason, ...action }, null, 2), signal,
-        { projectId: context.projectId, policyRevision: context.revision, kind: action.kind, paths: action.paths, agentId: action.agentId ?? 'main' });
+        { projectId: context.projectId, policyRevision: context.revision, kind: action.kind, paths: action.paths, agentId: action.agentId ?? 'main', mandatoryUserApproval: Boolean(action.approvalReason || options.reviewedNativeAvailable) });
       const current = this.context(chat);
       if (context.revision !== current.revision || context.mode !== current.mode) throw new Error('Project permissions changed; this approval is no longer valid.');
       const grant = this.grants.issue(context, action);
@@ -370,11 +371,14 @@ export class ProjectTools {
       if (name === 'run_project_process') Object.assign(request, { executable: args.executable, args: args.args, stdin: args.stdin });
       const support = this.options.execution ? await this.options.execution.probe(request, signal) : { available: false };
       if ('version' in support) chat.executionSupport = support;
-      const commandState = () => commandSnapshot(workspace.root);
+      const commandState = () => commandSnapshot(workspace.root, undefined, undefined, signal);
       const before = await commandState();
-      const commandAction: ProjectAction = { kind: 'command', command: args.command, cwd: target, paths: policy.mode === 1 ? [...read, ...write] : write, contentHash: hash(JSON.stringify([before.digest, request]))! };
-      await this.authorize(chat, commandAction, signal, JSON.stringify({ ...request, scriptState: before, reason: 'Review command effects and requested filesystem/network scope.' }, null, 2), { isolationAvailable: support.available });
-      if ((policy.mode !== 3 || worker) && !support.available) throw new Error('Native confinement is unavailable for this command.');
+      const nativeFallback = !support.available && !worker && Boolean(this.options.execution);
+      const approvalReason = await projectCommandApprovalReason(workspace.root, target, request);
+      const commandAction: ProjectAction = { kind: 'command', command: args.command, cwd: target, paths: policy.mode === 1 ? [...read, ...write] : write, approvalReason, contentHash: hash(JSON.stringify([before.digest, request]))! };
+      await this.authorize(chat, commandAction, signal, JSON.stringify({ ...request, sourceDigest: before.digest, effectivePermissions: nativeFallback ? 'Your user account filesystem and network access. Requested path and network limits cannot be enforced for this one-time command.' : 'Verified isolation with the requested scope.', reason: approvalReason ?? (nativeFallback ? 'Isolation is unavailable. This command will run once with your user permissions.' : 'Review command effects and requested filesystem/network scope.') }, null, 2), { isolationAvailable: support.available, reviewedNativeAvailable: nativeFallback });
+      if ((policy.mode !== 3 || worker) && !support.available && !nativeFallback) throw new Error('Native confinement is unavailable for this command.');
+      if (nativeFallback) request.approvedNative = true;
       return this.withWorkspaceWrite(chat, async () => {
         const current = this.context(chat);
         if (current.mode !== policy.mode || current.revision !== policy.revision) throw new ToolFailure('PERMISSION_CHANGED', 'Project permissions changed after review.');
@@ -391,7 +395,9 @@ export class ProjectTools {
         try { result = this.options.execution ? await this.options.execution.execute(request, signal) : await runCommand(args.command, target, signal, workspace.root); }
         catch (error) { this.mutated(chat); throw error; } // Interrupted commands can leave partial writes.
         signal.throwIfAborted(); this.commandResults.get(chat.id)?.push({ command: args.command, ...result });
-        const after = await commandState();
+        let after;
+        try { after = await commandState(); }
+        catch (error) { this.mutated(chat); throw error; }
         const comparison = compareCommandSnapshots(before, after);
         const projectChanged = comparison.state === 'changed';
         if (comparison.state !== 'unchanged') this.mutated(chat);

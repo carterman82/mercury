@@ -1,0 +1,171 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`preserves the public task schemas, descriptions and instructions 1`] = `
+{
+  "instructions": "
+PROJECT DELIVERY CONTRACT
+Before edits, commands or implementation assignments, call update_project_task to record concrete acceptance criteria for implementation requests. Preserve explicit user requirements across follow-ups; a resume message does not replace them. For browser model work include compatibility:{runtime,version,modelFormat,modelId,maxBytes,evidenceIds} from inspected runtime sources/docs, plus three browser criteria stage:page, stage:model with selector/expectedText for the ready indicator, and stage:inference. Transformers.js expects modelFormat:onnx; WebLLM expects modelFormat:mlc (JSON manifests, binary weight shards and WASM runtime). GGUF needs a verified GGUF-capable browser runtime. Use exact evidenceId values from successful tool results, never invented IDs. Unverified requirements use status:not_run and evidenceIds:[]. A fallback/demo/canned reply does not satisfy requested real model inference. Prefer incremental patches to large rewrites. Record requirements as passed only with current successful evidence. For website functional checks: reload after edits, inspect script errors, mark the model-ready criterion passed, submit a question with browser_fill responseSelector, then browser_read with that response selector to observe a NEW reply/result. Opening a page alone is not testing it. If blocked, state changed versus unverified behavior. Do not announce completion while requirements remain blocked, failed or not run.
+",
+  "read": {
+    "function": {
+      "description": "Read this chat's saved objective, exact acceptance criteria/IDs, compatibility, verification and current blocker. Task state is separate from shared project notes. Use before updating criteria; do not reread source files to recover task state.",
+      "name": "read_project_task",
+      "parameters": {
+        "additionalProperties": false,
+        "properties": {},
+        "type": "object",
+      },
+    },
+    "type": "function",
+  },
+  "update": {
+    "function": {
+      "description": "Persist concrete acceptance requirements and actual verification status. Send only NEW criteria or status updates; omitted original criteria are retained automatically. Do not repeat or reword the whole saved handoff. requirements must be a JSON array, remaining a separate string field. Preserve original requirements; placeholders cannot satisfy real behavior. Evidence IDs come from saved tool observations/recall_context. Browser verification requires fresh open, interaction and observation after edits; command checks need successful exit. Set blocked/failed/not_run honestly.",
+      "name": "update_project_task",
+      "parameters": {
+        "additionalProperties": false,
+        "properties": {
+          "compatibility": {
+            "additionalProperties": false,
+            "properties": {
+              "evidenceIds": {
+                "items": {
+                  "maxLength": 200,
+                  "type": "string",
+                },
+                "maxItems": 10,
+                "minItems": 1,
+                "type": "array",
+              },
+              "maxBytes": {
+                "maximum": 1073741824,
+                "minimum": 1,
+                "type": "integer",
+              },
+              "modelFormat": {
+                "enum": [
+                  "gguf",
+                  "onnx",
+                  "mlc",
+                ],
+                "type": "string",
+              },
+              "modelId": {
+                "maxLength": 300,
+                "minLength": 1,
+                "type": "string",
+              },
+              "runtime": {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string",
+              },
+              "version": {
+                "maxLength": 100,
+                "minLength": 1,
+                "type": "string",
+              },
+            },
+            "required": [
+              "runtime",
+              "version",
+              "modelFormat",
+              "modelId",
+              "maxBytes",
+              "evidenceIds",
+            ],
+            "type": "object",
+          },
+          "compatibilityCorrection": {
+            "description": "Reason for a documented runtime version correction. Requires a new successful source observation; runtime, model, layout and byte limit stay fixed. Invalidates prior verification.",
+            "maxLength": 1000,
+            "minLength": 1,
+            "type": "string",
+          },
+          "remaining": {
+            "maxLength": 4000,
+            "type": "string",
+          },
+          "requirements": {
+            "description": "Only new criteria or status updates. Use [] for a compatibility-only or remaining-work update; all existing criteria are retained.",
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "evidenceIds": {
+                  "description": "Use [] for not_run criteria. Passed criteria need exact evidenceId values from successful tool results; never invent IDs.",
+                  "items": {
+                    "maxLength": 200,
+                    "type": "string",
+                  },
+                  "maxItems": 20,
+                  "type": "array",
+                },
+                "expectedText": {
+                  "maxLength": 1000,
+                  "minLength": 1,
+                  "type": "string",
+                },
+                "id": {
+                  "maxLength": 100,
+                  "type": "string",
+                },
+                "selector": {
+                  "maxLength": 500,
+                  "minLength": 1,
+                  "type": "string",
+                },
+                "stage": {
+                  "description": "For browser model work, supply three separate browser criteria with stage page, model, and inference. IDs and text do not replace this field.",
+                  "enum": [
+                    "page",
+                    "model",
+                    "inference",
+                  ],
+                  "type": "string",
+                },
+                "status": {
+                  "enum": [
+                    "passed",
+                    "failed",
+                    "blocked",
+                    "not_run",
+                  ],
+                  "type": "string",
+                },
+                "text": {
+                  "maxLength": 4000,
+                  "minLength": 1,
+                  "type": "string",
+                },
+                "verification": {
+                  "enum": [
+                    "inspection",
+                    "command",
+                    "browser",
+                  ],
+                  "type": "string",
+                },
+              },
+              "required": [
+                "text",
+                "status",
+                "verification",
+                "evidenceIds",
+              ],
+              "type": "object",
+            },
+            "maxItems": 20,
+            "type": "array",
+          },
+        },
+        "required": [
+          "requirements",
+          "remaining",
+        ],
+        "type": "object",
+      },
+    },
+    "type": "function",
+  },
+}
+`;

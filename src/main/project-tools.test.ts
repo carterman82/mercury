@@ -48,7 +48,9 @@ async function fixture(mode: 1 | 2 | 3 = 2, repository = false) {
   store.saveSettings({ connections: [{ id: 'fixture', provider: 'ollama', label: 'Fixture', url: 'http://127.0.0.1:11434' }], mainModel: profile, plannerModel: null, subagentModel: null });
   const chat: ChatThread = { id: randomUUID(), projectId: project.id, title: 'Project', profile, messages: [], status: 'idle', updatedAt: Date.now() };
   store.saveChat(chat);
-  const approvals = new ChatApprovals(() => {});
+  const approvals = new ChatApprovals(() => {
+    if (mode === 3) for (const request of approvals.snapshot()) if (request.kind === 'command') approvals.answer(request.id, true);
+  });
   const projects = new ProjectTools(store, approvals, new ProjectWorktreeService(path.join(directory, 'workspaces')));
   const controller = new AbortController();
   await projects.prepare(chat, controller.signal);
@@ -299,16 +301,39 @@ it('accepts a known revision in the legacy hash field without accepting arbitrar
 
 it('runs confined level 2 build and file commands without requesting approval', async () => {
   const { root, directory, store, chat, approvals, controller } = await fixture(2);
+  await fs.writeFile(path.join(root, 'package.json'), JSON.stringify({ scripts: { build: 'node -v' } }));
   const execute = vi.fn(async () => ({ exitCode: 0, output: 'created', timedOut: false, confined: true }));
   const execution = { probe: async () => ({ available: true, version: '1.0.1' }), execute } as unknown as ProjectExecutionAdapter;
   const projects = new ProjectTools(store, approvals, new ProjectWorktreeService(path.join(directory, 'command-workspaces')), undefined, { execution });
   await projects.prepare(chat, controller.signal);
   await projects.execute(chat, 'run_project_command', { command: 'mkdir src && echo hello>src/new.txt' }, controller.signal);
-  await projects.execute(chat, 'run_project_command', { command: 'npm run build', network: 'allow' }, controller.signal);
+  await projects.execute(chat, 'run_project_command', { command: 'npm run build' }, controller.signal);
   await projects.execute(chat, 'edit_project_file', { path: 'nested/new.txt', expectedHash: null, content: 'created' }, controller.signal);
   expect(await fs.readFile(path.join(root, 'nested/new.txt'), 'utf8')).toBe('created');
   expect(execute).toHaveBeenCalledTimes(2);
   expect(approvals.snapshot()).toEqual([]);
+});
+
+it.each([true, false])('requires a one-shot decision before Main uses native execution when isolation is unavailable (allow=%s)', async allow => {
+  const { directory, store, chat, approvals, controller } = await fixture(2);
+  const execute = vi.fn(async () => ({ exitCode: 0, output: 'smoke passed', confined: false }));
+  const execution = { probe: async () => ({ available: false }), execute } as unknown as ProjectExecutionAdapter;
+  const projects = new ProjectTools(store, approvals, new ProjectWorktreeService(path.join(directory, 'fallback-workspaces')), undefined, { execution });
+  await projects.prepare(chat, controller.signal);
+  const pending = projects.execute(chat, 'run_project_command', { command: 'node --test', purpose: 'test' }, controller.signal);
+  const outcome = pending.then(value => ({ value, error: undefined }), error => ({ value: undefined, error }));
+  await expect.poll(() => approvals.snapshot().length).toBe(1);
+  expect(execute).not.toHaveBeenCalled();
+  expect(approvals.snapshot()[0].details).toContain('user permissions');
+  approvals.answer(approvals.snapshot()[0].id, allow);
+  const result = await outcome;
+  if (allow) {
+    expect(result.error).toBeUndefined();
+    expect(execute).toHaveBeenCalledWith(expect.objectContaining({ mode: 2, approvedNative: true }), controller.signal);
+  } else {
+    expect(result.error.message).toContain('denied');
+    expect(execute).not.toHaveBeenCalled();
+  }
 });
 
 it('runs structured scripts through the real project tool interface', async () => {
@@ -332,9 +357,9 @@ it('detects command mutations in long single-line source without relying on pagi
 });
 
 it('records fresh failure evidence for repeated commands and blocks unverified completion', async () => {
-  const { directory, store, projects, project } = await fixture(3);
+  const { directory, store, projects, project, approvals } = await fixture(3);
   const execution = new ProjectExecutionAdapter(path.join(directory, 'unused'), path.join(directory, 'scratch'));
-  const tools = new ProjectTools(store, new ChatApprovals(() => {}), new ProjectWorktreeService(path.join(directory, 'evidence-workspaces')), undefined, { execution });
+  const tools = new ProjectTools(store, approvals, new ProjectWorktreeService(path.join(directory, 'evidence-workspaces')), undefined, { execution });
   let calls = 0; const command = `"${process.execPath}" -e "process.exit(1)"`;
   const provider = { chat: async () => {
     calls++;
@@ -414,7 +439,7 @@ it('delivers a disposable project through the real SDK, process and browser, the
     if (step === 1) return tool('update_project_task', { requirements: [{ ...criterion, status: 'not_run' },{...interaction,status:'not_run'}], remaining: 'Patch and check' });
     if (step === 2) return tool('read_project_file', { path: 'note.txt' });
     if (step === 3) return tool('patch_project_file', { path: 'note.txt', revision: result.revision, oldText: 'old', newText: 'updated' });
-    if (step === 4) return tool('run_project_process', { executable: process.execPath, args: ['-'], stdin: 'if(require("fs").readFileSync("note.txt","utf8")!=="updated")process.exit(1);console.log("verified updated source")' });
+    if (step === 4) return tool('run_project_process', { purpose: 'test', executable: process.execPath, args: ['-'], stdin: 'if(require("fs").readFileSync("note.txt","utf8")!=="updated")process.exit(1);console.log("verified updated source")' });
     if (step === 5) { expect(result.exitCode).toBe(0);commandEvidence=result.evidenceId;return tool('browser_open',{url}); }
     if (step === 6) return tool('browser_fill',{selector:'#question',text:'Test question',submit:true,responseSelector:'#reply'});
     if (step === 7) return tool('browser_read',{selector:'#reply'});
@@ -553,7 +578,7 @@ it('creates a Git safety commit after a successful project response', async () =
   const provider = { chat: async (input: ChatInput) => {
     if (++calls === 1) return {text:'',tools:[{id:'contract',name:'update_project_task',arguments:{requirements:[{text:'The note contains the saved response',status:'not_run',verification:'inspection',evidenceIds:[]}],remaining:'Edit and inspect'}}]};
     if (calls === 2) return { text: '', tools: [{ id: 'edit', name: 'edit_project_file', arguments: { path: 'note.txt', expectedHash: hash('old'), content: 'saved by response' } }] };
-    if (calls === 3) return { text: '', tools: [{ id: 'read', name: 'read_project_file', arguments: { path: 'note.txt' } }] };
+    if (calls === 3) return { text: '', tools: [{ id: 'test', name: 'run_project_command', arguments: { purpose: 'test', command: `node -e "require('node:assert').strictEqual(require('node:fs').readFileSync('note.txt','utf8'),'saved by response')"` } }] };
     if (calls === 4) {
       const result = JSON.parse((input.messages.at(-1) as { content: string }).content);
       return { text: '', tools: [{ id: 'verify', name: 'update_project_task', arguments: { requirements: [{ text: 'The note contains the saved response', status: 'passed', verification: 'inspection', evidenceIds: [result.evidenceId] }], remaining: '' } }] };

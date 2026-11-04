@@ -20,8 +20,12 @@ import { subagentIdentity } from '../shared/subagent-identity';
 import { ProjectTools, projectTools, projectReadTools } from './project-tools';
 import { PROJECT_RUNTIME_BUILD, PROJECT_RECOVERY_POLICY, type ProjectAgentRuntime, type ProjectToolAttempt } from './project-agent-runtime';
 import { ProjectWorkers, projectWorkerTools } from './project-workers';
-import { toolFailed, toolFailureCode, failedToolResult, ToolFailure } from './tool-outcome';
-import { ProjectProgress, ProjectStalledError, newHandoff, recordProjectAction, projectTaskTool, projectTaskReadTool, readProjectTask, projectTaskInstructions, updateProjectTask, requireProjectContract, projectActionIdentity, verifiedPreviewRecovery } from './project-progress';
+import { toolFailed, failedToolResult, ToolFailure } from './tool-outcome';
+import { ProjectProgress } from './project-recovery';
+import { newHandoff, recordProjectAction } from './project-handoff';
+import { hasCurrentProjectTest, projectDeliveryFeedback } from './project-delivery';
+import { projectTaskTool, projectTaskReadTool, readProjectTask, projectTaskInstructions, updateProjectTask, requireProjectContract } from './project-task-state';
+import { observeProjectTool } from './project-tool-observation';
 
 const tool = (name: string, description: string, properties: object, required: string[]) => ({ type: 'function', function: { name, description, parameters: { type: 'object', properties, required, additionalProperties: false } } });
 const schemaTool = (name: string, description: string, schema: z.ZodType) => {
@@ -337,48 +341,12 @@ export class ChatService {
         activity.completedAt = Date.now(); activity.durationMs = activity.completedAt - activity.at;
         if (response.metrics) response.metrics.toolMs += activity.durationMs;
         if (chat.projectId) {
-          const args = (call.arguments ?? {}) as any;
-          const validationFailure = Boolean(attempt?.validationError);
-          const knownRead = [...(chat.projectHandoff!.snapshots ?? []), ...chat.projectHandoff!.reads].find(item => item.path === (args.path ?? args.destination));
-          // The SDK has already returned malformed arguments to the model as a
-          // tool error.  Do not turn that zero-effect validation failure into a
-          // persistent project blocker: the model may correct it, and a
-          // read-only answer can still be complete without the bad call.
-          if (toolFailed(output) && !validationFailure) {
-            output = { ...(output as object), code: toolFailureCode(output), sourceRevision: (output as any)?.sourceRevision ?? knownRead?.hash ?? 'unknown' };
-            activity.result=JSON.stringify(output).slice(0,16000);
-            chat.projectHandoff!.blocker = { tool: call.name, target: String(args.path ?? args.destination ?? args.cwd ?? '.'), code: String((output as any).code ?? 'COMMAND_FAILED'), sourceRevision: (output as any)?.sourceRevision, message: String((output as any).error ?? (output as any).output ?? 'Failed action').slice(0, 1200), nextAction: 'Resolve this blocker with a different approach; do not repeat the failed attempt.', at: Date.now() };
-            const blocker=chat.projectHandoff!.blocker;
-            blocker.action=projectActionIdentity(call.name,args,blocker.code);
-            chat.projectHandoff!.failedApproaches=[...(chat.projectHandoff!.failedApproaches??[]),{tool:blocker.tool,target:blocker.target,code:blocker.code,input:JSON.stringify(call.arguments).slice(0,1600),sourceRevision:blocker.sourceRevision,message:blocker.message,at:blocker.at}].slice(-30);
-          } else if (chat.projectHandoff!.blocker) {
-            const blocker=chat.projectHandoff!.blocker,target=String(args.path ?? args.destination ?? args.cwd ?? '.');
-            if(verifiedPreviewRecovery(blocker,call.name,target,output)||(blocker.target===target&&((blocker.action?blocker.action===projectActionIdentity(call.name,args,blocker.code):blocker.tool===call.name)||((output as any)?.hash&&(output as any).hash!==blocker.sourceRevision))))chat.projectHandoff!.blocker=undefined;
-          }
-          // All verification evidence, including commands, gets a stable reference.
-          const evidence = sourceEvidence(call.name, call.arguments, output);
-          (response.sourceEvidence ??= []).push(evidence);
-          const generation = this.projects!.generation(chat);
-          if (generation !== observedGeneration) performedMutation = true;
-          if (generation !== observedGeneration && toolFailed(output)) output = { ...(output as object), verificationUnknown: true };
-          if (generation !== observedGeneration && (output as any)?.projectChange !== 'unknown' && ['run_project_command', 'run_project_process'].includes(call.name)) output = { ...(output as object), projectChanged: true };
-          if (generation !== observedGeneration && !['edit_project_file', 'patch_project_file', 'run_project_command', 'run_project_process', 'download_project_asset'].includes(call.name))
-            recordProjectAction(chat.projectHandoff!, 'run_project_command', { command: 'Shared project changes (worker or another chat)' }, { projectChanged: true }, undefined, evidence.at);
-          observedGeneration = generation;
-          recordProjectAction(chat.projectHandoff!, call.name, call.arguments, output, evidence.id, evidence.at);
-          evidence.projectRevision = chat.projectHandoff!.generation ?? 0;
-          try {
-            const recovery = progress.observe(call.name, call.arguments, output);
-            if (recovery) {
-              addNotice('Repeated work detected. Trying one different approach.');
-              output = { ...(output as object), recovery, handoff: chat.projectHandoff };
-              response.metrics!.recoveries = progress.recoveries;
-            }
-          } catch (error) {
-            if (error instanceof ProjectStalledError) { this.save(chat); controller.abort(error); }
-            throw error;
-          }
-          output = { ...(output as object), evidenceId: evidence.id };
+          ({ output, observedGeneration, performedMutation } = observeProjectTool({
+            chat, response, call, attempt, output, activity, progress, observedGeneration, performedMutation,
+            getGeneration: () => this.projects!.generation(chat),
+            notice: addNotice,
+            onStall: error => { this.save(chat); controller.abort(error); },
+          }));
         }
         this.save(chat);
         controller.signal.throwIfAborted();
@@ -436,6 +404,25 @@ export class ChatService {
           addNotice('The model stopped before answering. Continuing the request.');
           if (response.content.endsWith(terminal.text)) response.content = response.content.slice(0, -terminal.text.length);
           terminal = await runProject([...messages, recoveryMessages.at(-1)!]);
+        }
+        // A substantial answer can still precede unfinished verification. Return
+        // actionable task state to Main before the final, authoritative gate.
+        for (let repair = 0; repair < 2; repair++) {
+          if (this.projects!.generation(chat) !== observedGeneration) {
+            recordProjectAction(chat.projectHandoff!, 'run_project_command', { command: 'Shared project changed after verification' }, { projectChanged: true });
+            observedGeneration = this.projects!.generation(chat);
+            performedMutation = true;
+          }
+          const feedback = projectDeliveryFeedback(chat.projectHandoff!, chatEvidence(chat), performedMutation);
+          if (!feedback) break;
+          addNotice('Finishing the remaining acceptance checks and tests.');
+          if (terminal.text && response.content.endsWith(terminal.text)) response.content = response.content.slice(0, -terminal.text.length);
+          terminal = await runProject([...messages, { role: 'user', content: feedback }]);
+          if (this.workers?.hasPending(chat)) await this.workers.wait(chat, undefined, controller.signal);
+        }
+        if (projectDeliveryFeedback(chat.projectHandoff!, chatEvidence(chat), performedMutation)) {
+          if (terminal.text && response.content.endsWith(terminal.text)) response.content = response.content.slice(0, -terminal.text.length);
+          response.content += '\n\nWork saved; not complete. Required acceptance checks or tests are still missing or blocked.';
         }
         complete = true;
       }
@@ -510,6 +497,27 @@ export class ChatService {
         if (performedMutation && !chat.projectHandoff?.requirements.length)
           throw new Error('Changes are preserved, but no acceptance criteria or verification were recorded. Use update_project_task and verify the result before declaring completion.');
         if (performedMutation) requireProjectContract(chat.projectHandoff, true);
+        if ((performedMutation || chat.projectHandoff!.changedPaths.length > 0) && !hasCurrentProjectTest(chat.projectHandoff!, chatEvidence(chat)))
+          throw new ToolFailure('TESTS_REQUIRED', 'Work saved; not complete. Run a relevant test suite or functional smoke test after the latest changes before declaring completion.');
+        const handoff = chat.projectHandoff;
+        if (handoff?.blocker && handoff.requirements.length && handoff.requirements.every(item => item.status === 'passed')) {
+          const blockerAt = handoff.blocker.at;
+          const evidence = chatEvidence(chat);
+          // Existing status updates already validated each verification kind and
+          // browser stage. At delivery, complete fresh verification can supersede
+          // an earlier failed approach without replaying model-ready observations
+          // against the later inference state or discarding failed tool history.
+          const verifiedAfterBlocker = handoff.requirements.every(requirement => requirement.evidenceIds.length > 0 && requirement.evidenceIds.every(id => {
+            const observation = evidence.find(item => item.id === id);
+            if (!observation || observation.at <= blockerAt || observation.at < (handoff.lastMutationAt ?? 0) ||
+              (observation.projectRevision ?? 0) !== (handoff.generation ?? 0)) return false;
+            try {
+              const result: unknown = JSON.parse(observation.result);
+              return Boolean(result && typeof result === 'object' && !toolFailed(result));
+            } catch { return false; }
+          }));
+          if (verifiedAfterBlocker) handoff.blocker = undefined;
+        }
         if(chat.projectHandoff?.blocker)throw new ToolFailure('TASK_BLOCKED',`Work saved; unresolved blocker: ${chat.projectHandoff.blocker.message}`);
         if (chat.projectHandoff?.requirements.some(item => item.status !== 'passed'))
           throw new Error('Work preserved, but acceptance requirements remain failed, blocked or not run. Review the recorded requirements before declaring completion.');

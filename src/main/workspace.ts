@@ -4,6 +4,7 @@ import path from 'node:path';
 import type { ChangeRecord } from '../shared/types';
 import { extractPdfText, makePdf } from './pdf';
 import { ToolFailure } from './tool-outcome';
+import { diagnosePatchMismatch } from './workspace-patch-diagnostics';
 
 const excluded = new Set(['.git', '.mercury', 'node_modules', 'dist', 'build', 'out', '.vite', '.next', 'coverage']);
 const MAX_FILE = 512_000;
@@ -142,33 +143,7 @@ export class Workspace {
     const logical = before.replaceAll('\r\n', '\n'), search = oldText.replaceAll('\r\n', '\n');
     const first = logical.indexOf(search);
     if (!search || first < 0 || logical.indexOf(search, first + 1) >= 0) {
-      let diagnostic: Record<string, unknown> = {};
-      if (search && first < 0) {
-        const typography = (value: string) => value.replace(/[‘’]/g, "'").replace(/[“”]/g, '"');
-        for (const [reason, source, candidate] of [
-          ['TYPOGRAPHIC_QUOTES', typography(logical), typography(search)],
-          ['OVER_ESCAPED_BACKSLASHES', logical, search.replaceAll('\\\\', '\\')],
-        ]) {
-          const equivalent = source.indexOf(candidate);
-          if (candidate && equivalent >= 0 && source.indexOf(candidate, equivalent + 1) < 0) {
-            diagnostic = { reason, sourceLine: logical.slice(0, equivalent).split('\n').length, sourceExcerpt: logical.slice(equivalent, equivalent + Math.min(search.length, 2000)) };
-            break;
-          }
-        }
-        if (!Object.keys(diagnostic).length) {
-          const normalizeIndent = (value: string) => value.replace(/^[ \t]+/gm, '');
-          const source = normalizeIndent(logical), candidate = normalizeIndent(search);
-          const equivalent = source.indexOf(candidate);
-          if (candidate && equivalent >= 0 && source.indexOf(candidate, equivalent + 1) < 0) {
-            const sourceLine = source.slice(0, equivalent).split('\n').length;
-            const lines = logical.split('\n');
-            diagnostic = { reason: 'LINE_INDENTATION', sourceLine,
-              sourceExcerpt: lines.slice(sourceLine - 1, sourceLine - 1 + search.split('\n').length).join('\n').slice(0, 2000),
-              sourceLeadingWhitespace: lines[sourceLine - 1].match(/^[ \t]*/)?.[0].length,
-              searchLeadingWhitespace: search.match(/^[ \t]*/)?.[0].length };
-          }
-        }
-      }
+      const diagnostic = search && first < 0 ? diagnosePatchMismatch(logical, search) : {};
       throw new ToolFailure('PATCH_NO_MATCH', first < 0
         ? 'Patch text matched no source region; the file still matches your read hash. No change was made. Copy exact source characters without changing quotes or doubling backslashes; prefer a small unique anchor.'
         : 'Patch text matched multiple source regions; it must match exactly one. Include enough unchanged surrounding text for one unique match.',

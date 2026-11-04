@@ -25,6 +25,8 @@ export interface ProjectExecutionRequest {
   win32k?: boolean;
   /** Worker execution remains confined even when Main has full access. */
   confined?: boolean;
+  /** Host-only: set after a one-shot approval; never exposed in model schemas. */
+  approvedNative?: boolean;
   timeoutMs?: number;
   /** Trusted host runtime settings; the model command schema does not expose environment overrides. */
   environment?: Record<string, string>;
@@ -485,7 +487,7 @@ export class ProjectExecutionAdapter {
     validateProcess(request);
     const controller = new AbortController();
     const combined = AbortSignal.any([signal, controller.signal]);
-    const native = request.mode === 3 && !request.confined;
+    const native = (request.mode === 3 || request.approvedNative === true) && !request.confined;
     if (!native && (this.options.platform ?? process.platform) !== 'win32')
       throw new Error('Restricted execution requires supported native Windows 11 containment.');
     const operation = native

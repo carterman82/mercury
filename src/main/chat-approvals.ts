@@ -18,7 +18,7 @@ export class ChatApprovals {
   }
   request(chatId: string, title: string, details: string, signal: AbortSignal, metadata: ProjectApprovalMetadata = {}): Promise<void> {
     signal.throwIfAborted();
-    if (this.unrestrictedChat(chatId)) return Promise.resolve();
+    if (this.unrestrictedChat(chatId) && !metadata.mandatoryUserApproval) return Promise.resolve();
     if (details.length > 12000) return Promise.reject(new Error('Approval details exceed the review limit. Reduce the arguments; no permission was granted and nothing was executed.'));
     if (this.denied.has(chatId)) return Promise.reject(new Error('The user already denied an action in this turn. Wait for a new user message; do not ask again.'));
     return new Promise((resolve, reject) => {
@@ -38,6 +38,7 @@ export class ChatApprovals {
 }
 
 export interface ProjectApprovalMetadata {
+  mandatoryUserApproval?: boolean;
   projectId?: string;
   policyRevision?: number;
   kind?: 'read' | 'write' | 'command' | 'plugin' | 'integrate';

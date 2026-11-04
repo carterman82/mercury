@@ -1,5 +1,30 @@
 import { expect, it } from 'vitest';
 import { commandSnapshot, compareCommandSnapshots } from './project-command-state';
+import { promises as fs } from 'node:fs';
+import path from 'node:path';
+import os from 'node:os';
+
+it('stops an in-progress snapshot instead of converting cancellation into uncertain evidence', async () => {
+  const controller = new AbortController();
+  await expect(commandSnapshot('unused', {
+    list: async () => ['source.ts'], stat: async () => ({ size: 1, mtimeMs: 1 }),
+    read: async () => { controller.abort(new Error('Stopped snapshot')); return Buffer.from('x'); },
+  }, undefined, controller.signal)).rejects.toThrow('Stopped snapshot');
+});
+
+it('stream-hashes large project assets and detects same-size changes without permanently unknown verification', async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'mercury-large-snapshot-'));
+  try {
+    const file = path.join(root, 'weights.bin');
+    await fs.writeFile(file, Buffer.alloc(17_000_000, 1));
+    const before = await commandSnapshot(root);
+    expect(before.complete).toBe(true);
+    expect(compareCommandSnapshots(before, await commandSnapshot(root)).state).toBe('unchanged');
+    const handle = await fs.open(file, 'r+');
+    try { await handle.write(Buffer.from([2]), 0, 1, 16_999_999); } finally { await handle.close(); }
+    expect(compareCommandSnapshots(before, await commandSnapshot(root))).toEqual({ state: 'changed', changedPaths: ['weights.bin'] });
+  } finally { await fs.rm(root, { recursive: true, force: true }); }
+});
 
 it('selects the same files across reversed asynchronous metadata completion above 64 MB', async () => {
   const paths=Array.from({length:10},(_,i)=>`file-${i}`);

@@ -35,6 +35,51 @@ const events = (text: string): any[] =>
     .filter((line) => line.startsWith('data: '))
     .map((line) => JSON.parse(line.slice(6)));
 
+it.each([true, false])('places SDK environment system turns before conversation on native=%s routes', async native => {
+  const system = [{ type: 'text', text: 'Host policy', cache_control: { type: 'ephemeral' } }];
+  const conversation = [
+    { role: 'user', content: 'A user string mentioning system is still user content.' },
+    { role: 'assistant', content: [{ type: 'tool_use', id: 'read-1', name: 'read_fixture', input: {} }] },
+    { role: 'user', content: [{ type: 'tool_result', tool_use_id: 'read-1', content: 'File content' }] },
+  ];
+  const chat = vi.fn(async (input: ChatInput) => {
+    expect(input.messages).toEqual([
+      { role: 'system', content: 'Host policy\nEnvironment\nAdditional environment' },
+      conversation[0],
+      { role: 'assistant', content: '', tool_calls: [{ id: 'read-1', type: 'function', function: { name: 'read_fixture', arguments: '{}' } }] },
+      { role: 'tool', tool_call_id: 'read-1', content: 'File content' },
+    ]);
+    return { text: 'READY', tools: [] };
+  });
+  const nativeMessages = vi.fn(async (body: Record<string, any>) => {
+    expect(body.system).toEqual([...system, { type: 'text', text: 'Environment' }, { type: 'text', text: 'Additional environment' }]);
+    expect(body.messages).toEqual(conversation);
+    expect(body.metadata).toEqual({ user_id: 'fixture' });
+    return native ? Response.json({ type: 'message', content: [{ type: 'text', text: 'READY' }] }) : null;
+  });
+  const session = await open(chat, { nativeMessages });
+  const response = await post(session, { system, metadata: { user_id: 'fixture' }, messages: [conversation[0], { role: 'system', content: 'Environment' }, ...conversation.slice(1), { role: 'system', content: [{ type: 'text', text: 'Additional environment' }] }] });
+  expect(response.status).toBe(200);
+  expect(nativeMessages).toHaveBeenCalledOnce();
+  expect(chat).toHaveBeenCalledTimes(native ? 0 : 1);
+});
+
+it('rejects unsupported appended system content without dropping it or invoking inference', async () => {
+  const chat = vi.fn(async () => ({ text: 'Unused', tools: [] }));
+  const nativeMessages = vi.fn(async () => Response.json({}));
+  const session = await open(chat, { nativeMessages });
+  for (const messages of [
+    [{ role: 'user', content: 'Hello' }, { role: 'system', content: [{ type: 'image', source: {} }] }],
+    [{ role: 'user', content: 'Hello' }, { role: 'system' }],
+    [{ role: 'system', content: 'No conversation' }],
+  ]) {
+    const response = await post(session, { messages });
+    expect(response.status).toBe(400);
+  }
+  expect(nativeMessages).not.toHaveBeenCalled();
+  expect(chat).not.toHaveBeenCalled();
+});
+
 it('binds credentials and model selection to one session with a scoped catalog', async () => {
   const chat = vi.fn(async () => ({ text: 'Hello', tools: [] }));
   const first = await open(chat),

@@ -59,6 +59,21 @@ it.skipIf(process.env.MERCURY_TASK_LIVE !== '1')('records a real Mercury project
     const callId = randomUUID();
     const metadata = { callId, agent: input.agentId ?? 'main', name, attemptId: attempt?.id };
     log({ type: 'tool-start', ...metadata, args });
+    // Diagnostic-only steering: deliver a human observer's findings before the
+    // next action, explicitly reporting that the requested action did not run.
+    // Archive exact feedback for the prompt/action review; never edit target files.
+    const feedbackPath = path.join(root, 'observer-feedback.txt');
+    const archivedFeedback = path.join(root, `observer-feedback-${callId}.txt`);
+    const feedback = await fs.rename(feedbackPath, archivedFeedback).then(() => fs.readFile(archivedFeedback, 'utf8')).catch((error: NodeJS.ErrnoException) => {
+      if (error.code === 'ENOENT') return undefined;
+      throw error;
+    });
+    if (feedback !== undefined) {
+      const result = { code: 'OBSERVER_STEERING', error: 'The observer supplied updated findings. This requested action was NOT executed. Read the feedback and choose the next action.', observerFeedback: feedback };
+      log({ type: 'observer-feedback', ...metadata, feedback });
+      log({ type: 'tool-end', ...metadata, result });
+      return result;
+    }
     try { const result = await input.execute(name, args, attempt); log({ type: 'tool-end', ...metadata, result }); return result; }
     catch (error) { log({ type: 'tool-error', ...metadata, error: String(error) }); throw error; }
   }, onToolValidationFailure: async (name, args, attempt) => {

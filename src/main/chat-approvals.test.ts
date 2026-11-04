@@ -1,5 +1,12 @@
 import { expect, it, vi } from 'vitest';
 import { ChatApprovals } from './chat-approvals';
+it('requires explicit installation/EXE consent even in a full-access chat', async () => {
+  const approvals = new ChatApprovals(() => {}, () => true);
+  const pending = approvals.request('full', 'Install Python', 'Exact installation command', new AbortController().signal, { mandatoryUserApproval: true });
+  expect(approvals.snapshot()).toHaveLength(1);
+  approvals.answer(approvals.snapshot()[0].id, false);
+  await expect(pending).rejects.toThrow('denied');
+});
 it('requires an exact pending ID, separates chats, and handles allow/deny/Stop exactly once', async () => {
   const approvals = new ChatApprovals(() => {}); const controller = new AbortController();
   const first = approvals.request('one', 'Install?', 'Warning', new AbortController().signal);

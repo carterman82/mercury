@@ -20,6 +20,7 @@ export interface ProjectAction {
   contentHash?: string;
   agentId?: string;
   destructive?: boolean;
+  approvalReason?: string;
 }
 
 export interface ProjectPolicyOptions {
@@ -27,6 +28,8 @@ export interface ProjectPolicyOptions {
   isolationAvailable?: boolean;
   /** Host proof of bounded effects, never a model claim or command-prefix allowlist. */
   boundedLowRisk?: boolean;
+  /** Main may request an explicit one-shot native launch when isolation is unavailable. */
+  reviewedNativeAvailable?: boolean;
 }
 
 export interface ProjectPolicyDecision {
@@ -50,9 +53,12 @@ export function assessProjectAction(context: ProjectPolicyContext, action: Proje
   }
   if ((action.kind === 'read' || action.kind === 'write') && !action.paths?.length) return decision('deny', 'Filesystem actions require explicit paths.');
   if (action.kind === 'command' && (!action.command?.trim() || !action.cwd)) return decision('deny', 'Commands require a command and working directory.');
+  if (action.kind === 'command' && action.approvalReason) return decision('approval', action.approvalReason);
   if (context.mode === 3) return decision('allow', 'Full access is enabled for this project.');
   if (action.kind === 'command' || action.kind === 'plugin') {
-    if (!options.isolationAvailable) return decision('deny', 'Restricted execution is unavailable: no verified filesystem confinement adapter is installed. Approval cannot substitute unrestricted execution.');
+    if (!options.isolationAvailable) return options.reviewedNativeAvailable && action.kind === 'command'
+      ? decision('approval', 'Isolated execution is unavailable. Review this one-time command running with your user permissions.')
+      : decision('deny', 'Restricted execution is unavailable: no verified filesystem confinement adapter is installed.');
     if (action.kind === 'plugin') return decision('approval', 'Review the plugin and its requested capabilities.');
     if (context.mode === 1 || action.destructive || !within(context.workspaceRoot, action.cwd!) || action.paths?.some(target => !within(context.workspaceRoot, target))) return decision('approval', 'This command requires review of its effects and scope.');
     return decision('allow', 'The command is confined to the assigned workspace.');
@@ -68,7 +74,7 @@ function actionFingerprint(context: ProjectPolicyContext, action: ProjectAction)
   return createHash('sha256').update(JSON.stringify([
     context.projectId, context.chatId, context.mode, context.revision, context.workspaceRoot,
     action.kind, action.paths ?? [], action.command ?? null, action.cwd ?? null,
-    action.contentHash ?? null, action.agentId ?? null, action.destructive ?? false,
+    action.contentHash ?? null, action.agentId ?? null, action.destructive ?? false, action.approvalReason ?? null,
   ])).digest('hex');
 }
 

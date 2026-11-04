@@ -110,6 +110,27 @@ function textBlocks(value: unknown): string {
     .join('\n');
 }
 
+/** The SDK may append an environment system turn after user history. Messages
+ * endpoints and local chat templates expect system instructions separately at
+ * the beginning. Preserve system block metadata and conversation/tool order. */
+function orderedSystemInstructions(body: Record<string, unknown>): Record<string, unknown> {
+  if (!Array.isArray(body.messages) || !body.messages.some(message => message?.role === 'system')) return body;
+  const blocks = (value: unknown): Record<string, unknown>[] => {
+    if (value === undefined) return [];
+    textBlocks(value); // Reject unsupported system content rather than losing it.
+    return typeof value === 'string' ? [{ type: 'text', text: value }] : [...value as Record<string, unknown>[]];
+  };
+  const system = blocks(body.system);
+  const messages = body.messages.filter(message => {
+    if (message?.role !== 'system') return true;
+    if (message.content === undefined) throw new ProjectGatewayError(400, 'A system message requires text content.');
+    system.push(...blocks(message.content));
+    return false;
+  });
+  if (!messages.length) throw new ProjectGatewayError(400, 'A conversation requires a user or assistant message.');
+  return { ...body, system, messages };
+}
+
 function media(block: Record<string, any>, target: NormalizedMessage): void {
   const source = block.source;
   if (
@@ -407,7 +428,7 @@ export class ProjectModelGateway {
       });
       return;
     }
-    const raw = await readJson(request, signal);
+    const raw = orderedSystemInstructions(await readJson(request, signal));
     if (!allowedModels.has(String(raw.model)))
       throw new ProjectGatewayError(400, 'This SDK session cannot select another model.');
     signal.throwIfAborted();
