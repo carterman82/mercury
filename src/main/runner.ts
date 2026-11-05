@@ -89,7 +89,10 @@ export class Runner {
     return `Files (first 150):\n${files.join('\n')}\n\n${excerpts.join('\n\n')}`.slice(0, 22_000);
   }
   private async useTool(workspace: Workspace, call: ToolRequest, role: AgentRole, session: Session, signal: AbortSignal, gate: CommandGate): Promise<string> {
-    if (call.name === 'recall_context') return recallContext(projectEvidence(session), call.arguments);
+    if (call.name === 'recall_context') {
+      this.store.indexSourceEvidence('session', session.id, projectEvidence(session));
+      return this.store.recallSourceContext('session', session.id, call.arguments);
+    }
     if (role === 'main' && call.name === 'delegate_task') {
       this.event(session, 'tool', 'Subagent is analyzing the delegated task.', 'subagent');
       const lease = reserveAgent(this.providers, session.subagentCandidates ?? [session.assignments!.subagent], session.assignments!.main);

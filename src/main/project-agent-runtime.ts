@@ -19,7 +19,7 @@ export interface ProjectToolAttempt {
   validationError?: unknown;
 }
 export interface ProjectRuntimeSession {
-  runtime: 'claude-agent-sdk';
+  runtime: 'claude-agent-sdk' | 'codex-app-server';
   version: string;
   identity: string;
   sessionId?: string;

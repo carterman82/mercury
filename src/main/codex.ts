@@ -7,11 +7,12 @@ import type { ModelConnection, ModelInfo } from '../shared/types';
 import type { ChatInput, ChatResult } from './providers';
 import { validContextLimit, withContextLimit } from '../shared/cloud-context';
 
-type Message = { id?: number | string; method?: string; params?: any; result?: any; error?: { message: string } };
+type Message = { id?: number | string; method?: string; params?: any; result?: any; error?: { message: string; code?: number } };
 type Launch = () => Promise<ChildProcessWithoutNullStreams>;
 
 /** Stdio transport owned by Mercury. Never reads credentials from another Codex installation. */
 export class CodexRpc {
+  private serverHandler?: (message: Message) => boolean;
   private sequence = 0;
   private pending = new Map<number, { resolve: (value: any) => void; reject: (error: Error) => void; timer: ReturnType<typeof setTimeout> }>();
   private listeners = new Set<(message: Message) => void>();
@@ -36,7 +37,7 @@ export class CodexRpc {
           }
         } else {
           // Mercury owns tool execution. Codex must never execute tools or approvals itself.
-          if (message.id !== undefined) this.send({ id: message.id, error: { code: -32601, message: 'Mercury executes tools through its own approval workflow.' } } as any);
+          if (message.id !== undefined && !this.serverHandler?.(message)) this.send({ id: message.id, error: { code: -32601, message: 'Mercury executes tools through its own approval workflow.' } } as any);
           for (const listener of this.listeners) listener(message);
         }
       }
@@ -60,6 +61,7 @@ export class CodexRpc {
     });
   }
   subscribe(listener: (message: Message) => void): () => void { this.listeners.add(listener); return () => this.listeners.delete(listener); }
+  handleServerRequests(handler: (message: Message) => boolean): void { this.serverHandler = handler; }
   async initialize(): Promise<void> {
     await this.request('initialize', { clientInfo: { name: 'mercury', title: 'Mercury', version: '0.1.0' }, capabilities: { experimentalApi: true } });
     this.send({ method: 'initialized', params: {} });
@@ -96,6 +98,10 @@ const resultSchema = z.object({ text: z.string().max(200_000), tools: z.array(z.
 const outputSchema = z.toJSONSchema(resultSchema);
 
 export class CodexService {
+  /** Dedicated project client; no subscription credentials leave Mercury's isolated profile. */
+  openProjectClient(signal: AbortSignal): Promise<CodexRpc> { return this.client(signal); }
+  closeProjectClient(rpc: CodexRpc): void { this.release(rpc); }
+  get projectCwd(): string { return path.join(this.home, 'workspace'); }
   private signingIn = false;
   private loginCancelled = false;
   private login?: { rpc: CodexRpc; cancel: () => void };

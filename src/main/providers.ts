@@ -9,6 +9,7 @@ import { connectionGroups } from '../shared/connections';
 import { InactivityWatchdog } from './inactivity';
 import { ThinkingLimitError } from './thinking-guard';
 import { isSubscription, openAIRoutes } from '../shared/openai-routing';
+import { measureModelRequest } from './telemetry';
 
 export interface ChatResult { text: string; reasoning?: string; tools: ToolRequest[]; usage?: { input?: number; output?: number }; }
 export interface ProviderToolChoice { type: 'auto' | 'any' | 'tool' | 'none'; name?: string; disable_parallel_tool_use?: boolean; }
@@ -179,7 +180,14 @@ export class LocalProviders implements ModelProvider {
         for (const model of models) this.modelMetadata.set(JSON.stringify([kind, base, model.id]), { canonical: model.id, vision: model.visionCapable, checkedAt: Date.now() });
         return models;
       }
-      const data = await requestJson(`${base}/api/v1/models`, { signal: controller.signal, headers: this.headers(connection.id, connection.apiToken) });
+      const init = { signal: controller.signal, headers: this.headers(connection.id, connection.apiToken) };
+      let data: any;
+      for (const route of ['/api/v1/models', '/api/v0/models', '/v1/models']) {
+        try { data = await requestJson(`${base}${route}`, init); break; }
+        catch (error) {
+          if (route === '/v1/models' || !(error instanceof ModelHttpError) || ![404, 405, 501].includes(error.status)) throw error;
+        }
+      }
       return (data.models ?? data.data ?? []).filter((model: any) => !model.type || model.type === 'llm').map((model: any) => {
         const id = String(model.key ?? model.id);
         const parallel = model.loaded_instances?.[0]?.config?.parallel;
@@ -187,7 +195,7 @@ export class LocalProviders implements ModelProvider {
         for (const alias of [id, ...(model.loaded_instances ?? []).map((instance: any) => instance.id)]) this.modelMetadata.set(JSON.stringify([kind, base, alias]), info);
         return {
         provider: kind, connectionId: connection.id, connectionLabel: connection.label, id: String(model.key ?? model.id), label: String(model.display_name ?? model.key ?? model.id),
-        available: Boolean(model.loaded_instances?.length ?? model.loaded),
+        available: Boolean(model.loaded_instances?.length ?? model.loaded ?? (model.state === 'loaded')),
         contextLimit: model.max_context_length ?? model.context_length,
         toolCapable: model.capabilities?.trained_for_tool_use,
         ...(typeof info.vision === 'boolean' ? { visionCapable: info.vision } : {}),
@@ -246,6 +254,10 @@ export class LocalProviders implements ModelProvider {
   }
 
   async chat(input: ChatInput): Promise<ChatResult> {
+    return measureModelRequest(input, measured => this.chatRouted(measured));
+  }
+
+  private async chatRouted(input: ChatInput): Promise<ChatResult> {
     const connections = this.settings().connections;
     const routes = openAIRoutes(input.profile, connections, this.cloudModels);
     for (let index = 0; index < routes.length; index++) {
@@ -323,7 +335,11 @@ export class LocalProviders implements ModelProvider {
       if (input.profile.provider === 'claude') headers['x-api-key'] = await this.cloudToken(connection);
       else Object.assign(headers, this.headers(connection.id));
       const response = await fetch(`${base}/v1/messages`, { method: 'POST', headers, body: JSON.stringify({ ...input.body, model: input.profile.model }), signal: requestSignal, redirect: 'error' });
-      if (input.profile.provider !== 'claude' && [404, 405].includes(response.status)) { await response.body?.cancel(); cleanup(); return null; }
+      if (input.profile.provider !== 'claude') {
+        const unsupported = [404, 405, 501].includes(response.status) ||
+          ([400, 422].includes(response.status) && /(?:anthropic|messages (?:api|endpoint)|tool (?:choice|use)|thinking).{0,100}(?:not supported|unsupported|not implemented)/i.test(await response.clone().text()));
+        if (unsupported) { await response.body?.cancel(); cleanup(); return null; }
+      }
       if (!response.body) { cleanup(); return response; }
       reader = response.body.getReader();
       const upstream = reader;

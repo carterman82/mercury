@@ -4,6 +4,7 @@ import { MAX_CHAT_ATTACHMENTS } from '../shared/chat-files';
 
 const call = <T>(name: string, ...args: unknown[]): Promise<T> => ipcRenderer.invoke(`api:${name}`, ...args);
 const api: DesktopApi = {
+  projectChanges: chatId => call('projectChanges', chatId),
   pluginConfigurationCandidates: () => call('pluginConfigurationCandidates'),
   configurePlugin: (candidateId, headers) => call('configurePlugin', candidateId, headers),
   snapshot: () => call('snapshot'),

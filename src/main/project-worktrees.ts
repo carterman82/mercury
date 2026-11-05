@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { mercuryGitEnvironment } from './project-git-environment';
+import type { ProjectDiff } from '../shared/types';
 
 export interface ProjectWorkspace {
   id: string;
@@ -140,6 +141,58 @@ export class ProjectWorktreeService {
   }
 
   async load(_id: string): Promise<ProjectWorkspace> { throw new Error('Project workspaces are no longer persisted; reopen the project chat.'); }
+
+  /** Read-only inspection of the latest saved response and subsequent working edits. */
+  async changes(projectRoot: string): Promise<ProjectDiff> {
+    const root = await fs.realpath(projectRoot);
+    const directory = path.join(root, '.mercury', 'git');
+    if (!(await fs.stat(directory).catch(() => null))?.isDirectory()) return { baseLabel: 'No Mercury checkpoint exists yet.', changes: [], truncated: false };
+    if (!(await succeeds(root, ['rev-parse', '--verify', 'HEAD']))) return { baseLabel: 'No Mercury checkpoint exists yet.', changes: [], truncated: false };
+    const parent = await succeeds(root, ['rev-parse', '--verify', 'HEAD^']);
+    const revision = parent ? (await git(root, ['rev-parse', 'HEAD^'])).trim() : null;
+    const candidates = revision
+      ? [...(await git(root, ['diff', '--no-ext-diff', '--no-textconv', '--name-only', '-z', revision, '--'])).split('\0'), ...(await git(root, ['ls-files', '--others', '--exclude-standard', '-z'])).split('\0')]
+      : await this.eligiblePaths(root);
+    const paths = [...new Set(candidates)].filter(name => name && eligible(name)).sort();
+    const changes: ProjectDiff['changes'] = [];
+    let budget = 4_000_000, truncated = paths.length > 100;
+    for (const relative of paths.slice(0, 100)) {
+      if (path.isAbsolute(relative) || relative.split(/[\\/]/).includes('..')) continue;
+      const filename = path.join(root, relative);
+      const stat = await fs.lstat(filename).catch((error: NodeJS.ErrnoException) => error.code === 'ENOENT' ? null : Promise.reject(error));
+      if (stat && !stat.isFile()) continue;
+      if (stat) {
+        const real = await fs.realpath(filename);
+        const rel = path.relative(root, real);
+        if (rel === '..' || rel.startsWith(`..${path.sep}`) || path.isAbsolute(rel)) continue;
+      }
+      const object = revision ? `${revision}:${relative}` : null;
+      let before: Buffer | null = null, after: Buffer | null = null;
+      let binary = Boolean(stat && stat.size > 512_000);
+      if (object && await succeeds(root, ['cat-file', '-e', object])) {
+        const size = Number((await git(root, ['cat-file', '-s', object])).trim());
+        if (size > 512_000) binary = true;
+        else before = Buffer.from(await git(root, ['show', object]), 'utf8');
+      }
+      if (stat && !binary) {
+        const handle = await fs.open(filename, 'r');
+        try {
+          const buffer = Buffer.alloc(512_001);
+          const { bytesRead } = await handle.read(buffer, 0, buffer.length, 0);
+          if (bytesRead > 512_000) binary = true;
+          else after = buffer.subarray(0, bytesRead);
+        } finally { await handle.close(); }
+      }
+      binary ||= Boolean(before?.includes(0) || after?.includes(0));
+      const bytes = (before?.length ?? 0) + (after?.length ?? 0);
+      if (bytes > budget) { truncated = true; break; }
+      budget -= bytes;
+      if (!binary && before === null && after === null) continue;
+      if (!binary && before?.equals(after ?? Buffer.alloc(0)) && after !== null) continue;
+      changes.push({ path: relative, before: binary ? null : before?.toString('utf8') ?? null, after: binary ? null : after?.toString('utf8') ?? null, binary });
+    }
+    return { baseLabel: revision ? `Latest saved project response and working edits, compared with checkpoint ${revision.slice(0, 8)}.` : 'Initial project checkpoint and working edits, compared with an empty project.', changes, truncated };
+  }
 
   async changedPaths(workspace: ProjectWorkspace, signal?: AbortSignal): Promise<string[]> {
     const baseline = this.baselines.get(workspace.id) ?? new Map<string, string>();

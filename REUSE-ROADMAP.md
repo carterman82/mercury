@@ -30,21 +30,33 @@ Reduce handwritten request/SSE parsing behind the existing ModelProvider interfa
 
 Initial scope: use the already compatible [official Anthropic SDK](https://github.com/anthropics/anthropic-sdk-typescript) for Claude streaming transport. Keep Mercury's event handling, watchdog, tool execution and routing. Disable automatic SDK retries to avoid duplicate work. Remaining work: evaluate AI SDK across API-key and local providers; subscription authentication and the Claude project gateway require separate handling.
 
-## 5. Native coding-agent runtime adapters — proposed
+## 5. Native coding-agent runtime adapters — opt-in Codex pilot implemented
 
 The Codex bridge currently creates ephemeral threads and requests JSON descriptions of Mercury calls. Pilot one native runtime behind ProjectAgentRuntime: [Codex app-server](https://learn.chatgpt.com/docs/app-server), [OpenCode server](https://opencode.ai/docs/server/) with its [SDK](https://opencode.ai/docs/sdk/), or modular [Pi](https://github.com/earendil-works/pi). Pi does not supply a built-in permission boundary. Codex dynamic tools and [AI SDK harness adapters](https://ai-sdk.dev/docs/ai-sdk-harnesses/overview) are experimental. Evaluate [ACP](https://agentclientprotocol.com/get-started/introduction) for interoperable editor-to-agent communication; MCP covers tools/context. Compare one pilot before selecting a replacement.
 
-## 6. Project change review — proposed
+Delivered: `CodexProjectRuntime` behind a runtime router. Launch Mercury with `MERCURY_NATIVE_CODEX=1` and explicitly select a Codex connection for a project. Other models and the default launch keep the existing runtime. The pilot uses persistent/resumable app-server threads, native text streaming and registered dynamic tools dispatched through Mercury's existing validators, tools and approvals. Permission/model/tool identity changes create a fresh session. Unsupported native actions fail, and failed runs wait for in-flight host actions rather than leaving them in the background. Runs are bounded to ten minutes/256 tool requests. It uses Mercury's separate Codex profile and never silently changes provider or billing route.
+
+Verification covers controlled protocol fixtures and installed CLI schema compatibility, not live account inference. Dynamic tools are experimental; native runtime capacity/telemetry integration and a live coding benchmark remain outstanding. OpenCode/Pi/ACP are still alternatives to evaluate, not additional installed runtimes.
+
+## 6. Project change review — read-only panel implemented
 
 Add a lazy-loaded [Monaco](https://github.com/microsoft/monaco-editor) diff panel with changed-file selection and read-only before/after views. Current legacy comparison uses plain text blocks; current project chat lacks an equivalent source review surface. Define revision and checkpoint behavior before introducing editing or hunk acceptance. CodeMirror merge is an alternative if bundle cost dominates.
 
-## 7. Evidence search, storage and long conversations — proposed
+Delivered: project chat's **Review changes** opens a lazy Monaco dialog with file selection, refresh and binary-file notices. Trusted IPC accepts a chat ID and derives the project path in the main process. The comparison includes the latest saved project response and working edits against its preceding Mercury safety checkpoint; it is project-wide, not per-chat. It does not mutate Git or accept hunks. Previews exclude secret paths and are bounded to 100 files/4 MB total/512 KB per text file. A real-browser smoke test verifies loading, selection and Escape.
+
+## 7. Evidence search, storage and long conversations — evidence indexing implemented
 
 Normalize message/evidence/run-event records instead of repeatedly replacing whole-chat JSON. Use existing SQLite with [FTS5](https://www.sqlite.org/fts5.html) for ranked evidence retrieval before introducing vector services. Preserve immutable evidence IDs, timestamps, provenance and freshness limits. Add [TanStack Virtual](https://tanstack.com/virtual/latest/docs/introduction) for dynamic-height histories; separately reduce IPC payloads to summaries/selected-chat data/deltas. Benchmark long histories and concurrent streams: these are inferred scalability risks, not measured regressions.
 
-## 8. Task evaluations and instrumentation — proposed
+Delivered: transactional SQLite schema-v5 migration normalizes explicit source evidence outside chat/session JSON, preserving compatibility hydration. Ranked FTS5 retrieval backs scoped `recall_context`; immutable evidence bodies are indexed once, avoiding repeated body writes during streaming saves. Restart/migration/isolation/large-history retrieval regressions pass. Actual Electron SQLite FTS5 support was smoke-tested with an in-memory database. Full message/run-event normalization, smaller IPC payloads, virtualization and before/after scalability measurements remain pending.
+
+## 8. Task evaluations and instrumentation — initial harness and spans implemented
 
 Keep existing unit, packaged Electron and opt-in live tests. Add repeatable isolated coding tasks via [Promptfoo custom providers](https://www.promptfoo.dev/docs/providers/custom-api/) and [OpenTelemetry](https://opentelemetry.io/docs/languages/js/). Measure test-backed completion, unwanted edits/tool activity, repeated reads, cancellation, recovery, elapsed time and token usage. Prefer deterministic assertions; keep private source/prompts out of exported telemetry by default.
+
+Delivered: `npm run eval:fixture` repairs/tests a real isolated code fixture using a deterministic adapter; `npm run test:eval` verifies completion checks, unrelated edits, cancellation and a controlled-server bridge through Mercury's actual LocalProviders. The fixture verifies the harness, not model coding quality. An opt-in local-model adapter and Promptfoo custom provider/config are included. See [evaluation usage](scripts/evals/README.md).
+
+Provider calls emit OpenTelemetry API spans with queue timing, token/tool counts and cancellation, excluding prompts/source/credentials/model IDs/endpoints. No exporter is configured. Exporter registration, broader task corpora, full project-runtime evaluation, and individual tool/recovery/native Messages spans remain pending. No live model was invoked during this implementation.
 
 ## Additional interface and maintenance recommendations
 
@@ -74,3 +86,13 @@ Start with 1–4, using separately testable increments. Next add change review a
 - Add project workflows under `.agents/skills/<name>/SKILL.md` or `.mercury/skills/<name>/SKILL.md`. The supplied `programmer` skill is available immediately in this repository; metadata is advertised automatically and full instructions load when selected.
 - Discover a credential-requiring remote plugin in chat, open Settings → MCP connection setup, enter its required headers (for Authorization include the required scheme, such as `Bearer `), then return to chat for installation approval. OAuth-only and configurable stdio servers are not yet supported.
 - Claude API calls now use official SDK streaming transport with retries disabled. OpenAI/subscription/local routes retain their existing adapters for the next migration increment.
+
+### Verification of increments 5–8
+
+- TypeScript and repository lint passed.
+- Full unit run: 900 passed, 11 skipped, one existing XLSX round-trip test exceeded its five-second timeout. Rerunning that suite with final Codex/runtime tests passed all 24 tests. The full run was not repeated after the focused corrections/review.
+- Real-browser diff-panel smoke passed with bundled Chromium: actual lazy Monaco/worker loading, source/binary file switching, Escape, and no page errors.
+- SQLite FTS5 was exercised inside Electron 37.10.3 / Node 22.21.1 with a fresh in-memory database.
+- Five evaluation-harness regressions passed, including a controlled Ollama server through Mercury's actual provider adapter. Deterministic fixture execution repaired actual temporary source, independently passed tests, and preserved unrelated files. It is not a live model-quality result.
+- Native Codex protocol tests cover direct streaming/dynamic tools, persistent resume, permission-change invalidation, unoffered-tool failure, cancellation, default runtime selection and waiting for active host actions on protocol failure. Native live-account inference and packaged desktop verification remain outstanding.
+- Independent runtime review found and resolved a host-action completion race. Integration also corrected the existing MCP configuration IPC handler's event-argument position.

@@ -1,0 +1,9 @@
+description: Mercury isolated clamp coding task (requires explicit runtime adapter)
+prompts:
+  - clamp-bounds-v1
+providers:
+  - file://./promptfoo-provider.mjs
+tests:
+  - assert:
+      - type: javascript
+        value: JSON.parse(output).outcome === 'passed'

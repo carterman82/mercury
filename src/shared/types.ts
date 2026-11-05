@@ -89,7 +89,7 @@ export interface ChatFile { id: string; name: string; size: number; kind: 'uploa
 export interface FilePreview { kind: 'image' | 'pdf' | 'text'; text?: string; image?: string; page?: number; pages?: number; note?: string; }
 export interface BrowserPreview { url: string; image?: string; }
 export interface ChatMessage { id: string; role: 'user' | 'assistant'; content: string; files?: ChatFile[]; sourceEvidence?: SourceEvidence[]; model?: string; reasoning?: string; notice?: string; queued?: boolean; toolActivity?: { name: string; label?: string; status: 'running' | 'succeeded' | 'failed'; at: number; attemptId?: string; result?: string; completedAt?: number; durationMs?: number }[]; metrics?: { queuedMs: number; providerMs: number; toolMs: number; recoveries: number; recoveryMs?: number; inputTokens?: number; outputTokens?: number }; verification?: 'passed' | 'failed' | 'blocked' | 'not_run'; runtimeBuild?: string; recoveryPolicy?: string; delivery?: { status: 'completed' | 'blocked' | 'stopped' | 'failed'; reason?: string; at: number }; startedAt?: number; thinkingEndedAt?: number; completedAt?: number; }
-export interface ProjectAgentSession { runtime: 'claude-agent-sdk'; version: string; identity: string; sessionId?: string; status: 'running' | 'completed' | 'interrupted'; }
+export interface ProjectAgentSession { runtime: 'claude-agent-sdk' | 'codex-app-server'; version: string; identity: string; sessionId?: string; status: 'running' | 'completed' | 'interrupted'; }
 export interface ProjectAssignment {
   id: string; kind: 'investigation' | 'implementation' | 'testing' | 'review'; task: string; context: string; ownedPaths: string[]; checks: string[];
   status: 'queued' | 'running' | 'completed' | 'failed' | 'interrupted' | 'accepted'; profile: ModelProfile; createdAt: number; updatedAt: number;
@@ -112,7 +112,9 @@ export interface ProjectReport {
 }
 
 export interface PluginConfigurationCandidate { candidateId: string; name: string; url: string; headers: string[]; configured: boolean; }
+export interface ProjectDiff { baseLabel: string; changes: { path: string; before: string | null; after: string | null; binary: boolean }[]; truncated: boolean; }
 export interface DesktopApi {
+  projectChanges(chatId: string): Promise<ProjectDiff>;
   pluginConfigurationCandidates(): Promise<PluginConfigurationCandidate[]>;
   configurePlugin(candidateId: string, headers: Record<string, string>): Promise<void>;
   snapshot(): Promise<Snapshot>;

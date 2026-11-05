@@ -273,7 +273,8 @@ export class ChatService {
               throw new ToolFailure('INVALID_ARGUMENTS', 'read_project_task accepts an empty object.');
             output = readProjectTask(chat.projectHandoff!);
           } else if (call.name === 'recall_context') {
-            output = JSON.parse(recallContext(chatEvidence(chat), call.arguments, Math.max(500, contextMaximum - messageTextLength(messages) - 1500)));
+            this.store.indexSourceEvidence('chat', chat.id, chatEvidence(chat));
+            output = JSON.parse(this.store.recallSourceContext('chat', chat.id, call.arguments, Math.max(500, contextMaximum - messageTextLength(messages) - 1500)));
           } else if (chat.projectId && this.workers?.handles(call.name)) {
             output = await this.workers.execute(chat, call.name, call.arguments, controller.signal);
             activity.result = JSON.stringify(output).slice(0, 16000);

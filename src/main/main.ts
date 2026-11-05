@@ -27,6 +27,7 @@ import { MAX_CHAT_ATTACHMENTS } from '../shared/chat-files';
 import { ProjectTools } from './project-tools';
 import { ProjectWorktreeService } from './project-worktrees';
 import { ClaudeProjectRuntime } from './project-agent-runtime';
+import { CodexProjectRuntime, ProjectRuntimeRouter } from './project-codex-runtime';
 import { ProjectExecutionAdapter } from './project-execution';
 import { ProjectMaps } from './project-maps';
 import { generateProjectReport } from './project-report';
@@ -124,10 +125,11 @@ app.whenReady().then(async () => {
   const projectServers = new ProjectServers(execution, policy);
   const projectTools = new ProjectTools(store, approvals, new ProjectWorktreeService(path.join(app.getPath('userData'), 'project-workspaces')), undefined, { execution, maps: projectMaps, servers: projectServers });
   const agentModules = app.isPackaged ? path.join(process.resourcesPath, 'agent-runtime', 'node_modules') : path.join(app.getAppPath(), 'node_modules');
-  const projectRuntime = new ClaudeProjectRuntime(providers, path.join(app.getPath('userData'), 'agent-sessions'), {
+  const claudeRuntime = new ClaudeProjectRuntime(providers, path.join(app.getPath('userData'), 'agent-sessions'), {
     sdkModulePath: path.join(agentModules, '@anthropic-ai', 'claude-agent-sdk', 'sdk.mjs'),
     executablePath: path.join(agentModules, '@anthropic-ai', `claude-agent-sdk-${process.platform}-${process.arch}`, process.platform === 'win32' ? 'claude.exe' : 'claude'),
   });
+  const projectRuntime = new ProjectRuntimeRouter(claudeRuntime, new CodexProjectRuntime(codex), process.env.MERCURY_NATIVE_CODEX === '1');
   const projectWorkers = new ProjectWorkers(store, providers, projectRuntime, projectTools, new ProjectWorktreeService(path.join(app.getPath('userData'), 'worker-workspaces')), notifyChat);
   chats = new ChatService(store, providers, notifyChat, () => runner.running, chatFiles, capabilities, projectTools, projectRuntime, projectWorkers, chat => showResponseNotification(chat, () => {
     if (!window || window.isDestroyed()) return;
@@ -136,7 +138,12 @@ app.whenReady().then(async () => {
   }));
   let quitting = false;
   app.on('before-quit', event => { if (quitting) return; event.preventDefault(); quitting = true; codex.dispose(); void Promise.allSettled([capabilities.dispose(), projectRuntime.shutdown(), projectServers.shutdown(), execution.shutdown()]).finally(() => app.quit()); });
-  discovery = new DiscoveryCache(settings => autoDiscover(settings, providers), store.discoveryCache(), value => store.saveDiscoveryCache(value));
+  discovery = new DiscoveryCache(settings => autoDiscover(settings, providers, result => {
+    if (discoveryKey(settings) === discoveryKey(store.settings()) && window && !window.isDestroyed()) {
+      providers.rememberModels(result.models, result.connections);
+      window.webContents.send('discovery:update', result);
+    }
+  }), store.discoveryCache(), value => store.saveDiscoveryCache(value));
 
   window = new BrowserWindow({
     width: 1480, height: 930, minWidth: 950, minHeight: 620,
@@ -146,7 +153,7 @@ app.whenReady().then(async () => {
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   window.webContents.on('will-navigate', event => event.preventDefault());
   handle('pluginConfigurationCandidates', () => plugins.configurationCandidates());
-  handle('configurePlugin', (candidateId, headers) => plugins.configure(z.string().uuid().parse(candidateId), headers));
+  handle('configurePlugin', (_event, candidateId, headers) => plugins.configure(z.string().uuid().parse(candidateId), headers));
   handle('snapshot', () => snapshot());
   const checkModels = async () => {
     const settings = store.settings();
@@ -222,6 +229,13 @@ app.whenReady().then(async () => {
     notify();
   });
   handle('projectMapStatus', (_event, id: string) => projectTools.mapStatus(store.chat(z.string().uuid().parse(id))));
+  handle('projectChanges', async (_event, id: string) => {
+    const chat = store.chat(z.string().uuid().parse(id));
+    if (!chat.projectId) throw new Error('Select a project chat to review changes.');
+    const project = store.project(chat.projectId);
+    // Project chats edit the selected checkout. Never accept a renderer path.
+    return new ProjectWorktreeService('').changes(project.path);
+  });
   const reportCache = new ProjectReportCache(path.join(app.getPath('userData'), 'project-reports'));
   const reportRoot = (id: string) => {
     const chat = store.chat(z.string().uuid().parse(id));

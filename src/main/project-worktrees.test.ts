@@ -46,6 +46,31 @@ async function fixture(repository = true) {
 afterEach(async () => { for (const directory of temporary.splice(0)) await fs.rm(directory, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
 
 describe('project Git safety', () => {
+  it('reviews the latest saved response and working edits without modifying either history', async () => {
+    const { root, service } = await fixture();
+    const workspace = await service.prepare({ projectRoot: root, chatId: 'diff-review' });
+    await fs.writeFile(path.join(root, 'app.ts'), 'export const value = 2;\n');
+    await service.commitResponse(workspace);
+    await fs.writeFile(path.join(root, 'app.ts'), 'export const value = 3;\n');
+    await fs.writeFile(path.join(root, 'added.ts'), 'new source');
+    await fs.writeFile(path.join(root, '.env'), 'DO_NOT_REVEAL');
+    await fs.writeFile(path.join(root, 'image.bin'), Buffer.from([0, 1, 2]));
+    const before = await snapshot(path.join(root, '.git'));
+    const checkpoint = await mercury(root, 'rev-parse', 'HEAD');
+    const review = await service.changes(root);
+    expect(review.changes).toContainEqual({ path: 'app.ts', before: 'export const value = 1;\n', after: 'export const value = 3;\n', binary: false });
+    expect(review.changes).toContainEqual({ path: 'added.ts', before: null, after: 'new source', binary: false });
+    expect(review.changes).toContainEqual({ path: 'image.bin', before: null, after: null, binary: true });
+    expect(JSON.stringify(review)).not.toContain('DO_NOT_REVEAL');
+    expect(await snapshot(path.join(root, '.git'))).toEqual(before);
+    expect(await mercury(root, 'rev-parse', 'HEAD')).toBe(checkpoint);
+  });
+
+  it('does not create checkpoint storage merely to open an empty review', async () => {
+    const { root, service } = await fixture(false);
+    expect(await service.changes(root)).toEqual({ baseLabel: 'No Mercury checkpoint exists yet.', changes: [], truncated: false });
+    expect(await fs.stat(path.join(root, '.mercury')).catch(() => null)).toBeNull();
+  });
   it('keeps created Python environments and test caches out of local checkpoints', async () => {
     const { root, service } = await fixture(false);
     const workspace = await service.prepare({ projectRoot: root, chatId: 'python-setup' });

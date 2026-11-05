@@ -23,11 +23,16 @@ export function projectEvidence(session: Session): SourceEvidence[] {
   return session.sourceEvidence ?? session.events.filter(event => event.role === 'subagent' && event.kind === 'message' && event.text.trim()).map(event => ({ id: event.id, at: event.at, tool: 'delegate_task', label: 'Saved Subagent findings', input: '{}', result: event.text }));
 }
 
-export function recallContext(evidence: SourceEvidence[], raw: unknown, budget = 12000): string {
+export interface SourceEvidenceIndex {
+  get(id: string): SourceEvidence | undefined;
+  search(query: string, offset: number, limit: number): { matches: SourceEvidence[]; total: number };
+}
+
+export function recallContext(evidence: SourceEvidence[], raw: unknown, budget = 12000, index?: SourceEvidenceIndex): string {
   const { id, query, offset = 0 } = recallSchema.parse(raw);
   const maximum = Math.max(500, Math.min(16000, budget));
   if (id) {
-    const item = evidence.find(entry => entry.id === id);
+    const item = index ? index.get(id) : evidence.find(entry => entry.id === id);
     if (!item) return JSON.stringify({ error: 'No saved source with that ID in this conversation.' });
     const metadata = { id, at: item.at, tool: item.tool, label: item.label.slice(0, Math.min(80, Math.floor(maximum / 10))), input: item.input.slice(0, Math.min(1000, Math.floor(maximum / 8))) };
     let length = Math.max(50, maximum - JSON.stringify(metadata).length - 400);
@@ -40,8 +45,10 @@ export function recallContext(evidence: SourceEvidence[], raw: unknown, budget =
   }
   const terms = (query ?? '').toLowerCase().split(/\s+/).filter(Boolean);
   const matches = [...evidence].reverse().filter(item => terms.every(term => `${item.label}\n${item.input}\n${item.result}`.toLowerCase().includes(term)));
+  const page = index?.search(query ?? '', offset, 15);
+  const total = page?.total ?? matches.length;
   const selected = [];
-  for (const item of matches.slice(offset, offset + 15)) {
+  for (const item of page?.matches ?? matches.slice(offset, offset + 15)) {
     let entry: { id: string; at: number; tool: string; label: string; input?: string; excerpt?: string } = { id: item.id, at: item.at, tool: item.tool, label: item.label.slice(0, 80), input: item.input.slice(0, 100), excerpt: item.result.slice(0, 200) };
     if (JSON.stringify([...selected, entry]).length > maximum - 150) {
       if (selected.length) break;
@@ -49,7 +56,7 @@ export function recallContext(evidence: SourceEvidence[], raw: unknown, budget =
     }
     selected.push(entry);
   }
-  return JSON.stringify({ matches: selected, totalMatches: matches.length, nextOffset: offset + selected.length < matches.length ? offset + selected.length : null });
+  return JSON.stringify({ matches: selected, totalMatches: total, nextOffset: offset + selected.length < total ? offset + selected.length : null });
 }
 
 /** Full evidence stays on disk; only a bounded recent preview enters the prompt. */

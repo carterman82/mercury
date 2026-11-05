@@ -57,23 +57,37 @@ async function otherVpnPeers(): Promise<ModelConnection[]> {
   })));
 }
 
-export async function autoDiscover(settings: Settings, providers: LocalProviders): Promise<DiscoveryResult> {
+export async function autoDiscover(settings: Settings, providers: LocalProviders, onUpdate?: (result: DiscoveryResult) => void): Promise<DiscoveryResult> {
   const diagnostics: string[] = [];
+  const ready: { connection: ModelConnection; models: Awaited<ReturnType<LocalProviders['discover']>> }[] = [];
   const candidates = new Map<string, ModelConnection>();
-  for (const item of [...settings.connections, ...local, ...await tailscalePeers(), ...await otherVpnPeers()]) {
+  const peers = Promise.all([tailscalePeers(), otherVpnPeers()]);
+  const probes = new Map<string, Promise<{ connection: ModelConnection; models: Awaited<ReturnType<LocalProviders['discover']>> } | null>>();
+  const add = (items: ModelConnection[]) => { for (const item of items) {
     const key = item.provider === 'openai' || item.provider === 'claude' || item.provider === 'codex' ? item.id : `${item.provider}:${item.url.replace(/\/$/, '').toLowerCase()}`;
     const existing = candidates.get(key);
     if (!existing) candidates.set(key, item);
     else if (item.deviceId) candidates.set(key, { ...existing, deviceId: item.deviceId, deviceLabel: item.deviceLabel });
-  }
-  const results = await Promise.all([...candidates.values()].map(async connection => {
-    try { return { connection, models: await providers.discover(connection) }; }
+    if (probes.has(key)) continue;
+    const connection = item;
+    probes.set(key, (async () => {
+    try {
+      const result = { connection, models: await providers.discover(connection) };
+      ready.push(result);
+      onUpdate?.({ connections: ready.map(item => item.connection), models: ready.flatMap(item => item.models), applications: [], diagnostics: [...diagnostics] });
+      return result;
+    }
     catch (error) {
       if (settings.connections.some(item => item.id === connection.id)) diagnostics.push(`${connection.label}: ${String(error)}`);
       return null;
     }
-  }));
-  const found = results.filter((item): item is NonNullable<typeof item> => item !== null);
+    })());
+  } };
+  add([...settings.connections, ...local]);
+  const [tailscale, vpn] = await peers;
+  add([...tailscale, ...vpn]);
+  const results = await Promise.all(probes.values());
+  const found = results.filter((item): item is NonNullable<typeof item> => item !== null).map(item => ({ ...item, connection: [...candidates.values()].find(candidate => candidate.id === item.connection.id) ?? item.connection }));
   const localAppData = process.env.LOCALAPPDATA ?? '';
   const programFiles = process.env.ProgramFiles ?? '';
   const programFilesX86 = process.env['ProgramFiles(x86)'] ?? '';
@@ -85,8 +99,9 @@ export async function autoDiscover(settings: Settings, providers: LocalProviders
     { name: 'WireGuard', command: 'wg', paths: [path.join(programFiles, 'WireGuard', 'wireguard.exe')] },
   ];
   const applications: string[] = [];
-  for (const app of apps) {
-    if (!await installed(app.command, app.paths)) continue;
+  const installedApps = await Promise.all(apps.map(app => installed(app.command, app.paths)));
+  for (const [index, app] of apps.entries()) {
+    if (!installedApps[index]) continue;
     applications.push(app.name);
     if (app.provider && !found.some(item => item.connection.id === `local-${app.provider}`)) diagnostics.push(`${app.name} is installed, but its local model server is not responding. Start its API server, then refresh.`);
     if (app.name === 'ZeroTier' || app.name === 'WireGuard') diagnostics.push(`${app.name} is installed. Use Other to connect to a model server reachable through it.`);

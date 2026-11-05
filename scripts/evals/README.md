@@ -1,0 +1,13 @@
+# Mercury task evaluations
+
+Run `node scripts/evals/run.mjs --fixture` to verify the harness. This repairs and tests a real temporary code fixture with a deterministic adapter. **It measures harness behavior, not model coding quality.** Run `node --test scripts/evals/evaluate.test.mjs` for harness regressions.
+
+For actual inference, explicitly set `MERCURY_EVAL_ADAPTER` to an absolute trusted local ESM module. It default-exports `async ({ task, tools, signal }) => ({ usage?: { input, output } })`. Bridge the selected Mercury runtime to `tools.read(name)`, `tools.write(name, content)` and `tools.test()`. Respect `signal` and use existing Mercury permission policy. No production workspace or saved credentials are supplied. The module is trusted executable code; this is not an OS sandbox.
+
+The driver always runs independent fixture assertions after the adapter returns. Passing requires repaired behavior and preservation of unrelated source. Reports contain aggregate metrics and fixture-relative changed filenames, never prompts, code, model answers, credentials or command output. Missing token usage is `null`, not an invented zero. Each run receives a new temporary directory removed afterward. Cancellation denies subsequent tool access; adapters must terminate their own requests when signalled.
+
+The supplied `scripts/evals/mercury-local-adapter.mjs` bridges Mercury's actual LocalProviders class via Vite's development module loader. Set `MERCURY_EVAL_ADAPTER` to that module, `MERCURY_EVAL_MODEL` to the exact model, and optionally `MERCURY_EVAL_PROVIDER` (`ollama` or `lmstudio`) and `MERCURY_EVAL_ENDPOINT`. It never imports saved credentials, cloud routes or paid fallback. It caps model turns at 12. Actual model evaluation is opt-in and requires an available tool-calling local model.
+
+For repeated model comparisons, install Promptfoo separately and run `promptfoo eval -c scripts/evals/promptfooconfig.yaml` with the adapter environment set. The custom provider fails clearly when no adapter is selected. A broader fixture corpus and complete project-agent runtime benchmarks remain follow-up work; the included deterministic fixture is not reported as a real model evaluation.
+
+The application now emits OpenTelemetry API spans for provider requests, queue duration, tool-request counts, token counts and cancellation. No exporter is configured by default. A host may register a compatible OpenTelemetry SDK/provider to consume these spans. Prompt/source text, model IDs, endpoints, arguments, output and exception messages are deliberately excluded. Native Messages transport and individual tool/recovery spans are not yet instrumented.
