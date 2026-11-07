@@ -6,7 +6,8 @@ export const requirementSchema = z
   .object({
     id: z.string().max(100).optional(),
     text: z.string().min(1).max(4000),
-    status: z.enum(['passed', 'failed', 'blocked', 'not_run']),
+    status: z.enum(['completed', 'passed', 'failed', 'blocked', 'not_run']),
+    completionNote: z.string().trim().min(1).max(4000).optional(),
     verification: z.enum(['inspection', 'command', 'browser']),
     evidenceIds: z.array(z.string().max(200)).max(20).describe('Use [] for not_run criteria. Passed criteria need exact evidenceId values from successful tool results; never invent IDs.'),
     stage: z.enum(['page', 'model', 'inference']).describe('For browser model work, supply three separate browser criteria with stage page, model, and inference. IDs and text do not replace this field.').optional(),
@@ -18,6 +19,8 @@ export const requirementSchema = z
 /** Validate immutable criterion fields before they can enter the saved contract.
  * Runtime readiness and evidence remain separate, passed-only checks. */
 export function validateRequirementDefinition(requirement: ProjectRequirement): void {
+  if (requirement.status === 'completed' && !requirement.completionNote?.trim())
+    throw new ToolFailure('COMPLETION_NOTE_REQUIRED', 'Explain the completed work and any verification limitations, or use complete_project_requirements.');
   if (requirement.stage && requirement.verification !== 'browser')
     throw new ToolFailure('VERIFICATION_KIND', 'Page/model/inference stages require browser verification.');
   if (requirement.stage === 'model' && (!requirement.selector?.trim() || !requirement.expectedText?.trim()))

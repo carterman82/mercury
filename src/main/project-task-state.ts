@@ -7,6 +7,31 @@ import { requirementSchema, validateRequirementDefinition, verifyRequirement } f
 
 const fingerprint = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 
+const completionSchema = z.object({
+  requirementIds: z.array(z.string().min(1).max(100)).min(1).max(40).describe('IDs from read_project_task or update_project_task. Only listed requirements are checked off.'),
+  note: z.string().trim().min(1).max(4000).describe('What was completed and any checks that could not be run. Completion is your assessment, not a verified test pass.'),
+}).strict();
+const { $schema: _completionSchema, ...completionParameters } = z.toJSONSchema(completionSchema);
+export const projectTaskCompleteTool = {
+  type: 'function', function: {
+    name: 'complete_project_requirements',
+    description: 'Check off implemented requirements by ID in one call. No evidence IDs, test run, browser session or repeated definitions needed. Supply a short note describing the work and verification limitations. Marks items completed by AI, not verified. Use only when the requested work is implemented; leave unfinished work blocked/failed/not_run. Later edits reopen completed items.',
+    parameters: completionParameters,
+  },
+};
+
+export function completeProjectRequirements(handoff: ProjectHandoff, raw: unknown) {
+  const value = completionSchema.parse(raw);
+  const ids = new Set(value.requirementIds);
+  if ([...ids].some(id => !handoff.requirements.some(item => item.id === id)))
+    throw new ToolFailure('UNKNOWN_REQUIREMENT', 'Read read_project_task and use its exact requirement IDs. No requirements were changed.');
+  handoff.requirements = handoff.requirements.map(item => ids.has(item.id ?? '') && item.status !== 'passed'
+    ? { ...item, status: 'completed', completionNote: value.note, evidenceIds: [] } : item);
+  if (handoff.requirements.every(item => item.status === 'completed' || item.status === 'passed')) handoff.remaining = '';
+  handoff.updatedAt = Date.now();
+  return readProjectTask(handoff);
+}
+
 const taskSchema = z
   .object({
     requirements: z.array(requirementSchema).max(20).describe('Only new criteria or status updates. Use [] for a compatibility-only or remaining-work update; all existing criteria are retained.'),
@@ -21,7 +46,7 @@ export const projectTaskTool = {
   function: {
     name: 'update_project_task',
     description:
-      'Persist concrete acceptance requirements and actual verification status. Send only NEW criteria or status updates; omitted original criteria are retained automatically. Do not repeat or reword the whole saved handoff. requirements must be a JSON array, remaining a separate string field. Preserve original requirements; placeholders cannot satisfy real behavior. Evidence IDs come from saved tool observations/recall_context. Browser verification requires fresh open, interaction and observation after edits; command checks need successful exit. Set blocked/failed/not_run honestly.',
+      'Persist concrete acceptance requirements and verification status. Send only NEW criteria or status updates; omitted criteria are retained. To check off implemented work easily, use complete_project_requirements with IDs and a note; no evidence is required for AI completion. Only status:passed claims verified success and requires current successful evidence IDs. Preserve original requirements. Set blocked/failed/not_run for unfinished work.',
     parameters,
   },
 };
@@ -37,10 +62,10 @@ export function readProjectTask(handoff: ProjectHandoff) {
   return { objective: handoff.objective, requirements: handoff.requirements, compatibility: handoff.compatibility,
     taskPolicy: handoff.taskPolicy, verificationTarget: handoff.verificationTarget, retiredRequirements: handoff.retiredRequirements,
     remaining: handoff.remaining, generation: handoff.generation, blocker: handoff.blocker,
-    browser: handoff.browser, nextAction: 'Send only new criteria/status updates. A compatibility-only repair uses requirements:[]; unchanged criteria are retained automatically.' };
+    browser: handoff.browser, nextAction: 'For implemented requirements, call complete_project_requirements with requirementIds and a note; no direct verification is required. For verified success or unfinished work, use update_project_task. Omitted criteria are retained.' };
 }
 
-export const projectTaskInstructions = `\nPROJECT DELIVERY CONTRACT\nBefore edits, commands or implementation assignments, call update_project_task to record concrete acceptance criteria for implementation requests. Preserve explicit user requirements across follow-ups; a resume message does not replace them. For browser model work include compatibility:{runtime,version,modelFormat,modelId,maxBytes,evidenceIds} from inspected runtime sources/docs, plus three browser criteria stage:page, stage:model with selector/expectedText for the ready indicator, and stage:inference. Transformers.js expects modelFormat:onnx; WebLLM expects modelFormat:mlc (JSON manifests, binary weight shards and WASM runtime). GGUF needs a verified GGUF-capable browser runtime. Use exact evidenceId values from successful tool results, never invented IDs. Unverified requirements use status:not_run and evidenceIds:[]. A fallback/demo/canned reply does not satisfy requested real model inference. Prefer incremental patches to large rewrites. Record requirements as passed only with current successful evidence. For website functional checks: reload after edits, inspect script errors, mark the model-ready criterion passed, submit a question with browser_fill responseSelector, then browser_read with that response selector to observe a NEW reply/result. Opening a page alone is not testing it. If blocked, state changed versus unverified behavior. Do not announce completion while requirements remain blocked, failed or not run.\n`;
+export const projectTaskInstructions = `\nPROJECT DELIVERY CONTRACT\nBefore edits, commands or implementation assignments, call update_project_task to record concrete acceptance criteria for implementation requests. Preserve explicit user requirements across follow-ups; a resume message does not replace them. For browser model work include compatibility:{runtime,version,modelFormat,modelId,maxBytes,evidenceIds} from inspected runtime sources/docs, plus three browser criteria stage:page, stage:model with selector/expectedText for the ready indicator, and stage:inference. Transformers.js expects modelFormat:onnx; WebLLM expects modelFormat:mlc (JSON manifests, binary weight shards and WASM runtime). GGUF needs a verified GGUF-capable browser runtime. Use exact evidenceId values from successful tool results, never invented IDs. Unverified requirements use status:not_run and evidenceIds:[]. A fallback/demo/canned reply does not satisfy requested real model inference. Prefer incremental patches to large rewrites. Record requirements as passed only with current successful evidence. For website functional checks: reload after edits, inspect script errors, mark the model-ready criterion passed, submit a question with browser_fill responseSelector, then browser_read with that response selector to observe a NEW reply/result. Opening a page alone is not testing it. If blocked, state changed versus unverified behavior. Check off implemented requirements with complete_project_requirements({requirementIds:[...],note:"Implemented work; verification limitations"}). This needs no evidence IDs or direct verification and permits delivery without a test run. Completion is an AI assessment, not a passed test. Keep unfinished requirements blocked, failed or not_run. Explain any earlier tool failures that remain relevant. Use update_project_task status:passed only for actual verified success.\n`;
 
 export function updateProjectTask(handoff: ProjectHandoff, raw: unknown, evidence: SourceEvidence[]) {
   const value = taskSchema.parse(raw);

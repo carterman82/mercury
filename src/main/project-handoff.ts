@@ -58,7 +58,7 @@ export function recordProjectAction(
     handoff.generation = (handoff.generation ?? 0) + 1;
     // Prior browser observations cannot verify a new revision.
     handoff.browser = undefined;
-    for (const requirement of handoff.requirements) if (requirement.status === 'passed') requirement.status = 'not_run';
+    for (const requirement of handoff.requirements) if (requirement.status === 'passed' || requirement.status === 'completed') { requirement.status = 'not_run'; delete requirement.completionNote; }
     if (!toolFailed(result) && mutation)
       handoff.completedSteps = [
         ...handoff.completedSteps,

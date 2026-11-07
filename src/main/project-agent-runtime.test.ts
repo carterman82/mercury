@@ -32,6 +32,9 @@ it('runs the real pinned SDK through Mercury inference and executes only registe
   const provider = {
     chat: async (input: ChatInput) => {
       seen.push(input);
+      if (JSON.stringify(input.messages).includes('COMPACTED CHECKPOINT')) {
+        return { text: 'Continued from the checkpoint without replaying the tool.', tools: [] };
+      }
       expect(input.profile.model).toBe(profile.model);
       const toolResults = input.messages.filter((message: any) => message.role === 'tool');
       if (toolResults.length < 2) {
@@ -107,6 +110,20 @@ it('runs the real pinned SDK through Mercury inference and executes only registe
   expect(resumed.session.sessionId).toBe(result.session.sessionId);
   expect(executed).toBe(2);
   expect(JSON.stringify(seen.at(-1)?.messages)).toContain('Updated project note');
+  const compacted = await runtime.run({
+    ...input,
+    session: undefined,
+    context: 'COMPACTED CHECKPOINT: the read tool already completed. Do not replay it.',
+    messages: [
+      input.messages[0],
+      { role: 'user', content: 'Keep the original endpoint. Continue from the checkpoint.' },
+    ],
+  });
+  expect(compacted.session.sessionId).not.toBe(resumed.session.sessionId);
+  expect(JSON.stringify(seen.at(-1)?.messages)).toContain('COMPACTED CHECKPOINT');
+  expect(JSON.stringify(seen.at(-1)?.messages)).toContain('Keep the original endpoint');
+  expect(JSON.stringify(seen.at(-1)?.messages)).not.toContain('fixture content');
+  expect(executed).toBe(2);
 }, 60000);
 
 it('cancels a real SDK session and releases the model request', async () => {

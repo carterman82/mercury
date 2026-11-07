@@ -36,6 +36,7 @@ import { resolveCandidates } from './delegation';
 import { ProjectWorkers } from './project-workers';
 import { ProjectServers } from './project-servers';
 import { showResponseNotification } from './response-notifications';
+import { sendRendererUpdate } from './renderer-updates';
 
 declare const MAIN_WINDOW_VITE_DEV_SERVER_URL: string | undefined;
 declare const MAIN_WINDOW_VITE_NAME: string;
@@ -66,9 +67,9 @@ function snapshot(): Snapshot {
   return { projects: store.projects(), sessions: store.sessions(), chats: store.chats(), settings: store.settings(), activeRole: runner.activeRole, activeChatId: chats.activeId, activeChatIds: chats.activeIds, modelRequests: providers.requestCounts, chatApprovals: approvals?.snapshot() ?? [] };
 }
 function noChat(): void { if (chats.activeId) throw new Error('Stop the chat response before starting an agent run.'); }
-function notify(): void { if (window && !window.isDestroyed()) window.webContents.send('state:update', snapshot()); }
+function notify(): void { if (window && !window.isDestroyed()) sendRendererUpdate(window, 'state:update', snapshot()); }
 function notifyChat(chat: ChatThread): void {
-  if (window && !window.isDestroyed()) window.webContents.send('chat:update', { chat, activeChatId: chats.activeId, activeChatIds: chats.activeIds, modelRequests: providers.requestCounts });
+  if (window && !window.isDestroyed()) sendRendererUpdate(window, 'chat:update', { chat, activeChatId: chats.activeId, activeChatIds: chats.activeIds, modelRequests: providers.requestCounts });
 }
 function authenticated(event: Electron.IpcMainInvokeEvent): void {
   if (!window || event.sender.id !== window.webContents.id || event.senderFrame !== window.webContents.mainFrame) throw new Error('Unauthorized application request.');
@@ -141,7 +142,7 @@ app.whenReady().then(async () => {
   discovery = new DiscoveryCache(settings => autoDiscover(settings, providers, result => {
     if (discoveryKey(settings) === discoveryKey(store.settings()) && window && !window.isDestroyed()) {
       providers.rememberModels(result.models, result.connections);
-      window.webContents.send('discovery:update', result);
+      sendRendererUpdate(window, 'discovery:update', result);
     }
   }), store.discoveryCache(), value => store.saveDiscoveryCache(value));
 
@@ -161,7 +162,7 @@ app.whenReady().then(async () => {
     const result = await discovery.get(settings, true);
     if (key === discoveryKey(store.settings()) && window && !window.isDestroyed()) {
       providers.rememberModels(result.models, result.connections);
-      window.webContents.send('discovery:update', result);
+      sendRendererUpdate(window, 'discovery:update', result);
     }
     return result;
   };
@@ -169,7 +170,7 @@ app.whenReady().then(async () => {
     const cached = discovery.peek(store.settings());
     if (cached) providers.rememberModels(cached.models, cached.connections);
     void checkModels().catch(() => {
-      if (window && !window.isDestroyed()) window.webContents.send('discovery:update', { ...(cached ?? { connections: [], models: [], applications: [] }), diagnostics: ['Model check failed. Refresh models to try again.'] });
+      if (window && !window.isDestroyed()) sendRendererUpdate(window, 'discovery:update', { ...(cached ?? { connections: [], models: [], applications: [] }), diagnostics: ['Model check failed. Refresh models to try again.'] });
     });
     return cached;
   });
@@ -325,7 +326,7 @@ app.whenReady().then(async () => {
   handle('autoDiscover', async (_event, force?: boolean) => {
     const result = await discovery.get(store.settings(), z.boolean().optional().parse(force) ?? false);
     providers.rememberModels(result.models, result.connections);
-    if (window && !window.isDestroyed()) window.webContents.send('discovery:update', result);
+    if (window && !window.isDestroyed()) sendRendererUpdate(window, 'discovery:update', result);
     return result;
   });
   handle('probe', async (_event, profile: ModelProfile) => { noChat(); if (runner.running) throw new Error('Wait for the current agent run.'); return providers.probe(profileSchema.parse(profile)); });

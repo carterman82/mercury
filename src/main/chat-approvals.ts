@@ -44,5 +44,6 @@ export interface ProjectApprovalMetadata {
   kind?: 'read' | 'write' | 'command' | 'plugin' | 'integrate';
   agentId?: string;
   paths?: string[];
+  requester?: ChatApproval['requester'];
 }
 type ProjectApproval = ChatApproval & ProjectApprovalMetadata;

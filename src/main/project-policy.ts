@@ -21,6 +21,7 @@ export interface ProjectAction {
   agentId?: string;
   destructive?: boolean;
   approvalReason?: string;
+  tool?: string;
 }
 
 export interface ProjectPolicyOptions {
@@ -74,7 +75,7 @@ function actionFingerprint(context: ProjectPolicyContext, action: ProjectAction)
   return createHash('sha256').update(JSON.stringify([
     context.projectId, context.chatId, context.mode, context.revision, context.workspaceRoot,
     action.kind, action.paths ?? [], action.command ?? null, action.cwd ?? null,
-    action.contentHash ?? null, action.agentId ?? null, action.destructive ?? false, action.approvalReason ?? null,
+    action.contentHash ?? null, action.agentId ?? null, action.destructive ?? false, action.approvalReason ?? null, action.tool ?? null,
   ])).digest('hex');
 }
 

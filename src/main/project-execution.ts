@@ -37,6 +37,13 @@ export interface ProjectExecutionResult {
   timedOut: boolean;
   confined: boolean;
 }
+
+/** Evidence of a possible access restriction, not proof that the sandbox caused it.
+ * Never interpret ordinary test failures, missing modules or connection refusal as permission grants. */
+export function possibleSandboxConflict(result: ProjectExecutionResult): boolean {
+  return result.confined && !result.timedOut && result.exitCode !== 0 &&
+    /\b(?:EACCES|EPERM|WSAEACCES)\b|permission denied|access (?:is )?denied|operation not permitted|WinError (?:5|10013)\b|forbidden by (?:its )?access permissions|(?:sandbox|network|filesystem|file system)\s+(?:access\s+)?(?:blocked|denied)/i.test(result.output);
+}
 export interface ProjectExecutionSupport {
   available: boolean;
   reason?: string;
@@ -309,8 +316,11 @@ export class ProjectExecutionAdapter {
     const work = await canonical(scratch);
     const hostEnvironment = mxcHostEnvironment();
     for (const [key, value] of Object.entries(request.environment ?? {}))
-      if (!/^(?:ELECTRON_RUN_AS_NODE|npm_config_[a-z_]+|PIP_CONFIG_FILE)$/.test(key) || value.includes('\0') ||
-          (key === 'PIP_CONFIG_FILE' && value !== (process.platform === 'win32' ? 'nul' : '/dev/null')))
+      if (
+        !/^(?:ELECTRON_RUN_AS_NODE|npm_config_[a-z_]+|PIP_CONFIG_FILE)$/.test(key) ||
+        value.includes('\0') ||
+        (key === 'PIP_CONFIG_FILE' && value !== (process.platform === 'win32' ? 'nul' : '/dev/null'))
+      )
         throw new Error('Unsupported host execution environment override.');
     const environment = Object.entries(
       mercuryProjectGitEnvironment(
@@ -322,6 +332,7 @@ export class ProjectExecutionAdapter {
           ComSpec: hostEnvironment.ComSpec ?? '',
           TEMP: work,
           TMP: work,
+          TMPDIR: work,
           HOME: work,
           USERPROFILE: work,
           APPDATA: work,
@@ -335,13 +346,19 @@ export class ProjectExecutionAdapter {
       ),
     ).map(([key, value]) => `${key}=${value}`);
     const shell = process.env.SystemRoot ? path.join(process.env.SystemRoot, 'System32', 'cmd.exe') : 'cmd.exe';
-    let commandLine = `"${shell}" /d /s /c "${request.command}"`;
+    // Windows package initialization rewrites TEMP/TMP to an uncreated package
+    // directory. Restore the authorized scratch directory inside containment.
+    // CMD expands environment references before running the command line. Create
+    // its redirected directories so both %TEMP% references and child processes
+    // work without another parsing layer or a Node/UI capability for the shell.
+    const tempSetup = ['TEMP', 'TMP'].map((name) => `(if not exist "%${name}%" mkdir "%${name}%")`).join(' & ');
+    let commandLine = `"${shell}" /d /s /c "${tempSetup} & ${request.command}"`;
     if (request.executable) {
-      // The host owns this launcher. Script source and stdin never pass through CMD.
+      const launch = { executable: request.executable, args: request.args, stdin: request.stdin };
       const launcher = path.join(work, 'structured-process.cjs');
       await fs.writeFile(
         launcher,
-        `const {spawn}=require('node:child_process');\nconst request=${JSON.stringify({ executable: request.executable, args: request.args, stdin: request.stdin })};\nconst child=spawn(request.executable,request.args,{shell:false,windowsHide:true,stdio:['pipe','inherit','inherit']});\nchild.stdin.on('error',()=>{});child.stdin.end(request.stdin??'','utf8');child.on('error',error=>{console.error(error.message);process.exitCode=1});child.on('close',code=>{process.exitCode=code??1});`,
+        `const {spawn}=require('node:child_process');\nconst request=${JSON.stringify(launch)};\nconst temp=${JSON.stringify(work)};\nconst env={...process.env,TEMP:temp,TMP:temp,TMPDIR:temp};\nconst child=spawn(request.executable,request.args,{shell:false,windowsHide:true,env,stdio:['pipe','inherit','inherit']});\nchild.stdin.on('error',()=>{});child.stdin.end(request.stdin??'','utf8');child.on('error',error=>{console.error(error.message);process.exitCode=1});child.on('close',code=>{process.exitCode=code??1});`,
         { flag: 'wx' },
       );
       if (!environment.some((value) => value.startsWith('ELECTRON_RUN_AS_NODE=')))

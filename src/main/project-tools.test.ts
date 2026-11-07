@@ -59,8 +59,105 @@ async function fixture(mode: 1 | 2 | 3 = 2, repository = false) {
   return { directory, root, store, project, chat, approvals, projects, controller };
 }
 
-it('keeps answer and undiagnosed debugging commands read-only, without a native escape', async () => {
-  const { root, directory, store, chat, approvals, controller } = await fixture(3);
+it('delivers complete programming workflows without skill tool calls, even with large repository context and on resume', async () => {
+  const { root, store, chat, projects } = await fixture();
+  await fs.writeFile(path.join(root, 'AGENTS.md'), 'Repository conventions. '.repeat(1000));
+  await fs.mkdir(path.join(root, '.mercury/architecture'), { recursive: true });
+  await fs.writeFile(path.join(root, '.mercury/architecture/index.md'), 'Architecture details. '.repeat(1000));
+  const seen: ChatInput[] = [];
+  const provider = { chat: vi.fn(async (input: ChatInput) => {
+    seen.push(input);
+    return { text: 'No edits were made; the audio failure still needs investigation.', tools: [] };
+  }) } as unknown as ModelProvider;
+  const main = service(store, provider, projects);
+  await main.send(chat.id, profile, 'Fix the audio crash');
+  await main.send(chat.id, profile, 'resume');
+  expect(seen.length).toBeGreaterThanOrEqual(2);
+  for (const input of seen) {
+    const prompt = JSON.stringify(input.messages);
+    expect(prompt).toContain('Prioritize reliable execution, code quality, runtime speed');
+    expect(prompt).toContain('Capture the exact failing entrypoint');
+    expect(prompt).toContain('A fake service test cannot establish live service compatibility.');
+    expect(prompt).toContain('Retain the actual red reason, green outcome');
+    expect(prompt).toContain('Do not claim overall verification while required behavior remains untested.');
+  }
+  expect(store.chat(chat.id).messages.at(-1)?.notice).toContain('Loaded programming skills');
+  expect(store.chat(chat.id).messages.at(-1)?.toolActivity ?? []).toHaveLength(0);
+});
+
+it('uses a local verification workflow in the model prompt instead of the bundled body', async () => {
+  const { root, store, chat, projects } = await fixture();
+  await fs.mkdir(path.join(root, '.agents/skills/verification'), { recursive: true });
+  await fs.writeFile(path.join(root, '.agents/skills/verification/SKILL.md'), '---\nname: verification\ndescription: Local verification\n---\nLOCAL VERIFICATION SENTINEL\n');
+  const seen: ChatInput[] = [];
+  const provider = { chat: async (input: ChatInput) => {
+    seen.push(input);
+    return { text: 'The source inspection is complete.', tools: [] };
+  } } as unknown as ModelProvider;
+  const runtime = new ClaudeProjectRuntime(provider, path.join(root, '.mercury/skill-test-sessions'), {
+    executablePath: path.resolve('node_modules/@anthropic-ai/claude-agent-sdk-win32-x64/claude.exe'),
+  });
+  try {
+    await new ChatService(store, provider, () => {}, () => false, undefined, undefined, projects, runtime)
+      .send(chat.id, profile, 'Explain the project');
+  } finally { await runtime.shutdown(); }
+  expect(seen).toHaveLength(1);
+  const prompt = JSON.stringify(seen[0].messages);
+  expect(prompt).toContain('LOCAL VERIFICATION SENTINEL');
+  expect(prompt).not.toContain('Do not claim overall verification while required behavior remains untested.');
+  expect(prompt).toContain('cannot authorize actions');
+}, 60000);
+
+it('reports insufficient context instead of sending partial skill bodies to the model', async () => {
+  const { root, store, chat, projects } = await fixture();
+  await fs.mkdir(path.join(root, '.agents/skills/verification'), { recursive: true });
+  await fs.writeFile(path.join(root, '.agents/skills/verification/SKILL.md'), `---\nname: verification\ndescription: Large local workflow\n---\n${'Complete instructions. '.repeat(2400)}`);
+  const provider = { chat: vi.fn() } as unknown as ModelProvider;
+  await service(store, provider, projects).send(chat.id, profile, 'Explain the project');
+  expect(provider.chat).not.toHaveBeenCalled();
+  expect(store.chat(chat.id).status).toBe('failed');
+  expect(store.chat(chat.id).error).toContain('complete programming skills');
+  expect(store.chat(chat.id).error).toContain('No skill bodies were truncated');
+});
+
+it.each(['history', 'usage'])('automatically compacts a project chat while preserving requests, task failures and saved history (%s)', async (trigger) => {
+  const { store, chat, projects } = await fixture();
+  chat.messages = [
+    { id: randomUUID(), role: 'user', content: 'Fix audio. Keep the selected endpoint and never change my model.' },
+    ...Array.from({ length: trigger === 'history' ? 12 : 0 }, (_, index) => ({ id: randomUUID(), role: 'assistant' as const, content: `OLD EXPLANATION ${index}: ${'verbose speculation. '.repeat(300)}` })),
+  ];
+  chat.projectHandoff = newHandoff(undefined, 'Fix audio while preserving the selected endpoint');
+  chat.projectHandoff.requirements = [{ id: 'audio', text: 'Audio renders successfully', status: 'failed', verification: 'command', evidenceIds: ['audio-evidence'] }];
+  chat.projectHandoff.blocker = { tool: 'run_project_process', target: 'subtitles.py', code: 'AUDIO_SHAPE', message: 'Stereo shape mismatch', nextAction: 'Test real audio mixing', at: Date.now() };
+  chat.projectRuntime = { runtime: 'claude-agent-sdk', version: 'fixture', identity: chat.id, sessionId: 'old-large-session', status: 'completed' };
+  if (trigger === 'usage') chat.projectContextTokens = 14000;
+  store.saveChat(chat);
+  const original = structuredClone(chat.messages);
+  const seen: ChatInput[] = [];
+  const provider = { chat: async (input: ChatInput) => {
+    seen.push(input);
+    return { text: 'The audio shape failure remains unresolved. No files were changed.', tools: [] };
+  } } as unknown as ModelProvider;
+  const runtime = projectTestRuntime(provider);
+  const run = vi.spyOn(runtime, 'run');
+  await new ChatService(store, provider, () => {}, () => false, undefined, undefined, projects, runtime)
+    .send(chat.id, profile, 'Explain the remaining problem without editing');
+  expect(seen.length).toBeGreaterThan(0);
+  const prompt = JSON.stringify(seen[0].messages);
+  expect(prompt.length).toBeLessThan(48000);
+  expect(prompt).toContain('never change my model');
+  expect(prompt).toContain('Stereo shape mismatch');
+  expect(prompt).toContain('audio-evidence');
+  expect(prompt).toContain('Explain the remaining problem without editing');
+  expect(prompt).toContain('Prioritize reliable execution, code quality');
+  expect(run.mock.calls[0][0].session).toBeUndefined();
+  expect(store.chat(chat.id).messages.slice(0, original.length)).toEqual(original);
+  expect(store.chat(chat.id).messages.at(-1)?.notice).toContain('Compacted');
+  expect(store.chat(chat.id).projectHandoff?.requirements[0].status).toBe('failed');
+});
+
+it('keeps diagnostics read-only unless the user approves a command outside isolation', async () => {
+  const { root, directory, store, chat, approvals, controller } = await fixture(2);
   const execute = vi.fn(async (_request: import('./project-execution').ProjectExecutionRequest) => ({ exitCode: 0, output: 'inspected', confined: true }));
   let available = true;
   const execution = { probe: async () => ({ available }), execute } as unknown as ProjectExecutionAdapter;
@@ -72,7 +169,13 @@ it('keeps answer and undiagnosed debugging commands read-only, without a native 
     await tools.execute(chat, 'run_project_command', { command: 'dir', purpose: 'test' }, controller.signal);
     expect(execute.mock.calls.at(-1)?.[0]).toMatchObject({ confined: true, writableRoots: [] });
     available = false;
-    await expect(tools.execute(chat, 'run_project_command', { command: 'dir', purpose: 'test' }, controller.signal)).rejects.toMatchObject({ code: 'DIAGNOSTIC_EXECUTION_BLOCKED' });
+    const blocked = tools.execute(chat, 'run_project_command', { command: 'dir', purpose: 'test' }, controller.signal);
+    const denied = expect(blocked).rejects.toThrow('denied');
+    await expect.poll(() => approvals.snapshot().length).toBe(1);
+    expect(approvals.snapshot()[0].details).toContain('including read-only diagnostic limits');
+    approvals.answer(approvals.snapshot()[0].id, false);
+    await denied;
+    approvals.beginTurn(chat.id);
     available = true;
   }
   chat.projectHandoff.taskPolicy = beginProjectRequest(undefined, 'Read main.py', randomUUID());
@@ -81,7 +184,36 @@ it('keeps answer and undiagnosed debugging commands read-only, without a native 
   expect(await fs.readFile(path.join(root, 'note.txt'), 'utf8')).toBe('old');
 });
 
-it('does not run writable debugging commands or write an alternative backend after denied scope review', async () => {
+it.each([1, 2, 3] as const)('runs project executables under level %i with review only at level one', async mode => {
+  const { root, directory, store, chat, approvals, controller } = await fixture(mode);
+  const executable = path.join(root, 'python.exe');
+  await fs.writeFile(executable, 'fixture interpreter');
+  const execute = vi.fn(async () => ({ exitCode: 0, output: 'tests passed', confined: true }));
+  const execution = { probe: async () => ({ available: true }), execute } as unknown as ProjectExecutionAdapter;
+  const tools = new ProjectTools(store, approvals, new ProjectWorktreeService(path.join(directory, 'exe-workspaces')), undefined, { execution });
+  await tools.prepare(chat, controller.signal);
+  chat.projectHandoff = newHandoff(undefined, 'Debug and fix empty output');
+  chat.projectHandoff.taskPolicy = beginProjectRequest(undefined, 'Debug and fix empty output', randomUUID());
+  chat.projectHandoff.taskPolicy.diagnosis = { symptom: 'empty output', hypothesis: 'response field mismatch', testToConfirm: 'probe original endpoint', proposedChange: 'parse actual content', affectedPaths: ['note.txt'], evidenceIds: ['unit-policy-tested'], at: Date.now(), revision: 0, executionConfirmed: true };
+  const review = vi.spyOn(approvals, 'request');
+  if (mode !== 1) review.mockRejectedValue(new Error('Unexpected command approval'));
+  for (const [name, args] of [
+    ['run_project_process', { executable, args: ['-m', 'pytest'], purpose: 'test' }],
+    ['run_project_command', { command: 'python.exe -m pytest', purpose: 'test' }],
+  ] as const) {
+    const pending = tools.execute(chat, name, args, controller.signal);
+    if (mode === 1) {
+      await expect.poll(() => approvals.snapshot().length).toBe(1);
+      expect(execute).toHaveBeenCalledTimes(review.mock.calls.length - 1);
+      approvals.answer(approvals.snapshot()[0].id, true);
+    }
+    await pending;
+  }
+  expect(execute).toHaveBeenCalledTimes(2);
+  expect(review).toHaveBeenCalledTimes(mode === 1 ? 2 : 0);
+});
+
+it('does not run unbounded debugging commands or write an alternative backend after denied scope review', async () => {
   const { root, directory, store, chat, approvals, controller } = await fixture(2);
   const execute = vi.fn(async () => ({ exitCode: 0, output: 'ran', confined: true }));
   const execution = { probe: async () => ({ available: true }), execute } as unknown as ProjectExecutionAdapter;
@@ -91,7 +223,7 @@ it('does not run writable debugging commands or write an alternative backend aft
   chat.projectHandoff.taskPolicy = beginProjectRequest(undefined, 'Debug and fix empty output', randomUUID());
   chat.projectHandoff.taskPolicy.diagnosis = { symptom: 'empty output', hypothesis: 'response field mismatch', testToConfirm: 'probe original endpoint', proposedChange: 'parse actual content', affectedPaths: ['note.txt'], evidenceIds: ['unit-policy-tested'], at: Date.now(), revision: 0, executionConfirmed: true };
   for (const [name, args] of [
-    ['run_project_command', { command: 'node --test', purpose: 'test' }],
+    ['run_project_command', { command: 'node -e "performChanges()"', purpose: 'other' }],
     ['edit_project_file', { path: 'note.txt', expectedHash: hash('old'), content: 'from gpt4all import GPT4All' }],
   ] as const) {
     approvals.beginTurn(chat.id); // Independent user turns; denial must not trigger another prompt in the same turn.
@@ -404,6 +536,160 @@ it.each([true, false])('requires a one-shot decision before Main uses native exe
   }
 });
 
+it.each([true, false])('asks before retrying a sandbox access conflict (allow=%s)', async allow => {
+  const { directory, store, chat, approvals, controller } = await fixture(2);
+  const execute = vi.fn()
+    .mockResolvedValueOnce({ exitCode: 1, output: 'PermissionError: [WinError 10013] socket access forbidden by access permissions', timedOut: false, confined: true })
+    .mockResolvedValue({ exitCode: 0, output: 'model responded', timedOut: false, confined: false });
+  const execution = { probe: async () => ({ available: true }), execute } as unknown as ProjectExecutionAdapter;
+  const projects = new ProjectTools(store, approvals, new ProjectWorktreeService(path.join(directory, 'retry-workspaces')), undefined, { execution });
+  await projects.prepare(chat, controller.signal);
+  const pending = projects.execute(chat, 'run_project_process', { executable: 'node', args: ['-e', 'fetch("http://127.0.0.1:11434")'], purpose: 'test' }, controller.signal);
+  const outcome = pending.then(value => ({ value, error: undefined }), error => ({ value: undefined, error }));
+  await expect.poll(() => approvals.snapshot().length).toBe(1);
+  expect(execute).toHaveBeenCalledTimes(1);
+  expect(approvals.snapshot()[0]).toMatchObject({ requester: { agent: 'Main', model: 'main', provider: 'ollama', tool: 'run_project_process' } });
+  expect(approvals.snapshot()[0].details).toContain('WinError 10013');
+  expect(approvals.snapshot()[0].details).toContain('partial effects');
+  approvals.answer(approvals.snapshot()[0].id, allow);
+  const result = await outcome;
+  if (allow) {
+    expect(result.error).toBeUndefined();
+    expect(execute).toHaveBeenCalledTimes(2);
+    expect(execute.mock.calls[1][0]).toMatchObject({ approvedNative: true, confined: false });
+  } else {
+    expect(result.error.message).toContain('denied');
+    expect(execute).toHaveBeenCalledTimes(1);
+  }
+});
+
+it.each([false, true])('lets Main request sandbox permission before launching a known conflicting command (diagnostic=%s)', async diagnostic => {
+  const { directory, store, chat, approvals, controller } = await fixture(2);
+  const execute = vi.fn(async () => ({ exitCode: 0, output: 'ok', confined: false }));
+  const execution = { probe: async () => ({ available: true }), execute } as unknown as ProjectExecutionAdapter;
+  const projects = new ProjectTools(store, approvals, new ProjectWorktreeService(path.join(directory, 'explicit-workspaces')), undefined, { execution });
+  await projects.prepare(chat, controller.signal);
+  if (diagnostic) {
+    chat.projectHandoff = newHandoff(undefined, 'Inspect the project');
+    chat.projectHandoff.taskPolicy = beginProjectRequest(undefined, 'Do not edit; inspect only', randomUUID());
+  }
+  const pending = projects.execute(chat, 'run_project_command', { command: 'node -v', sandboxPermissions: 'require_escalated', justification: 'Connect to the local model for a smoke test.' }, controller.signal);
+  await expect.poll(() => approvals.snapshot().length).toBe(1);
+  expect(execute).not.toHaveBeenCalled();
+  expect(approvals.snapshot()[0].details).toContain('Connect to the local model');
+  approvals.answer(approvals.snapshot()[0].id, true);
+  await pending;
+  expect(execute).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ approvedNative: true, confined: false }), controller.signal);
+});
+
+it.each(['AssertionError: expected 2 to equal 3', 'ModuleNotFoundError: No module named numpy', 'ECONNREFUSED 127.0.0.1:11434'])('does not treat an ordinary program failure as a sandbox conflict: %s', async output => {
+  const { directory, store, chat, approvals, controller } = await fixture(2);
+  const execute = vi.fn(async () => ({ exitCode: 1, output, timedOut: false, confined: true }));
+  const execution = { probe: async () => ({ available: true }), execute } as unknown as ProjectExecutionAdapter;
+  const projects = new ProjectTools(store, approvals, new ProjectWorktreeService(path.join(directory, 'failure-workspaces')), undefined, { execution });
+  await projects.prepare(chat, controller.signal);
+  expect(await projects.execute(chat, 'run_project_command', { command: 'node -v' }, controller.signal)).toMatchObject({ exitCode: 1, output });
+  expect(execute).toHaveBeenCalledTimes(1);
+  expect(approvals.snapshot()).toEqual([]);
+});
+
+it.each(['source change', 'permissions change', 'stop'])('invalidates a sandbox retry on %s', async change => {
+  const { directory, root, store, project, chat, approvals, controller } = await fixture(2);
+  const execute = vi.fn(async () => ({ exitCode: 1, output: 'EACCES: permission denied', timedOut: false, confined: true }));
+  const execution = { probe: async () => ({ available: true }), execute } as unknown as ProjectExecutionAdapter;
+  const projects = new ProjectTools(store, approvals, new ProjectWorktreeService(path.join(directory, 'invalidated-workspaces')), undefined, { execution });
+  await projects.prepare(chat, controller.signal);
+  const pending = projects.execute(chat, 'run_project_command', { command: 'node -v' }, controller.signal);
+  const rejected = expect(pending).rejects.toThrow(change === 'source change' ? /Source files changed/ : change === 'permissions change' ? /permissions changed/ : /Stopped/);
+  await expect.poll(() => approvals.snapshot().length).toBe(1);
+  if (change === 'stop') controller.abort(new Error('Stopped'));
+  else {
+    if (change === 'source change') await fs.writeFile(path.join(root, 'note.txt'), 'user edit');
+    else store.saveProject({ ...project, policyRevision: 2 });
+    approvals.answer(approvals.snapshot()[0].id, true);
+  }
+  await rejected;
+  expect(execute).toHaveBeenCalledTimes(1);
+  expect(approvals.snapshot()).toEqual([]);
+});
+
+it('offers a retry after a thrown sandbox denial with verbose output', async () => {
+  const { directory, store, chat, approvals, controller } = await fixture(2);
+  const execute = vi.fn().mockRejectedValueOnce(new Error('diagnostic line\n'.repeat(2000) + 'spawn EPERM'))
+    .mockResolvedValue({ exitCode: 1, output: 'EACCES again', timedOut: false, confined: false });
+  const execution = { probe: async () => ({ available: true }), execute } as unknown as ProjectExecutionAdapter;
+  const projects = new ProjectTools(store, approvals, new ProjectWorktreeService(path.join(directory, 'verbose-workspaces')), undefined, { execution });
+  await projects.prepare(chat, controller.signal);
+  const pending = projects.execute(chat, 'run_project_command', { command: 'node -v' }, controller.signal);
+  await expect.poll(() => approvals.snapshot().length).toBe(1);
+  expect(approvals.snapshot()[0].details).toContain('[Earlier output omitted]');
+  expect(approvals.snapshot()[0].details).toContain('spawn EPERM');
+  approvals.answer(approvals.snapshot()[0].id, true);
+  expect(await pending).toMatchObject({ exitCode: 1, output: 'EACCES again' });
+  expect(execute).toHaveBeenCalledTimes(2);
+  expect(approvals.snapshot()).toEqual([]);
+});
+
+it('preserves ordinary Full access execution without asking about an unused sandbox', async () => {
+  const { directory, store, chat, controller } = await fixture(3);
+  const approvals = new ChatApprovals(() => {}, () => true);
+  const execute = vi.fn(async () => ({ exitCode: 0, output: 'ok', confined: false }));
+  const execution = { probe: async () => ({ available: false }), execute } as unknown as ProjectExecutionAdapter;
+  const projects = new ProjectTools(store, approvals, new ProjectWorktreeService(path.join(directory, 'full-access-workspaces')), undefined, { execution });
+  await projects.prepare(chat, controller.signal);
+  expect(await projects.execute(chat, 'run_project_command', { command: 'node -v' }, controller.signal)).toMatchObject({ exitCode: 0 });
+  expect(approvals.snapshot()).toEqual([]);
+  const pending = projects.execute(chat, 'run_project_command', { command: 'node -v', sandboxPermissions: 'require_escalated', justification: 'Review this exact launch.' }, controller.signal);
+  await expect.poll(() => approvals.snapshot().length).toBe(1);
+  expect(execute).toHaveBeenCalledTimes(1);
+  approvals.answer(approvals.snapshot()[0].id, true);
+  await pending;
+  expect(execute).toHaveBeenCalledTimes(2);
+});
+
+it('keeps workers confined and identifies their model when they request command review', async () => {
+  const { directory, store, chat, approvals, controller } = await fixture(1);
+  const execute = vi.fn(async () => ({ exitCode: 1, output: 'EACCES: access denied', timedOut: false, confined: true }));
+  const execution = { probe: async () => ({ available: true }), execute } as unknown as ProjectExecutionAdapter;
+  const projects = new ProjectTools(store, approvals, new ProjectWorktreeService(path.join(directory, 'worker-sandbox-workspaces')), undefined, { execution });
+  await projects.prepare(chat, controller.signal);
+  const child = { ...chat, id: randomUUID(), profile: { ...profile, model: 'worker-model' } };
+  await projects.prepareWorker(child, chat, projects.getWorkspace(chat), { ownedPaths: ['note.txt'], readOnly: false });
+  const pending = projects.execute(child, 'run_project_command', { command: 'node -v' }, controller.signal);
+  await expect.poll(() => approvals.snapshot().length).toBe(1);
+  expect(approvals.snapshot()[0]).toMatchObject({ chatId: chat.id, requester: { agent: `Worker ${child.id}`, model: 'worker-model', tool: 'run_project_command' } });
+  approvals.answer(approvals.snapshot()[0].id, true);
+  expect(await pending).toMatchObject({ exitCode: 1, confined: true });
+  expect(execute).toHaveBeenCalledTimes(1);
+  expect(approvals.snapshot()).toEqual([]);
+  await expect(projects.execute(child, 'run_project_command', { command: 'node -v', sandboxPermissions: 'require_escalated' }, controller.signal)).rejects.toMatchObject({ code: 'WORKER_SANDBOX_REQUIRED' });
+  expect(execute).toHaveBeenCalledTimes(1);
+});
+
+it('uses real native process and localhost access only after approving a sandbox retry', async () => {
+  const { directory, store, chat, approvals, controller } = await fixture(2);
+  let calls = 0;
+  const server = createServer((_request, response) => { calls++; response.end('local-model-smoke-ok'); });
+  server.listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  cleanups.push(() => new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve())));
+  const port = (server.address() as import('node:net').AddressInfo).port;
+  const native = new ProjectExecutionAdapter(path.join(directory, 'unused-runtime'), path.join(directory, 'scratch'));
+  const execute = vi.fn(async (request: import('./project-execution').ProjectExecutionRequest, signal: AbortSignal) => {
+    if (!request.approvedNative) return { exitCode: 1, output: 'WSAEACCES: network access denied', timedOut: false, confined: true };
+    return native.execute(request, signal);
+  });
+  const execution = { probe: async () => ({ available: true }), execute } as unknown as ProjectExecutionAdapter;
+  const projects = new ProjectTools(store, approvals, new ProjectWorktreeService(path.join(directory, 'localhost-workspaces')), undefined, { execution });
+  await projects.prepare(chat, controller.signal);
+  const pending = projects.execute(chat, 'run_project_process', { executable: 'node', args: ['-e', `fetch('http://127.0.0.1:${port}').then(r=>r.text()).then(console.log)`], purpose: 'test' }, controller.signal);
+  await expect.poll(() => approvals.snapshot().length).toBe(1);
+  expect(calls).toBe(0);
+  approvals.answer(approvals.snapshot()[0].id, true);
+  expect(await pending).toMatchObject({ exitCode: 0, confined: false, output: expect.stringContaining('local-model-smoke-ok') });
+  expect(calls).toBe(1);
+});
+
 it('runs structured scripts through the real project tool interface', async () => {
   const { root, directory, store, chat, approvals, controller } = await fixture(3);
   const execution = new ProjectExecutionAdapter(path.join(directory, 'unused-runtime'), path.join(directory, 'scratch'));
@@ -522,8 +808,10 @@ it('delivers a disposable project through the real SDK, process and browser, the
   expect(store.chat(id).messages.at(-1)?.verification).toBe('passed');
   expect(await fs.readFile(path.join(root, 'note.txt'), 'utf8')).toBe('updated');
   const originalSession = store.chat(id).projectRuntime?.sessionId;
+  expect(store.chat(id).projectContextTokens).toBeGreaterThanOrEqual(profile.contextLimit * .7);
   await chats.send(id, profile, 'Summarize the saved result; do not redo work.');
-  expect(store.chat(id).projectRuntime?.sessionId).toBe(originalSession);
+  expect(store.chat(id).status, store.chat(id).error).toBe('idle');
+  expect(store.chat(id).projectRuntime?.sessionId).not.toBe(originalSession);
   expect(calls).toBe(10);
 }, 60000);
 

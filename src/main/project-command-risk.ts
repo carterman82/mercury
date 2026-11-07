@@ -41,15 +41,55 @@ export async function projectCommandApprovalReason(
   inspectScope?: (text: string) => void,
 ): Promise<string | undefined> {
   inspectScope?.([input.command, input.executable, ...(input.args ?? []), input.stdin].filter(Boolean).join(' '));
-  const direct = commandApprovalReason(input);
-  if (direct) return direct;
   const canonicalRoot = await fs.realpath(root);
+  cwd = await fs.realpath(cwd);
   if (!within(canonicalRoot, cwd))
     return 'Review this command before inspecting or running scripts outside the project.';
+  // An extension alone is not a reason to review project tooling. Resolve every
+  // candidate independently so another external launch still requires approval.
+  const classify = async (command: string, directory: string, network?: string) => {
+    const uncertainDirectory = /\b(?:cd|chdir|pushd)\b|\b(?:cmd|powershell|pwsh|sh|bash)(?:\.exe)?\s/i.test(command);
+    const candidates =
+      /"([^"\r\n]+\.(?:exe|com))"|'([^'\r\n]+\.(?:exe|com))'|([^\s"';&|()<>]+\.(?:exe|com))(?=$|[\s"';&|()<>])/gi;
+    let inspected = '',
+      offset = 0;
+    for (const match of command.matchAll(candidates)) {
+      inspected += command.slice(offset, match.index);
+      const filename = match[1] ?? match[2] ?? match[3];
+      let local = false;
+      try {
+        const resolved = await fs.realpath(path.resolve(directory, filename));
+        // A Windows root-relative path (\tools\app.exe) still depends on the
+        // current drive; only a drive-qualified/UNC path is stable after cd /d.
+        const fullyQualified =
+          path.isAbsolute(filename) && (process.platform !== 'win32' || path.parse(filename).root.length > 1);
+        local =
+          (!uncertainDirectory || fullyQualified) &&
+          within(canonicalRoot, resolved) &&
+          (await fs.stat(resolved)).isFile();
+      } catch {
+        /* Unknown executable paths still require review. */
+      }
+      // Keep the program name for installation/network classification (python,
+      // pip, curl, etc.), removing only the already-authorized extension.
+      inspected += local ? match[0].replace(/\.(?:exe|com)(?=["']?$)/i, '') : match[0];
+      offset = match.index! + match[0].length;
+    }
+    inspected += command.slice(offset);
+    return commandApprovalReason({ command: inspected, network });
+  };
+  const direct = await classify(
+    [input.command, input.executable ? `"${input.executable}"` : '', ...(input.args ?? []), input.stdin]
+      .filter(Boolean)
+      .join(' '),
+    cwd,
+    input.network,
+  );
+  if (direct) return direct;
   const visited = new Set<string>();
   const inspect = async (command: string, directory: string, depth: number): Promise<string | undefined> => {
     inspectScope?.(command);
-    const risk = commandApprovalReason({ command });
+    const risk = await classify(command, directory);
     if (risk) return risk;
     if (depth > 8 || visited.size > 32)
       return 'Review this command: its local launch chain exceeds the inspection limit.';

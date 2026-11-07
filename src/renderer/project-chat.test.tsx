@@ -32,7 +32,7 @@ it('shows the selected project, default restricted permissions, and current comm
   expect(html).toContain('value="2" selected=""');
   expect(html).toContain('Automatic isolated commands are unavailable');
   expect(html).toContain('You can approve individual commands to run with your user permissions.');
-  expect(html).toContain('EXE launches and software installations always need approval.');
+  expect(html).toContain('External EXE launches and software installations always need approval.');
 });
 
 it('hides generated file cards in projects while preserving uploads and ordinary chat cards', () => {
@@ -61,4 +61,17 @@ it('leaves ordinary chat without project permissions and labels project approval
   expect(render(state)).not.toContain('Project permission mode');
   state.chatApprovals = [{ id: 'approval', chatId: 'chat', projectId: 'project', title: 'Read external file', details: 'D:\\Other\\source.ts', at: 1 }];
   expect(render(state, 'project', 'chat')).toContain('aria-label="Project action approval"');
+});
+
+it('identifies the model and tool requesting a command approval', () => {
+  const state = initial();
+  state.chatApprovals = [{ id: 'approval', chatId: 'chat', projectId: 'project', title: 'Allow command?', details: 'node smoke-test.js', at: 1,
+    requester: { agent: 'Main', model: 'local-model', provider: 'ollama', tool: 'run_project_process' } }];
+  const html = render(state, 'project', 'chat');
+  expect(html).toContain('Requested by');
+  expect(html).toContain('Main');
+  expect(html).toContain('local-model');
+  expect(html).toContain('ollama');
+  expect(html).toContain('run_project_process');
+  expect(html).toContain('node smoke-test.js');
 });

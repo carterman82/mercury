@@ -55,12 +55,19 @@ export function hasCurrentProjectTest(handoff: ProjectHandoff, evidence: SourceE
   });
 }
 
+/** AI completion is an assessment, never a verified test pass. */
+export function hasAssessedCompletion(handoff: ProjectHandoff): boolean {
+  return handoff.requirements.some(item => item.status === 'completed') &&
+    handoff.requirements.every(item => item.status === 'passed' || (item.status === 'completed' && Boolean(item.completionNote?.trim())));
+}
+
 export function projectDeliveryFeedback(
   handoff: ProjectHandoff,
   evidence: SourceEvidence[],
   mutated: boolean,
 ): string | undefined {
   if (!mutated && handoff.taskPolicy?.intent === 'answer') return;
+  if (hasAssessedCompletion(handoff)) return;
   const pending = handoff.requirements.filter((item) => item.status !== 'passed');
   const missingCriteria = mutated && !handoff.requirements.length;
   const missingCompatibility = handoff.requiresModelVerification && !handoff.compatibility;
@@ -96,7 +103,7 @@ export function projectDeliveryFeedback(
     (!handoff.blocker || blockerResolved)
   )
     return;
-  return `Delivery is not yet verified. Continue working with the offered tools before answering. Do not replay completed edits or weaken criteria.\n${JSON.stringify(
+  return `Delivery is not yet verified. For implemented requirements, use complete_project_requirements with requirementIds and a note describing the work and verification limitations; direct verification is optional for AI completion. Leave unfinished work open. To claim verified success, continue with the checks below. Do not replay completed edits or weaken criteria.\n${JSON.stringify(
     {
       pending,
       needsTest,
@@ -109,7 +116,7 @@ export function projectDeliveryFeedback(
           ? 'Call update_project_task to add the missing concrete acceptance criteria or documented model compatibility. Browser model work requires separate browser criteria with stage:page, stage:model (selector/expectedText), and stage:inference. Preserve existing criteria, then verify the added criteria.'
           : needsTest
             ? 'Run the relevant existing test suite and a smoke test of the changed behavior. Use purpose:"test" for a custom test command. Inspect output, fix failures, then cite the returned evidenceId in update_project_task. Source inspection, builds and lint alone do not establish tested behavior.'
-            : 'Use read_project_task for exact criteria, reuse current successful evidence with update_project_task, and run any missing checks. If a previous approach failed, resolve the blocker using current successful verification.',
+            : 'Use read_project_task for exact criteria. For implemented work, call complete_project_requirements with requirementIds and a note describing the work and verification limitations. For verified success, reuse current evidence with update_project_task. Leave unfinished work blocked/failed/not_run.',
     },
   )}`;
 }

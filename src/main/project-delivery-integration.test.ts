@@ -7,9 +7,10 @@ import type { ModelProvider } from './providers';
 import type { ProjectTools } from './project-tools';
 import type { ProjectAgentRuntime } from './project-agent-runtime';
 
-it.each([true, false])(
+it.each(['verified', 'assessed', 'unfinished'])(
   'continues a premature final to test and close criteria, with bounded retries (repair=%s)',
-  async (repair) => {
+  async (mode) => {
+    const repair = mode !== 'unfinished';
     const profile = { provider: 'ollama' as const, connectionId: 'fixture', model: 'main', contextLimit: 16000 };
     const handoff = newHandoff(undefined, 'Fix behavior');
     handoff.requirements = [
@@ -35,6 +36,7 @@ it.each([true, false])(
     const commitResponse = vi.fn(async () => ({ committed: false }));
     const projects = {
       prepare: async () => 'Project',
+      loadWorkflows: async () => ({ context: '', loaded: [], warnings: [] }),
       generation: () => generation,
       handles: () => true,
       execute: async (_chat: unknown, name: string) =>
@@ -46,11 +48,21 @@ it.each([true, false])(
     let runs = 0;
     const runtime = {
       run: async (input) => {
-        if (++runs === 1)
+        if (++runs === 1) {
+          await input.execute('update_project_task', { requirements: handoff.requirements, remaining: 'Implement' });
           await input.execute('patch_project_file', { path: 'app.ts', oldText: 'old', newText: 'fixed' });
+        }
         else {
           expect(input.messages.at(-1)?.content).toContain('Delivery is not yet verified');
-          if (repair) {
+          if (mode === 'assessed') {
+            const state: any = await input.execute('update_project_task', { requirements: [], remaining: 'Finish' });
+            expect(input.tools).toContainEqual(expect.objectContaining({ function: expect.objectContaining({ name: 'complete_project_requirements' }) }));
+            handoff.blocker = { tool: 'run_project_process', target: '.', code: 'TEST_UNAVAILABLE', message: 'Tests cannot run here', nextAction: 'Report limitation', at: Date.now() };
+            const result: any = await input.execute('complete_project_requirements', {
+              requirementIds: [state.requirements[0].id], note: 'Implemented the fix. Tests cannot run in this environment.',
+            });
+            expect(result.error).toBeUndefined();
+          } else if (repair) {
             const result: any = await input.execute('run_project_process', {
               executable: 'node',
               args: ['--test'],
@@ -82,6 +94,11 @@ it.each([true, false])(
     expect(chat.status).toBe(repair ? 'idle' : 'failed');
     expect(chat.messages.at(-1)?.delivery?.status).toBe(repair ? 'completed' : 'blocked');
     expect(commitResponse).toHaveBeenCalledTimes(repair ? 1 : 0);
+    if (mode === 'assessed') {
+      expect(chat.messages.at(-1)?.verification).toBe('not_run');
+      expect(handoff.requirements[0]).toMatchObject({ status: 'completed', evidenceIds: [] });
+      expect(handoff.blocker?.code).toBe('TEST_UNAVAILABLE');
+    }
     if (!repair) {
       expect(chat.messages.at(-1)?.content).toContain('Verification remains incomplete');
       expect(chat.messages.at(-1)?.content).toContain('Implemented the requested fix and checked the behavior.');
@@ -99,7 +116,7 @@ it('answers an inspection follow-up without completing historical failed require
   const chat = { id: 'chat', projectId: 'p', title: 'Task', profile, messages: [], status: 'idle', updatedAt: 1, projectHandoff: handoff } as ChatThread;
   const store = { settings: () => ({ connections: [{ id: 'fixture', provider: 'ollama', url: 'http://unused.invalid' }] }), chat: () => chat, project: () => ({ id: 'p', permissionMode: 2 }), saveChat: vi.fn() } as unknown as Store;
   const commitResponse = vi.fn();
-  const projects = { prepare: async () => 'Project', generation: () => 0, commitResponse } as unknown as ProjectTools;
+  const projects = { prepare: async () => 'Project', loadWorkflows: async () => ({ context: '', loaded: [], warnings: [] }), generation: () => 0, commitResponse } as unknown as ProjectTools;
   const run = vi.fn(async input => { const text = 'The previous run failed because the environment was incompatible. No runtime absence was established.'; input.onText(text); return { text }; });
   await new ChatService(store, {} as ModelProvider, () => {}, () => false, undefined, undefined, projects, { run } as unknown as ProjectAgentRuntime).send(chat.id, profile, 'Read main.py and explain the previous failure');
   expect(run).toHaveBeenCalledTimes(1); expect(commitResponse).not.toHaveBeenCalled();

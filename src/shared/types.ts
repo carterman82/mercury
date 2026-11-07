@@ -35,7 +35,7 @@ export interface RunEvent { id: string; at: number; role?: HistoricalAgentRole; 
 export interface ChangeRecord { path: string; before: string | null; after: string | null; at: number; }
 export interface CommandRequest { id: string; command: string; cwd: string; }
 export interface SourceEvidence { id: string; at: number; tool: string; label: string; input: string; result: string; projectRevision?: number; }
-export interface ProjectRequirement { id?: string; text: string; status: 'passed' | 'failed' | 'blocked' | 'not_run'; evidenceIds: string[]; verification?: 'inspection' | 'command' | 'browser'; stage?: 'page' | 'model' | 'inference'; selector?: string; expectedText?: string; }
+export interface ProjectRequirement { id?: string; text: string; status: 'completed' | 'passed' | 'failed' | 'blocked' | 'not_run'; completionNote?: string; evidenceIds: string[]; verification?: 'inspection' | 'command' | 'browser'; stage?: 'page' | 'model' | 'inference'; selector?: string; expectedText?: string; }
 export interface ProjectTaskPolicy {
   requestId: string;
   request: string;
@@ -96,8 +96,9 @@ export interface ProjectAssignment {
   workspaceId?: string; workspacePath?: string; session?: ProjectAgentSession; findings?: string; error?: string;
   activity?: { name: string; status: 'running' | 'succeeded' | 'failed'; at: number; attemptId?: string; completedAt?: number; durationMs?: number; result?: string }[];
 }
-export interface ChatThread { id: string; title: string; profile: ModelProfile; usesMainPool?: boolean; projectId?: string; workspacePath?: string; executionSupport?: { available: boolean; reason?: string; version: string }; projectRuntime?: ProjectAgentSession; projectAssignments?: ProjectAssignment[]; projectHandoff?: ProjectHandoff; messages: ChatMessage[]; status: 'idle' | 'streaming' | 'stopped' | 'failed' | 'interrupted'; error?: string; updatedAt: number; }
-export interface ChatApproval { id: string; chatId: string; title: string; details: string; at: number; projectId?: string; policyRevision?: number; kind?: 'read' | 'write' | 'command' | 'plugin' | 'integrate'; agentId?: string; paths?: string[]; }
+export interface ChatThread { id: string; title: string; profile: ModelProfile; usesMainPool?: boolean; projectId?: string; workspacePath?: string; executionSupport?: { available: boolean; reason?: string; version: string }; projectRuntime?: ProjectAgentSession; projectContextTokens?: number; projectAssignments?: ProjectAssignment[]; projectHandoff?: ProjectHandoff; messages: ChatMessage[]; status: 'idle' | 'streaming' | 'stopped' | 'failed' | 'interrupted'; error?: string; updatedAt: number; }
+export interface ApprovalRequester { agent: string; model: string; provider: ProviderKind; tool?: string; }
+export interface ChatApproval { id: string; chatId: string; title: string; details: string; at: number; projectId?: string; policyRevision?: number; kind?: 'read' | 'write' | 'command' | 'plugin' | 'integrate'; agentId?: string; paths?: string[]; requester?: ApprovalRequester; }
 export interface ProjectMapSummary { available: boolean; fresh: boolean; persisted?: boolean; sourceFiles: number; languages: string[]; unresolvedReferences: number; diagrams: string[]; diagramLabels?: Record<string, string>; diagnostics: { file?: string; message: string }[]; }
 export interface Snapshot { projects: Project[]; sessions: Session[]; chats: ChatThread[]; settings: Settings; activeRole: AgentRole | null; activeChatId: string | null; activeChatIds?: string[]; modelRequests?: ModelRequestCount[]; chatApprovals?: ChatApproval[]; }
 export interface ChatUpdate { chat: ChatThread; activeChatId: string | null; activeChatIds: string[]; modelRequests: ModelRequestCount[]; }

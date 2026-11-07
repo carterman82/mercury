@@ -17,29 +17,222 @@ import { projectTestRuntime } from './project-test-runtime';
 
 const cleanup: (() => Promise<void>)[] = [];
 
-it('lets a read-only research worker fetch public evidence without project writes', async () => {
-  const root=await fs.mkdtemp(path.join(os.tmpdir(),'mercury-worker-web-'));
-  cleanup.push(()=>fs.rm(root,{recursive:true,force:true,maxRetries:5,retryDelay:100}));
-  const store=new Store(path.join(root,'state.sqlite')); cleanup.push(async()=>store.close());
-  const profile={provider:'ollama' as const,connectionId:'fixture',model:'research',contextLimit:16000};
-  store.saveSettings({connections:[{id:'fixture',provider:'ollama',label:'Fixture',url:'http://127.0.0.1:11434'}],mainModel:profile,subagentModel:profile,plannerModel:null});
-  const project={id:randomUUID(),name:'Research',path:root,permissionMode:3 as const,policyRevision:1};store.saveProject(project);
-  const parent:ChatThread={id:randomUUID(),projectId:project.id,title:'Research',profile,messages:[],status:'idle',updatedAt:Date.now()};store.saveChat(parent);
-  const tools=new ProjectTools(store,new ChatApprovals(()=>{}),new ProjectWorktreeService(path.join(root,'workspaces')));
-  await tools.prepare(parent,new AbortController().signal);
-  let calls=0;
-  const provider={chat:async(input:ChatInput)=>{
-    expect(JSON.stringify(input.tools)).toContain('web_fetch');
-    if(++calls===1)return {text:'',tools:[{id:'fetch',name:'web_fetch',arguments:{url:'https://example.com/model'}}]};
-    expect(JSON.stringify(input.messages)).toContain('Verified model metadata');
-    return {text:'The model metadata is verified.',tools:[]};
-  }} as unknown as ModelProvider;
-  const web={handles:(name:string)=>name==='web_fetch',execute:async()=>({content:'Verified model metadata'})} as any;
-  const workers=new ProjectWorkers(store,provider,projectTestRuntime(provider),tools,new ProjectWorktreeService(path.join(root,'workers')),()=>{},web);
-  const assignment=await workers.start(parent,{kind:'investigation',task:'Research model',context:''},new AbortController().signal);
-  await workers.wait(parent,[assignment.id]);
-  expect(assignment.status).toBe('completed');expect(assignment.activity?.[0].name).toBe('web_fetch');expect(calls).toBe(2);
-});
+it.each([false, true])(
+  'recovers full worker tool evidence and rejects another assignment evidence (error=%s)',
+  async (failed) => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'mercury-worker-recall-'));
+    cleanup.push(() => fs.rm(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }));
+    const store = new Store(path.join(root, 'state.sqlite'));
+    cleanup.push(async () => store.close());
+    const profile = { provider: 'ollama' as const, connectionId: 'fixture', model: 'research', contextLimit: 32000 };
+    store.saveSettings({
+      connections: [{ id: 'fixture', provider: 'ollama', label: 'Fixture', url: 'http://127.0.0.1:11434' }],
+      mainModel: profile,
+      subagentModel: profile,
+      plannerModel: null,
+    });
+    const project = { id: randomUUID(), name: 'Recall', path: root, permissionMode: 3 as const, policyRevision: 1 };
+    store.saveProject(project);
+    const parent: ChatThread = {
+      id: randomUUID(),
+      projectId: project.id,
+      title: 'Recall',
+      profile,
+      messages: [],
+      status: 'idle',
+      updatedAt: Date.now(),
+    };
+    store.saveChat(parent);
+    const tools = new ProjectTools(
+      store,
+      new ChatApprovals(() => {}),
+      new ProjectWorktreeService(path.join(root, 'workspaces')),
+    );
+    await tools.prepare(parent, new AbortController().signal);
+    const evidence = new Map<string, string>();
+    const stages = new Map<string, number>();
+    let webCalls = 0;
+    const provider = {
+      chat: async (input: ChatInput) => {
+        expect(JSON.stringify(input.tools)).toContain('recall_context');
+        expect(JSON.stringify(input.tools)).not.toContain('edit_project_file');
+        const name = JSON.stringify(input.messages).includes('Assignment: Worker A') ? 'A' : 'B';
+        const stage = stages.get(name) ?? 0;
+        stages.set(name, stage + 1);
+        const call = (id: string, tool: string, args: object) => ({
+          text: '',
+          tools: [{ id, name: tool, arguments: args }],
+        });
+        if (stage === 0) return call('fetch', 'web_fetch', { url: `https://example.com/${name}` });
+        const result = JSON.parse((input.messages.at(-1) as { content: string }).content);
+        if (stage === 1) {
+          expect(result.evidenceId).toEqual(expect.any(String));
+          evidence.set(name, result.evidenceId);
+          if (name === 'B') return call('foreign', 'recall_context', { id: evidence.get('A'), offset: 12000 });
+          return call('own', 'recall_context', { id: result.evidenceId, offset: 12000 });
+        }
+        if (name === 'B' && stage === 2) {
+          expect(result.error).toContain('No saved source');
+          return call('own', 'recall_context', { id: evidence.get(name), offset: 12000 });
+        }
+        expect(result.content).toContain('EXACT FACT IN THE MIDDLE');
+        expect(result.id).toBe(evidence.get(name));
+        return { text: 'Recovered exact saved evidence.', tools: [] };
+      },
+    } as unknown as ModelProvider;
+    const longText = 'a'.repeat(14000) + 'EXACT FACT IN THE MIDDLE' + 'b'.repeat(16000);
+    const web = {
+      handles: (name: string) => name === 'web_fetch',
+      execute: async () => {
+        webCalls++;
+        if (failed) throw new Error(longText);
+        return { content: longText };
+      },
+    } as any;
+    const workers = new ProjectWorkers(
+      store,
+      provider,
+      projectTestRuntime(provider),
+      tools,
+      new ProjectWorktreeService(path.join(root, 'workers')),
+      () => {},
+      web,
+    );
+    for (const name of ['A', 'B']) {
+      const assignment = await workers.start(
+        parent,
+        { kind: 'investigation', task: `Worker ${name}`, context: '' },
+        new AbortController().signal,
+      );
+      await workers.wait(parent, [assignment.id]);
+      expect(assignment.status, assignment.error).toBe('completed');
+      expect(assignment.activity?.[0].status).toBe(failed ? 'failed' : 'succeeded');
+      const indexed = JSON.parse(
+        store.recallSourceContext('chat', assignment.id, { id: evidence.get(name), offset: 12000 }),
+      );
+      expect(indexed.content).toContain('EXACT FACT IN THE MIDDLE');
+      const recalled = JSON.parse(store.recallSourceContext('chat', assignment.id, {}));
+      expect(recalled.totalMatches).toBe(1);
+    }
+    expect(webCalls).toBe(2);
+  },
+);
+
+it.each([16000, 2048])(
+  'loads complete workflows for a read-only research worker or reports insufficient context (%i)',
+  async (contextLimit) => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'mercury-worker-web-'));
+    cleanup.push(() =>
+      fs.rm(root, {
+        recursive: true,
+        force: true,
+        maxRetries: 5,
+        retryDelay: 100,
+      }),
+    );
+    const skillDirectory = path.join(root, '.agents', 'skills', 'programmer');
+    await fs.mkdir(skillDirectory, { recursive: true });
+    await fs.writeFile(
+      path.join(skillDirectory, 'SKILL.md'),
+      '---\nname: programmer\ndescription: Project programming workflow\n---\nWORKER WORKFLOW BODY: verify the assigned evidence before returning findings.',
+    );
+    const store = new Store(path.join(root, 'state.sqlite'));
+    cleanup.push(async () => store.close());
+    const profile = {
+      provider: 'ollama' as const,
+      connectionId: 'fixture',
+      model: 'research',
+      contextLimit,
+    };
+    store.saveSettings({
+      connections: [
+        {
+          id: 'fixture',
+          provider: 'ollama',
+          label: 'Fixture',
+          url: 'http://127.0.0.1:11434',
+        },
+      ],
+      mainModel: profile,
+      subagentModel: profile,
+      plannerModel: null,
+    });
+    const project = {
+      id: randomUUID(),
+      name: 'Research',
+      path: root,
+      permissionMode: 3 as const,
+      policyRevision: 1,
+    };
+    store.saveProject(project);
+    const parent: ChatThread = {
+      id: randomUUID(),
+      projectId: project.id,
+      title: 'Research',
+      profile,
+      messages: [],
+      status: 'idle',
+      updatedAt: Date.now(),
+    };
+    store.saveChat(parent);
+    const tools = new ProjectTools(
+      store,
+      new ChatApprovals(() => {}),
+      new ProjectWorktreeService(path.join(root, 'workspaces')),
+    );
+    await tools.prepare(parent, new AbortController().signal);
+    let calls = 0;
+    const provider = {
+      chat: async (input: ChatInput) => {
+        expect(JSON.stringify(input.tools)).toContain('web_fetch');
+        expect(JSON.stringify(input.tools)).not.toContain('edit_project_file');
+        expect(JSON.stringify(input.messages)).toContain('WORKER WORKFLOW BODY');
+        if (++calls === 1)
+          return {
+            text: '',
+            tools: [
+              {
+                id: 'fetch',
+                name: 'web_fetch',
+                arguments: { url: 'https://example.com/model' },
+              },
+            ],
+          };
+        expect(JSON.stringify(input.messages)).toContain('Verified model metadata');
+        return { text: 'The model metadata is verified.', tools: [] };
+      },
+    } as unknown as ModelProvider;
+    const web = {
+      handles: (name: string) => name === 'web_fetch',
+      execute: async () => ({ content: 'Verified model metadata' }),
+    } as any;
+    const workers = new ProjectWorkers(
+      store,
+      provider,
+      projectTestRuntime(provider),
+      tools,
+      new ProjectWorktreeService(path.join(root, 'workers')),
+      () => {},
+      web,
+    );
+    const assignment = await workers.start(
+      parent,
+      { kind: 'investigation', task: 'Research model', context: '' },
+      new AbortController().signal,
+    );
+    await workers.wait(parent, [assignment.id]);
+    if (contextLimit === 2048) {
+      expect(assignment.status).toBe('failed');
+      expect(assignment.error).toContain('Not enough model context');
+      expect(calls).toBe(0);
+      return;
+    }
+    expect(assignment.status, assignment.error).toBe('completed');
+    expect(assignment.activity?.[0].name).toBe('web_fetch');
+    expect(calls).toBe(2);
+    expect(assignment.activity?.some((item) => /skill/.test(item.name))).toBe(false);
+  },
+);
 afterEach(async () => {
   for (const action of cleanup.splice(0).reverse()) await action();
 });
@@ -52,7 +245,14 @@ it.each(['../outside', 'src/../outside', '.git/config', 'src/*', 'C:\\outside', 
 
 it('runs two actual SDK coding workers in the shared checkout with owned paths', async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'mercury-workers-'));
-  cleanup.push(() => fs.rm(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }));
+  cleanup.push(() =>
+    fs.rm(root, {
+      recursive: true,
+      force: true,
+      maxRetries: 5,
+      retryDelay: 100,
+    }),
+  );
   const source = path.join(root, 'source');
   await fs.mkdir(source);
   await fs.writeFile(path.join(source, 'existing.txt'), 'user content');
@@ -64,15 +264,33 @@ it('runs two actual SDK coding workers in the shared checkout with owned paths',
   await git('commit', '-m', 'baseline');
   const store = new Store(path.join(root, 'state.sqlite'));
   cleanup.push(async () => store.close());
-  const profile = { provider: 'ollama' as const, connectionId: 'fixture', model: 'worker-model', contextLimit: 16000 };
+  const profile = {
+    provider: 'ollama' as const,
+    connectionId: 'fixture',
+    model: 'worker-model',
+    contextLimit: 16000,
+  };
   store.saveSettings({
-    connections: [{ id: 'fixture', provider: 'ollama', label: 'Test', url: 'http://127.0.0.1:11434' }],
+    connections: [
+      {
+        id: 'fixture',
+        provider: 'ollama',
+        label: 'Test',
+        url: 'http://127.0.0.1:11434',
+      },
+    ],
     mainModel: profile,
     subagentModel: profile,
     plannerModel: null,
     projectWorkerConcurrency: 3,
   });
-  const project = { id: randomUUID(), name: 'Test', path: source, permissionMode: 3 as const, policyRevision: 1 };
+  const project = {
+    id: randomUUID(),
+    name: 'Test',
+    path: source,
+    permissionMode: 3 as const,
+    policyRevision: 1,
+  };
   store.saveProject(project);
   const chat: ChatThread = {
     id: randomUUID(),
@@ -110,7 +328,11 @@ it('runs two actual SDK coding workers in the shared checkout with owned paths',
             {
               id: `write_${file}`,
               name: 'mcp__mercury__edit_project_file',
-              arguments: { path: file, expectedHash: null, content: `export const value = '${file}';\n` },
+              arguments: {
+                path: file,
+                expectedHash: null,
+                content: `export const value = '${file}';\n`,
+              },
             },
           ],
         };
@@ -132,12 +354,22 @@ it('runs two actual SDK coding workers in the shared checkout with owned paths',
   );
   const alpha = await workers.start(
     chat,
-    { kind: 'implementation', task: 'write alpha', context: '', ownedPaths: ['alpha.ts'] },
+    {
+      kind: 'implementation',
+      task: 'write alpha',
+      context: '',
+      ownedPaths: ['alpha.ts'],
+    },
     signal,
   );
   const beta = await workers.start(
     chat,
-    { kind: 'implementation', task: 'write beta', context: '', ownedPaths: ['beta.ts'] },
+    {
+      kind: 'implementation',
+      task: 'write beta',
+      context: '',
+      ownedPaths: ['beta.ts'],
+    },
     signal,
   );
   await workers.wait(chat, undefined, signal);

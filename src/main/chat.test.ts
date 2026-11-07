@@ -427,6 +427,36 @@ it('rejects context overflow and concurrent agent work before persisting a chat'
   expect(store.chats()).toHaveLength(0);
 });
 
+it('compacts ordinary chat history and retrieves exact omitted details from persisted messages', async () => {
+  const store = fixture();
+  const firstProvider = { chat: async () => ({ text: 'Initial answer.', tools: [] }) } as unknown as ModelProvider;
+  const id = await new ChatService(store, firstProvider, () => {}, () => false).send(null, profile, 'Keep my selected model.');
+  const chat = store.chat(id);
+  const original = 'a'.repeat(13000) + 'IMPORTANT DETAIL FROM THE MIDDLE' + 'b'.repeat(3000);
+  chat.messages[1].content = original;
+  for (let index = 0; index < 3; index++) chat.messages.push({ id: `old-${index}`, role: 'assistant', content: 'Old verbose answer. '.repeat(900) });
+  store.saveChat(chat);
+  const reopened = new Store(path.join(directories.at(-1)!, 'state.sqlite'));
+  stores.push(reopened);
+  let calls = 0;
+  const provider = { chat: async (input: ChatInput) => {
+    const prompt = JSON.stringify(input.messages);
+    if (++calls === 1) {
+      expect(prompt.length).toBeLessThan(profile.contextLimit * 3);
+      expect(prompt).toContain('Keep my selected model.');
+      expect(prompt).not.toContain('IMPORTANT DETAIL FROM THE MIDDLE');
+      return { text: '', tools: [{ id: 'recover', name: 'read_chat_history', arguments: { messageId: chat.messages[1].id, offset: 12000 } }] };
+    }
+    expect(prompt).toContain('IMPORTANT DETAIL FROM THE MIDDLE');
+    return { text: 'Recovered the exact important detail from saved history.', tools: [] };
+  } } as unknown as ModelProvider;
+  await new ChatService(reopened, provider, () => {}, () => false).send(id, profile, 'Recover the important detail.');
+  expect(calls).toBe(2);
+  expect(reopened.chat(id).messages[1].content).toBe(original);
+  expect(reopened.chat(id).messages.at(-1)?.notice).toContain('Compacted');
+  expect(reopened.chat(id).status).toBe('idle');
+});
+
 it('saves reasoning separately and keeps it out of subsequent model prompts', async () => {
   const store = fixture();
   const requests: ChatInput[] = [];

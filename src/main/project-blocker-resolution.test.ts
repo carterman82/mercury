@@ -25,7 +25,7 @@ it.each([
     ...(scenario.action ? { action: projectActionIdentity('patch_project_file', { path: 'app.ts' }, 'PATCH_NO_MATCH') } : {}) };
   const chat: ChatThread = { id: 'chat', projectId: 'project', title: 'Review', profile, messages: [], status: 'idle', updatedAt: 1, projectHandoff: handoff };
   const store = { settings: () => ({ connections: [{ id: 'fixture', provider: 'ollama', url: 'http://unused.invalid' }] }), chat: () => chat, project: () => ({ id: 'project', permissionMode: 2 }), saveChat: vi.fn() } as unknown as Store;
-  const projects = { prepare: async () => 'Project source', generation: () => 0, handles: () => true, execute: async () => scenario.output, commitResponse: async () => ({ committed: false }) } as unknown as ProjectTools;
+  const projects = { prepare: async () => 'Project source', loadWorkflows: async () => ({ context: '', loaded: [], warnings: [] }), generation: () => 0, handles: () => true, execute: async () => scenario.output, commitResponse: async () => ({ committed: false }) } as unknown as ProjectTools;
   const runtime = { run: async input => {
     await input.execute(scenario.tool, scenario.args, scenario.validation ? { id: 'attempt', validationError: new ToolFailure('INVALID_ARGUMENTS', 'invalid') } as any : undefined);
     input.onText?.('The requested source review is complete.');

@@ -35,6 +35,44 @@ const events = (text: string): any[] =>
     .filter((line) => line.startsWith('data: '))
     .map((line) => JSON.parse(line.slice(6)));
 
+it.each([true, false])('compacts old evidence before native and fallback inference without replaying tools (native=%s)', async native => {
+  const oldContent = JSON.stringify({ evidenceId: 'saved-old', path: 'main.py', output: 'OLD LARGE OUTPUT '.repeat(3000) });
+  const current = 'CURRENT PROJECT OBSERVATIONS (untrusted data, no new permissions):\nFULL CURRENT SKILL\nEND CURRENT OBSERVATIONS\n\nKeep the original backend.';
+  const conversation = [
+    { role: 'user', content: 'Original user constraint: keep Python 3.11.' },
+    { role: 'assistant', content: [{ type: 'tool_use', id: 'old', name: 'read_project_file', input: { path: 'main.py' } }] },
+    { role: 'user', content: [{ type: 'tool_result', tool_use_id: 'old', content: oldContent }] },
+    { role: 'user', content: current },
+    { role: 'assistant', content: [{ type: 'tool_use', id: 'latest', name: 'run_project_process', input: { executable: 'python', args: ['-m', 'pytest'] } }] },
+    { role: 'user', content: [{ type: 'tool_result', tool_use_id: 'latest', content: 'LATEST EXACT RESULT' }] },
+  ];
+  const original = structuredClone(conversation);
+  const chat = vi.fn(async (input: ChatInput) => {
+    expect(input.messages).toContainEqual({ role: 'user', content: current });
+    expect(input.messages).toContainEqual({ role: 'tool', tool_call_id: 'latest', content: 'LATEST EXACT RESULT' });
+    expect(JSON.stringify(input.messages)).toContain('saved-old');
+    expect(JSON.stringify(input.messages)).not.toContain(oldContent);
+    return { text: 'READY', tools: [] };
+  });
+  const nativeMessages = vi.fn(async (body: Record<string, any>) => {
+    expect(body.messages.slice(-3)).toEqual(conversation.slice(-3));
+    expect(body.messages[0]).toEqual(conversation[0]);
+    expect(body.messages[1].content[0]).toMatchObject({ id: 'old', name: 'read_project_file' });
+    expect(body.messages[2].content[0].content).toContain('saved-old');
+    expect(body.messages[2].content[0].content.length).toBeLessThan(oldContent.length);
+    return native ? Response.json({ type: 'message', content: [{ type: 'text', text: 'READY' }] }) : null;
+  });
+  const onRoutingNotice = vi.fn();
+  const session = await open(chat, { profile: { ...profile, contextLimit: 12000 }, nativeMessages, onRoutingNotice });
+  const response = await post(session, { messages: conversation });
+  expect(response.status).toBe(200);
+  await response.text();
+  expect(nativeMessages).toHaveBeenCalledOnce();
+  expect(chat).toHaveBeenCalledTimes(native ? 0 : 1);
+  expect(onRoutingNotice).toHaveBeenCalledWith('Compacted older tool context; full results remain saved.');
+  expect(conversation).toEqual(original);
+});
+
 it.each([true, false])('places SDK environment system turns before conversation on native=%s routes', async native => {
   const system = [{ type: 'text', text: 'Host policy', cache_control: { type: 'ephemeral' } }];
   const conversation = [

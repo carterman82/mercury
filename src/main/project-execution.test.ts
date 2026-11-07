@@ -130,6 +130,58 @@ it.runIf(process.env.MERCURY_LIVE_MXC === '1')(
   45000,
 );
 
+it.runIf(process.env.MERCURY_LIVE_MXC === '1')(
+  'provides writable temporary storage for shell and structured diagnostic commands',
+  async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'mercury-temp-live-'));
+    temporary.push(root);
+    const workspace = path.join(root, 'workspace');
+    await fs.mkdir(workspace);
+    const adapter = new ProjectExecutionAdapter(
+      path.resolve('.build-resources/mxc-runtime'),
+      path.join(root, 'scratch'),
+    );
+    const script =
+      'const fs=require("node:fs"),os=require("node:os"),path=require("node:path");const dir=fs.mkdtempSync(path.join(os.tmpdir(),"child-temp-"));fs.writeFileSync(path.join(dir,"file"),"ok");console.log("temporary storage works");try{fs.writeFileSync("forbidden.txt","no");process.exitCode=2}catch{console.log("project writes denied")}';
+    // The script is read-only project data; the process may only write scratch.
+    await fs.writeFile(path.join(workspace, 'temp-check.cjs'), script);
+    for (const structured of [false, true]) {
+      const result = await adapter.execute(
+        {
+          command: structured ? 'temporary storage check' : `"${process.execPath}" temp-check.cjs`,
+          ...(structured ? { executable: process.execPath, args: ['-'], stdin: script } : {}),
+          cwd: workspace,
+          workspaceRoot: workspace,
+          mode: 2,
+          writableRoots: [],
+          win32k: true,
+        },
+        new AbortController().signal,
+      );
+      expect(result, JSON.stringify(result)).toMatchObject({ exitCode: 0, confined: true });
+      expect(result.output).toContain('temporary storage works');
+      expect(result.output).toContain('project writes denied');
+      await expect(fs.stat(path.join(workspace, 'forbidden.txt'))).rejects.toMatchObject({ code: 'ENOENT' });
+    }
+    const shellTemp = await adapter.execute(
+      {
+        command:
+          'echo temporary > "%TEMP%\\shell-child.txt" && type "%TEMP%\\shell-child.txt" & for %i in (1) do @echo value-%i & echo "a&b"',
+        cwd: workspace,
+        workspaceRoot: workspace,
+        mode: 2,
+        writableRoots: [],
+      },
+      new AbortController().signal,
+    );
+    expect(shellTemp, JSON.stringify(shellTemp)).toMatchObject({ exitCode: 0, confined: true });
+    expect(shellTemp.output).toContain('temporary');
+    expect(shellTemp.output).toContain('value-1');
+    expect(shellTemp.output).toContain('a&b');
+  },
+  60000,
+);
+
 it('constructs a fixed native containment policy without DACL fallback or inherited credentials', async () => {
   const { adapter, request, root, workspace } = await fixture();
   const scratch = path.join(root, 'work');

@@ -23,10 +23,11 @@ import { ProjectWorkers, projectWorkerTools } from './project-workers';
 import { toolFailed, failedToolResult, ToolFailure } from './tool-outcome';
 import { ProjectProgress } from './project-recovery';
 import { newHandoff, recordProjectAction } from './project-handoff';
-import { hasCurrentProjectTest, projectDeliveryFeedback } from './project-delivery';
+import { hasAssessedCompletion, hasCurrentProjectTest, projectDeliveryFeedback } from './project-delivery';
 import { beginProjectRequest, diagnosisTool, recordProjectDiagnosis, requireDiagnosisForEdit } from './project-task-policy';
-import { projectTaskTool, projectTaskReadTool, readProjectTask, projectTaskInstructions, updateProjectTask, requireProjectContract } from './project-task-state';
+import { projectTaskCompleteTool, completeProjectRequirements, projectTaskTool, projectTaskReadTool, readProjectTask, projectTaskInstructions, updateProjectTask, requireProjectContract } from './project-task-state';
 import { observeProjectTool } from './project-tool-observation';
+import { compactChatMessages, projectContextCheckpoint, chatHistoryTool, readChatHistory } from './chat-context-compaction';
 
 const tool = (name: string, description: string, properties: object, required: string[]) => ({ type: 'function', function: { name, description, parameters: { type: 'object', properties, required, additionalProperties: false } } });
 const schemaTool = (name: string, description: string, schema: z.ZodType) => {
@@ -90,10 +91,15 @@ export class ChatService {
     messages[0].content += chatConversationInstructions + mainDelegationInstructions + sourceMemoryInstructions + answerCompletionInstructions;
     if (this.files) messages[0].content += chatFileInstructions;
     if (this.capabilities) messages[0].content += chatCapabilityInstructions;
-    if (messageTextLength(messages) > Math.min(profile.contextLimit * 3, 300_000)) throw new Error('This chat exceeds the selected model’s context limit. Start a new chat or choose a larger context in settings.');
     const contextMaximum = Math.min(profile.contextLimit * 3, 300_000);
+    messages[0].content += '\nOlder assistant replies and tool output may be compacted as historical excerpts, not verified facts. Use read_chat_history to recover exact saved conversation messages, and recall_context for saved tool evidence. Never replay completed mutations from historical context.';
+    const compactedHistory = compactChatMessages(messages, contextMaximum);
+    messages.splice(0, messages.length, ...compactedHistory.messages);
+    if (messageTextLength(messages) > contextMaximum) throw new Error('The current user instructions exceed this model’s context limit even after automatic compaction. Choose a larger context or send a smaller request.');
+    let freshProjectSession = compactedHistory.compacted || Boolean(chat.projectRuntime && (compactedHistory.triggered || (chat.projectContextTokens ?? 0) >= profile.contextLimit * .7));
     const savedContext = sourceMemoryContext(chatEvidence(chat), Math.min(60000, Math.floor(contextMaximum * .35), Math.max(0, contextMaximum - messageTextLength(messages) - 2500)));
     let dynamicContext = '';
+    let workflowContext = '';
     if (!chat.projectId) messages[0].content += savedContext;
     else messages[0].content += projectTaskInstructions;
     const controller = new AbortController();
@@ -127,6 +133,7 @@ export class ChatService {
     this.save(chat);
     const notices = new Set<string>();
     const addNotice = (notice: string) => { notices.add(notice); response.notice = [...notices].join('\n'); this.save(chat); };
+    if (compactedHistory.compacted || (chat.projectId && freshProjectSession)) addNotice('Compacted older context; your requests, project state and full saved history are preserved.');
     let publishTimer: ReturnType<typeof setTimeout> | null = null;
     const publish = () => {
       if (!publishTimer) publishTimer = setTimeout(() => { publishTimer = null; this.save(chat); }, 75);
@@ -136,9 +143,17 @@ export class ChatService {
       if (chat.projectId) {
         addNotice('Checking the project.');
         const projectContext = await this.projects!.prepare(chat, controller.signal);
+        const workflows = await this.projects!.loadWorkflows(chat);
+        workflowContext = workflows.context;
+        addNotice(`Loaded programming skills: ${workflows.loaded.map(id => id.split('/').at(-1)).join(', ')}.`);
+        for (const warning of workflows.warnings) addNotice(`Skill warning: ${warning}`);
+        const compacted = compactChatMessages(messages, contextMaximum, workflowContext.length + projectContextCheckpoint(chat.projectHandoff).length + 4500, freshProjectSession);
+        messages.splice(0, messages.length, ...compacted.messages);
+        freshProjectSession ||= compacted.compacted || Boolean(compacted.triggered && chat.projectRuntime);
+        if (compacted.compacted || freshProjectSession) addNotice('Compacted older context; your requests, project state and full saved history are preserved.');
         observedGeneration = this.projects!.generation(chat);
         const budget = Math.max(0, contextMaximum - messageTextLength(messages) - 2500);
-        if (budget < 2000) throw new Error('Not enough model context remains for project instructions. Choose a larger context or start another project chat.');
+        if (budget < workflowContext.length + 2000) throw new Error('Not enough model context remains for complete programming skills and project instructions. Choose a larger context or start another project chat. No skill bodies were truncated.');
         dynamicContext = projectContext;
         dynamicContext += `\nCurrent user request: ${message}`;
         notices.delete('Checking the project.');
@@ -268,10 +283,14 @@ export class ChatService {
             output = recordProjectDiagnosis(chat.projectHandoff!, call.arguments, chatEvidence(chat));
           } else if (chat.projectId && call.name === 'update_project_task') {
             output = updateProjectTask(chat.projectHandoff!, call.arguments, chatEvidence(chat));
+          } else if (chat.projectId && call.name === 'complete_project_requirements') {
+            output = completeProjectRequirements(chat.projectHandoff!, call.arguments);
           } else if (chat.projectId && call.name === 'read_project_task') {
             if (!call.arguments || typeof call.arguments !== 'object' || Array.isArray(call.arguments) || Object.keys(call.arguments).length)
               throw new ToolFailure('INVALID_ARGUMENTS', 'read_project_task accepts an empty object.');
             output = readProjectTask(chat.projectHandoff!);
+          } else if (call.name === 'read_chat_history') {
+            output = readChatHistory(chat, call.arguments);
           } else if (call.name === 'recall_context') {
             this.store.indexSourceEvidence('chat', chat.id, chatEvidence(chat));
             output = JSON.parse(this.store.recallSourceContext('chat', chat.id, call.arguments, Math.max(500, contextMaximum - messageTextLength(messages) - 1500)));
@@ -367,13 +386,15 @@ export class ChatService {
       };
       const completion = new AnswerCompletion(message, chat.projectId ? 1 : 2, chat.projectId ? reason => { progress.recover(reason); response.metrics!.recoveries = progress.recoveries; } : undefined);
       if (chat.projectId) {
-        const tools = [delegationTool, recallContextTool, projectTaskTool, projectTaskReadTool, diagnosisTool, ...(this.files ? fileTools.filter(tool => tool.function.name === 'read_file') : []), ...(this.capabilities ? chatCapabilityTools : []), ...projectTools, ...projectWorkerTools];
+        const tools = [delegationTool, recallContextTool, chatHistoryTool, projectTaskTool, projectTaskReadTool, projectTaskCompleteTool, diagnosisTool, ...(this.files ? fileTools.filter(tool => tool.function.name === 'read_file') : []), ...(this.capabilities ? chatCapabilityTools : []), ...projectTools, ...projectWorkerTools];
         const currentContext = (requestMessages: typeof messages) => {
-          const budget = Math.max(2000, contextMaximum - messageTextLength(requestMessages) - 2500);
+          const handoff = projectContextCheckpoint(chat.projectHandoff);
+          // Leave room for the SDK's own system framing and serialized tool exchanges.
+          const budget = contextMaximum - messageTextLength(requestMessages) - 4500 - workflowContext.length - handoff.length;
+          if (budget < 2000) throw new Error('Not enough model context remains for complete programming skills and project instructions. Choose a larger context or start another project chat. No skill bodies were truncated.');
           const instructions = dynamicContext.slice(0, Math.floor(budget * .55));
-          const handoff = JSON.stringify(chat.projectHandoff).slice(0, Math.floor(budget * .3));
-          const evidence = sourceMemoryContext(chatEvidence(chat), Math.max(0, Math.floor(budget * .15) - 200));
-          return `${instructions}\nSaved task handoff (historical; reconcile revisions, never replay completed mutations):\n${handoff}\n${evidence}`;
+          const evidence = sourceMemoryContext(chatEvidence(chat), Math.max(0, Math.floor(budget * .4) - 200));
+          return `${workflowContext}\n${instructions}\nSaved task handoff (historical; reconcile revisions, never replay completed mutations):\n${handoff}\n${evidence}`;
         };
         const dispatchProjectTool = async (name: string, args: unknown, attempt?: ProjectToolAttempt) => {
           accountRequest();
@@ -382,7 +403,18 @@ export class ChatService {
           const images = visualResults.flatMap(result => result.images ?? []); visualResults = [];
           return images.length ? { ...output, _mercuryImages: images } : output;
         };
-        const runProject = (requestMessages = messages) => this.projectRuntime!.run({
+        const runProject = (requestMessages = messages) => {
+          const checkpoint = projectContextCheckpoint(chat.projectHandoff);
+          const compacted = compactChatMessages(requestMessages, contextMaximum, workflowContext.length + checkpoint.length + 4500, freshProjectSession);
+          requestMessages = compacted.messages;
+          const restart = freshProjectSession || compacted.compacted || Boolean(chat.projectRuntime && (compacted.triggered || (chat.projectContextTokens ?? 0) >= profile.contextLimit * .7));
+          freshProjectSession = false;
+          if (restart) {
+            delete chat.projectRuntime;
+            delete chat.projectContextTokens;
+            addNotice('Compacted older context; your requests, project state and full saved history are preserved.');
+          }
+          return this.projectRuntime!.run({
           projectId: chat.projectId!, chatId: chat.id, workspaceRoot: chat.workspacePath!, profile, agentLease: mainLease.id, messages: requestMessages, tools,
           signal: controller.signal, session: chat.projectRuntime,
           context: currentContext(requestMessages),
@@ -391,8 +423,15 @@ export class ChatService {
           onNotice: addNotice,
           onRequestState: state => { accountRequest(); progress.providerState(state); requestState = { state, at: Date.now() }; response.queued = state === 'queued'; this.save(chat); },
           onUsage: usage => {
+            if (usage?.input !== undefined) chat.projectContextTokens = Math.max(chat.projectContextTokens ?? 0, usage.input + (usage.output ?? 0));
             if (usage?.input !== undefined) response.metrics!.inputTokens = (response.metrics!.inputTokens ?? 0) + usage.input;
             if (usage?.output !== undefined) response.metrics!.outputTokens = (response.metrics!.outputTokens ?? 0) + usage.output;
+          },
+          onContextCompacted: () => {
+            // Native routes need not report usage. A gateway compaction still
+            // establishes that this persisted SDK transcript needs a fresh run.
+            chat.projectContextTokens = Math.max(chat.projectContextTokens ?? 0, Math.ceil(profile.contextLimit * .7));
+            this.save(chat);
           },
           onText: delta => {
             controller.signal.throwIfAborted();
@@ -405,6 +444,7 @@ export class ChatService {
           execute: dispatchProjectTool,
           onToolValidationFailure: dispatchProjectTool,
         });
+        };
         let terminal = await runProject();
         if (this.workers?.hasPending(chat)) {
           const findings = await this.workers.wait(chat, undefined, controller.signal);
@@ -442,9 +482,12 @@ export class ChatService {
       }
       for (let turn = 0; !chat.projectId && turn < 128; turn++) {
       if (controller.signal.aborted) throw controller.signal.reason;
+      const compacted = compactChatMessages(messages, contextMaximum);
+      messages.splice(0, messages.length, ...compacted.messages);
+      if (compacted.compacted) addNotice('Compacted older context; full conversation history remains saved.');
       if (messageTextLength(messages) > Math.min(profile.contextLimit * 3, 300_000)) throw new Error('Files exceed this model’s context limit. Choose a larger context or attach smaller files.');
       const prefix = response.content;
-      const tools = [delegationTool, recallContextTool, ...(this.files ? fileTools : []), ...(this.capabilities ? chatCapabilityTools : []), ...(chat.projectId ? projectTools : [])];
+      const tools = [delegationTool, recallContextTool, chatHistoryTool, ...(this.files ? fileTools : []), ...(this.capabilities ? chatCapabilityTools : []), ...(chat.projectId ? projectTools : [])];
       const result = await generateChatTurn(this.providers, { profile, agentLease: mainLease.id, messages, tools: tools.length ? tools : undefined, signal: controller.signal, onRequestState: state => {
         response.queued = state === 'queued';
         this.save(chat);
@@ -510,8 +553,9 @@ export class ChatService {
           recordProjectAction(chat.projectHandoff!, 'run_project_command', { command: 'Shared project changed after verification' }, { projectChanged: true });
         if (performedMutation && !chat.projectHandoff?.requirements.length)
           throw new Error('Changes are preserved, but no acceptance criteria or verification were recorded. Use update_project_task and verify the result before declaring completion.');
-        if (performedMutation) requireProjectContract(chat.projectHandoff, true);
-        if (performedMutation && !hasCurrentProjectTest(chat.projectHandoff!, chatEvidence(chat)))
+        const assessedCompletion = hasAssessedCompletion(chat.projectHandoff!);
+        if (performedMutation && !assessedCompletion) requireProjectContract(chat.projectHandoff, true);
+        if (performedMutation && !assessedCompletion && !hasCurrentProjectTest(chat.projectHandoff!, chatEvidence(chat)))
           throw new ToolFailure('TESTS_REQUIRED', 'Work saved; not complete. Run a relevant test suite or functional smoke test after the latest changes before declaring completion.');
         const handoff = chat.projectHandoff;
         if (handoff?.blocker && handoff.requirements.length && handoff.requirements.every(item => item.status === 'passed')) {
@@ -532,8 +576,8 @@ export class ChatService {
           }));
           if (verifiedAfterBlocker) handoff.blocker = undefined;
         }
-        if(chat.projectHandoff?.blocker)throw new ToolFailure('TASK_BLOCKED',`Work saved; unresolved blocker: ${chat.projectHandoff.blocker.message}`);
-        if (chat.projectHandoff?.requirements.some(item => item.status !== 'passed'))
+        if(!assessedCompletion && chat.projectHandoff?.blocker)throw new ToolFailure('TASK_BLOCKED',`Work saved; unresolved blocker: ${chat.projectHandoff.blocker.message}`);
+        if (chat.projectHandoff?.requirements.some(item => item.status !== 'passed' && item.status !== 'completed'))
           throw new Error('Work preserved, but acceptance requirements remain failed, blocked or not run. Review the recorded requirements before declaring completion.');
         const snapshot = await this.projects!.commitResponse(chat, controller.signal);
         if (snapshot.committed) addNotice(`Saved a local Mercury checkpoint (${snapshot.revision}) in .mercury/git. Your project’s Git history was not changed.`);

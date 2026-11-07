@@ -10,8 +10,8 @@ import { assessProjectAction, OneShotProjectGrants, type ProjectAction, type Pro
 import { ProjectWorktreeService, type ProjectWorkspace } from './project-worktrees';
 import { runCommand } from './commands';
 import { projectContext, ProjectNotes } from './project-context';
-import { discoverProjectSkills, readProjectSkill } from './project-skills';
-import { ProjectExecutionAdapter, type ProjectExecutionRequest } from './project-execution';
+import { discoverProjectSkills, readProjectSkill, loadProjectWorkflows } from './project-skills';
+import { ProjectExecutionAdapter, possibleSandboxConflict, type ProjectExecutionRequest, type ProjectExecutionResult } from './project-execution';
 import { ProjectMaps } from './project-maps';
 import type { ProjectPluginPolicy } from './project-plugin-policy';
 import type { ProjectServers } from './project-servers';
@@ -27,6 +27,10 @@ import { endpointDiagnosticSchema, endpointDiagnosticRequest, probeProjectEndpoi
 import { requireDiagnosisForEdit, backendScopeReason, enforceCommandTaskScope } from './project-task-policy';
 
 const filename = z.string().min(1).max(32768).refine(value => !value.includes('\0'));
+const sandboxPermissionFields = {
+  sandboxPermissions: z.enum(['use_default', 'require_escalated']).describe('Request one-time user approval to run outside isolation when a local model, library or resource cannot be accessed in the sandbox. This never grants permission by itself.').optional(),
+  justification: z.string().trim().min(1).max(2000).describe('Explain why this exact command needs access outside the sandbox.').optional(),
+};
 const schemas = {
   list_project_skills: z.object({}).strict(),
   read_project_skill: z.object({ id: z.string().max(200), resource: z.string().min(1).max(1000).optional() }).strict(),
@@ -35,7 +39,7 @@ const schemas = {
   probe_project_endpoint: endpointDiagnosticSchema,
   setup_project_python_environment: pythonEnvironmentSchema,
   download_project_asset: z.object({ url: z.string().url().max(4000), destination: filename, format: z.enum(['json','gguf','wasm','binary']), maxBytes: z.number().int().min(1).max(1073741824), sha256: z.string().regex(/^[a-f0-9]{64}$/).optional() }).strict(),
-  start_project_server: z.object({ command: z.string().trim().min(1).max(10000), port: z.number().int().min(1024).max(65535), cwd: filename.optional() }).strict(),
+  start_project_server: z.object({ ...sandboxPermissionFields, command: z.string().trim().min(1).max(10000), port: z.number().int().min(1024).max(65535), cwd: filename.optional() }).strict(),
   project_server_status: z.object({ id: z.string().uuid().optional() }).strict(),
   stop_project_server: z.object({ id: z.string().uuid() }).strict(),
   list_project_files: z.object({ path: filename.optional() }).strict(),
@@ -43,8 +47,8 @@ const schemas = {
   search_project_files: z.object({ query: z.string().min(1).max(200) }).strict(),
   edit_project_file: z.object({ path: filename, expectedHash: z.string().regex(/^[a-f0-9]{64}$/, 'Copy the full 64-character hash, or use the returned revision token.').nullable().optional(), revision: z.string().uuid().optional(), content: z.string().max(512000), replacementIntent: z.boolean().optional() }).strict(),
   patch_project_file: z.object({ path: filename, expectedHash: z.string().regex(/^[a-f0-9]{64}$/).optional(), revision: z.string().uuid().optional(), oldText: z.string().min(1).max(512000), newText: z.string().max(512000) }).strict(),
-  run_project_command: z.object({ purpose: z.enum(['test', 'build', 'inspect', 'other']).optional(), command: z.string().trim().min(1).max(10000), cwd: filename.optional(), readPaths: z.array(filename).max(20).optional(), writePaths: z.array(filename).max(20).optional(), network: z.enum(['deny', 'allow']).optional(), win32k: z.boolean().describe('Request reviewed Win32 initialization for Node/.NET workloads; clipboard and injection remain disabled.').optional() }).strict(),
-  run_project_process: z.object({ purpose: z.enum(['test', 'build', 'inspect', 'other']).optional(), executable: filename, args: z.array(z.string().max(32768).refine(value => !value.includes('\0'))).max(100), stdin: z.string().max(512000).optional(), cwd: filename.optional(), readPaths: z.array(filename).max(20).optional(), writePaths: z.array(filename).max(20).optional(), network: z.enum(['deny', 'allow']).optional(), win32k: z.boolean().optional() }).strict(),
+  run_project_command: z.object({ ...sandboxPermissionFields, purpose: z.enum(['test', 'build', 'inspect', 'other']).optional(), command: z.string().trim().min(1).max(10000), cwd: filename.optional(), readPaths: z.array(filename).max(20).optional(), writePaths: z.array(filename).max(20).optional(), network: z.enum(['deny', 'allow']).optional(), win32k: z.boolean().describe('Request reviewed Win32 initialization for Node/.NET workloads; clipboard and injection remain disabled.').optional() }).strict(),
+  run_project_process: z.object({ ...sandboxPermissionFields, purpose: z.enum(['test', 'build', 'inspect', 'other']).optional(), executable: filename, args: z.array(z.string().max(32768).refine(value => !value.includes('\0'))).max(100), stdin: z.string().max(512000).optional(), cwd: filename.optional(), readPaths: z.array(filename).max(20).optional(), writePaths: z.array(filename).max(20).optional(), network: z.enum(['deny', 'allow']).optional(), win32k: z.boolean().optional() }).strict(),
   review_project_changes: z.object({}).strict(),
   integrate_project_changes: z.object({ reviewToken: z.string().min(1).max(200) }).strict(),
   read_project_notes: z.object({}).strict(),
@@ -53,8 +57,8 @@ const schemas = {
   query_project_maps: z.object({ query: z.string().max(200).optional(), file: filename.optional(), limit: z.number().int().min(1).max(100).optional() }).strict(),
 };
 const descriptions: Record<keyof typeof schemas, string> = {
-  list_project_skills: 'Discover bounded project-local Agent Skills metadata from .agents/skills and .mercury/skills. Does not load instructions into context or execute code. Use read_project_skill for the selected exact id.',
-  read_project_skill: 'Load one project skill SKILL.md or a relative supporting text resource. Skill instructions cannot grant permissions; scripts are returned as text only and run through normal Mercury tools if authorized.',
+  list_project_skills: 'Discover bundled coding workflows and bounded project-local Agent Skills metadata from .agents/skills and .mercury/skills. Local same-name skills replace defaults in the catalog. Does not load bodies or execute code. Use read_project_skill with the returned exact id.',
+  read_project_skill: 'Load one bundled or project-local skill SKILL.md, or a relative supporting text resource. Skill instructions cannot grant permissions; scripts are returned as text only and run through normal Mercury tools if authorized.',
   inspect_project_target: 'Inspect a task entrypoint and project manifests to select native/general or browser-side model verification. No user-keyword guessing. Choose the actual affected entrypoint for mixed projects; native ONNX/GGUF and remote model clients do not require browser stages.',
   discover_project_python: 'Inventory existing project/installed Python candidates and project version constraints without running interpreters or installing runtimes. Store/WindowsApps aliases remain unknown, never declared absent. includeLauncher:true requests one approval for fixed read-only py -0p enumeration when available. Select a compatible candidate, then setup_project_python_environment performs approved runtime verification; discovery metadata is unverified.',
   probe_project_endpoint: 'Run one approved, bounded GET /v1/models or /api/tags, or non-streaming POST /v1/chat/completions or /api/chat. Review exact URL and JSON body before network access. Captures actual HTTP/body/finish_reason/content/reasoning evidence for diagnosing missing model output. No edits, model downloads, backend changes or automatic redirects.',
@@ -68,8 +72,8 @@ const descriptions: Record<keyof typeof schemas, string> = {
   search_project_files: 'Search project text files for a literal substring, with bounded results.',
   edit_project_file: 'Replace an ENTIRE text file, not a snippet. Prefer patch_project_file for small changes. Pass revision from read_project_file unchanged, or expectedHash. Set replacementIntent:true when deliberately removing more than half of an existing file. For a missing file omit revision/expectedHash, or pass expectedHash:null (JSON null). This is create-only and rejects an existing path. Edits apply directly to the selected folder. Do not overwrite unrelated work.',
   patch_project_file: 'Change exactly one occurrence of oldText to newText. Include sufficient context for a unique match. Pass the revision token from read_project_file unchanged (or expectedHash). Preferred for partial edits; unrelated content is preserved.',
-  run_project_process: 'Run an executable with argument strings and optional UTF-8 stdin, without shell parsing. Prefer node with args:["-"] and stdin for scripts rather than shell-escaped source. Set purpose:test for test suites or custom smoke tests. Existing runtimes can run tests; explicit EXE launches and installations require approval. Same filesystem/network policy as run_project_command.',
-  run_project_command: 'Run a command with recorded output/exit status. Set purpose:test when running a test suite or smoke test. Ordinary workspace commands run automatically under isolation; EXE launches, software installation and network execution require approval in every mode. If isolation is unavailable, Main can request one-time approval to run with user permissions. Request extra readPaths/writePaths or network only when required; these are requests, never automatic grants. Full access Main uses the current OS user rights.',
+  run_project_process: 'Run an executable with argument strings and optional UTF-8 stdin, without shell parsing. Prefer node with args:["-"] and stdin for scripts rather than shell-escaped source. Set purpose:test for test suites or custom smoke tests. Project-local executables can run automatically at levels 2 and 3; level 1, external EXE launches and installations require approval. Same filesystem/network policy as run_project_command. If a known sandbox conflict prevents a real smoke test, request sandboxPermissions:require_escalated with a justification; Mercury asks the user before running outside isolation.',
+  run_project_command: 'Run a command with recorded output/exit status. Set purpose:test when running a test suite or smoke test. Ordinary workspace commands and project-local executables run automatically under isolation at level 2; level 1 reviews commands. External EXE launches, software installation and network execution require approval in every mode. If isolation is unavailable, Main can request one-time approval to run with user permissions. Request extra readPaths/writePaths or network only when required; these are requests, never automatic grants. Access-denied failures in isolation ask for one-time retry approval. For a known conflict, request sandboxPermissions:require_escalated with a justification before launching; Mercury asks the user. Denial ends that action. Workers must ask Main. Full access Main uses the current OS user rights.',
   review_project_changes: 'Deprecated: project edits are made directly and automatically saved to Git after a successful response.',
   integrate_project_changes: 'Deprecated: project edits are already in the project checkout and are automatically saved to Git after a successful response.',
   read_project_notes: 'Read shared durable project notes with their revision and provenance. Other chat transcripts are private to their chats.',
@@ -145,7 +149,7 @@ export class ProjectTools {
         chat.projectHandoff.browser = undefined;
         chat.projectHandoff.generation = (chat.projectHandoff.generation ?? 0) + 1;
         chat.projectHandoff.lastMutationAt = Date.now();
-        for (const requirement of chat.projectHandoff.requirements) if (requirement.status === 'passed') requirement.status = 'not_run';
+        for (const requirement of chat.projectHandoff.requirements) if (requirement.status === 'passed' || requirement.status === 'completed') { requirement.status = 'not_run'; delete requirement.completionNote; }
       }
       chat.projectHandoff.reads = retained;
       const snapshots = [];
@@ -158,7 +162,7 @@ export class ProjectTools {
         } catch {
           chat.projectHandoff.generation = (chat.projectHandoff.generation ?? 0) + 1;
           chat.projectHandoff.lastMutationAt = Date.now(); chat.projectHandoff.browser = undefined;
-          for (const requirement of chat.projectHandoff.requirements) if (requirement.status === 'passed') requirement.status = 'not_run';
+          for (const requirement of chat.projectHandoff.requirements) if (requirement.status === 'passed' || requirement.status === 'completed') { requirement.status = 'not_run'; delete requirement.completionNote; }
         }
       }
       chat.projectHandoff.snapshots = snapshots;
@@ -220,6 +224,10 @@ export class ProjectTools {
     return workspace;
   }
   private workspace(chat: ChatThread): ProjectWorkspace { return this.getWorkspace(chat); }
+  async loadWorkflows(chat: ChatThread) {
+    const policy = chat.projectHandoff?.taskPolicy;
+    return loadProjectWorkflows(this.workspace(chat).root, policy?.intent ?? 'implementation', policy?.request);
+  }
   async prepareWorker(child: ChatThread, parent: ChatThread, workspace: ProjectWorkspace, scope: { ownedPaths: string[]; readOnly: boolean }): Promise<string> {
     if (!parent.projectId || child.projectId !== parent.projectId) throw new Error('Invalid worker project ownership.');
     const ownedPaths = scope.ownedPaths.map(value => {
@@ -271,7 +279,8 @@ export class ProjectTools {
     if (decision.status === 'deny') throw new Error(decision.reason);
     if (decision.status === 'approval') {
       await this.approvals.request(context.chatId, `Project ${action.kind}: ${this.store.project(chat.projectId!).name}`, details ?? JSON.stringify({ reason: decision.reason, ...action }, null, 2), signal,
-        { projectId: context.projectId, policyRevision: context.revision, kind: action.kind, paths: action.paths, agentId: action.agentId ?? 'main', mandatoryUserApproval: Boolean(action.approvalReason || options.reviewedNativeAvailable) });
+        { projectId: context.projectId, policyRevision: context.revision, kind: action.kind, paths: action.paths, agentId: action.agentId ?? 'main', mandatoryUserApproval: Boolean(action.approvalReason || options.reviewedNativeAvailable),
+          requester: { agent: this.workers.has(chat.id) ? `Worker ${chat.id}` : 'Main', model: chat.profile.model, provider: chat.profile.provider, tool: action.tool } });
       const current = this.context(chat);
       if (context.revision !== current.revision || context.mode !== current.mode) throw new Error('Project permissions changed; this approval is no longer valid.');
       const grant = this.grants.issue(context, action);
@@ -483,6 +492,8 @@ export class ProjectTools {
     }
     if (name === 'run_project_command' || name === 'run_project_process' || name === 'start_project_server') {
       if (worker?.readOnly) throw new Error('This worker cannot run commands.');
+      const requestedNative = args.sandboxPermissions === 'require_escalated';
+      if (requestedNative && worker) throw new ToolFailure('WORKER_SANDBOX_REQUIRED', 'Workers must remain confined to assigned paths. Ask Main to request this exact command with user approval.');
       enforceCommandTaskScope(ownerHandoff?.taskPolicy, args.executable ? [args.executable, ...(args.args ?? []), args.stdin ?? ''].join(' ') : args.command, args.purpose);
       if (pythonInstallNeedsNetwork(args)) throw new ToolFailure('ENVIRONMENT_SETUP_REQUIRED',
         'This pip installation has no approved network access. Main should use setup_project_python_environment to review the interpreter, project environment, packages and network together.',
@@ -497,16 +508,17 @@ export class ProjectTools {
       if (diagnosticOnly) { request.writableRoots = []; request.confined = true; }
       const support = this.options.execution ? await this.options.execution.probe(request, signal) : { available: false };
       if ('version' in support) chat.executionSupport = support;
-      if (diagnosticOnly && !support.available) throw new ToolFailure('DIAGNOSTIC_EXECUTION_BLOCKED', 'Source edits need actual diagnostic evidence. Read-only command confinement is unavailable; use probe_project_endpoint for a reviewed HTTP diagnostic or explain the execution limitation.');
       const commandState = () => commandSnapshot(workspace.root, undefined, undefined, signal);
       const before = await commandState();
-      const nativeFallback = !support.available && !worker && Boolean(this.options.execution);
-      const approvalReason = await projectCommandApprovalReason(workspace.root, target, request, text => enforceCommandTaskScope(ownerHandoff?.taskPolicy, text, args.purpose)) ??
-        (ownerHandoff?.taskPolicy?.intent === 'debug' && !diagnosticOnly ? 'Review this debugging command and its possible file/backend changes. Source edits must follow the recorded diagnosis; this command has workspace write access.' : undefined);
-      const commandAction: ProjectAction = { kind: 'command', command: args.command, cwd: target, paths: policy.mode === 1 ? [...read, ...write] : write, approvalReason, contentHash: hash(JSON.stringify([before.digest, request]))! };
-      await this.authorize(chat, commandAction, signal, JSON.stringify({ ...request, sourceDigest: before.digest, effectivePermissions: nativeFallback ? 'Your user account filesystem and network access. Requested path and network limits cannot be enforced for this one-time command.' : 'Verified isolation with the requested scope.', reason: approvalReason ?? (nativeFallback ? 'Isolation is unavailable. This command will run once with your user permissions.' : 'Review command effects and requested filesystem/network scope.') }, null, 2), { isolationAvailable: support.available, reviewedNativeAvailable: nativeFallback });
+      const nativeFallback = (requestedNative || (!support.available && (policy.mode !== 3 || request.confined))) && !worker && Boolean(this.options.execution);
+      const commandRisk = await projectCommandApprovalReason(workspace.root, target, request, text => enforceCommandTaskScope(ownerHandoff?.taskPolicy, text, args.purpose));
+      const approvalReason = (nativeFallback ? 'Review this one-time command outside the sandbox. It will run with your user permissions.' : undefined) ?? commandRisk ??
+        (ownerHandoff?.taskPolicy?.intent === 'debug' && !diagnosticOnly && !['test', 'build'].includes(args.purpose) ? 'Review this debugging command and its possible file/backend changes. Source edits must follow the recorded diagnosis; this command has workspace write access.' : undefined);
+      const commandAction: ProjectAction = { kind: 'command', tool: name, command: args.command, cwd: target, paths: policy.mode === 1 ? [...read, ...write] : write, approvalReason, contentHash: hash(JSON.stringify([before.digest, request]))! };
+      const nativePermissions = 'Your user account filesystem and network access. Requested path and network limits cannot be enforced for this one-time command, including read-only diagnostic limits.';
+      await this.authorize(chat, commandAction, signal, JSON.stringify({ ...request, sourceDigest: before.digest, justification: args.justification, commandRisk, sandboxReason: 'reason' in support ? support.reason : undefined, effectivePermissions: nativeFallback ? nativePermissions : policy.mode === 3 && !request.confined ? 'Your user account filesystem and network access.' : 'Verified isolation with the requested scope.', reason: approvalReason ?? 'Review command effects and requested filesystem/network scope.' }, null, 2), { isolationAvailable: support.available, reviewedNativeAvailable: nativeFallback });
       if ((policy.mode !== 3 || worker) && !support.available && !nativeFallback) throw new Error('Native confinement is unavailable for this command.');
-      if (nativeFallback) request.approvedNative = true;
+      if (nativeFallback) { request.approvedNative = true; request.confined = false; }
       return this.withWorkspaceWrite(chat, async () => {
         const current = this.context(chat);
         if (current.mode !== policy.mode || current.revision !== policy.revision) throw new ToolFailure('PERMISSION_CHANGED', 'Project permissions changed after review.');
@@ -520,8 +532,33 @@ export class ProjectTools {
         }
         if (name === 'run_project_process' && !this.options.execution) throw new Error('Structured process execution requires the project execution adapter.');
         let result;
-        try { result = this.options.execution ? await this.options.execution.execute(request, signal) : await runCommand(args.command, target, signal, workspace.root); }
-        catch (error) { this.mutated(chat); throw error; } // Interrupted commands can leave partial writes.
+        const execute = () => this.options.execution ? this.options.execution.execute(request, signal) : runCommand(args.command, target, signal, workspace.root);
+        try {
+          let failure: unknown;
+          try { result = await execute(); }
+          catch (error) {
+            signal.throwIfAborted();
+            failure = error;
+            result = { exitCode: 1, output: error instanceof Error ? error.message : String(error), timedOut: false, confined: !request.approvedNative && (policy.mode !== 3 || Boolean(request.confined)) };
+          }
+          if (!worker && this.options.execution && !request.approvedNative && possibleSandboxConflict(result as ProjectExecutionResult)) {
+            // A failed process may already have written files. Review the current
+            // sources and the exact retry; never silently replay it outside isolation.
+            this.commandResults.get(chat.id)?.push({ command: args.command, ...result });
+            this.mutated(chat);
+            const retryBefore = await commandState();
+            const retryRequest = { ...request, approvedNative: true, confined: false };
+            await this.authorize(chat, { ...commandAction, approvalReason: 'This command encountered a possible sandbox access restriction. Allow one retry with your user permissions?', contentHash: hash(JSON.stringify([retryBefore.digest, retryRequest]))! }, signal,
+              JSON.stringify({ ...retryRequest, sourceDigest: retryBefore.digest, previousFailure: result.output.length > 3000 ? '[Earlier output omitted]\n' + result.output.slice(-3000) : result.output, warning: 'The first attempt may have partial effects. Retrying can repeat those effects.', effectivePermissions: nativePermissions }, null, 2), { reviewedNativeAvailable: true });
+            const retryPolicy = this.context(chat);
+            if (retryPolicy.mode !== policy.mode || retryPolicy.revision !== policy.revision) throw new ToolFailure('PERMISSION_CHANGED', 'Project permissions changed after review.');
+            if (await resolve() !== target) throw new ToolFailure('WORKING_DIRECTORY_CHANGED', 'Working directory changed after review.');
+            const retryReview = compareCommandSnapshots(retryBefore, await commandState());
+            if (retryReview.state !== 'unchanged') throw new ToolFailure('SOURCE_CHANGED', 'Source files changed or could not be verified after retry review.', { changedPaths: retryReview.changedPaths });
+            signal.throwIfAborted();
+            result = await this.options.execution.execute(retryRequest, signal);
+          } else if (failure) throw failure;
+        } catch (error) { this.mutated(chat); throw error; } // Interrupted commands can leave partial writes.
         signal.throwIfAborted(); this.commandResults.get(chat.id)?.push({ command: args.command, ...result });
         let after;
         try { after = await commandState(); }

@@ -3,6 +3,17 @@ import { newHandoff } from './project-handoff';
 import { sourceEvidence } from './source-memory';
 import { hasCurrentProjectTest, projectDeliveryFeedback } from './project-delivery';
 
+it('allows assessed completion without verification but keeps unfinished requirements open', () => {
+  const handoff = newHandoff(undefined, 'Implement');
+  handoff.requirements = [{ id: 'feature', text: 'Feature', status: 'completed', completionNote: 'Implemented; direct verification unavailable.', evidenceIds: [] }];
+  handoff.requiresModelVerification = true;
+  handoff.blocker = { tool: 'run_project_process', code: 'UNAVAILABLE', target: '.', message: 'Test unavailable', nextAction: 'Report limitation', at: 1 };
+  expect(projectDeliveryFeedback(handoff, [], true)).toBeUndefined();
+  expect(hasCurrentProjectTest(handoff, [])).toBe(false);
+  handoff.requirements.push({ text: 'Unfinished feature', status: 'blocked', evidenceIds: [] });
+  expect(projectDeliveryFeedback(handoff, [], true)).toBeDefined();
+});
+
 it('requires a real current test, not inspection, a build, missing exit status or an old check', () => {
   const handoff = newHandoff(undefined, 'Implement feature');
   handoff.generation = 2;

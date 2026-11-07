@@ -6,6 +6,7 @@ import type { ModelProfile } from '../shared/types';
 import type { ChatInput, ChatResult, ModelProvider } from './providers';
 import type { ChatDocument, ChatImage } from './vision';
 import { ModelHttpError } from './vision';
+import { compactProjectGatewayRequest } from './project-gateway-compaction';
 
 const MAX_REQUEST_BYTES = 32 * 1024 * 1024;
 const MAX_RESULT_CHARACTERS = 1_000_000;
@@ -63,6 +64,7 @@ export interface ProjectGatewayOptions {
   onRequestState?: ChatInput['onRequestState'];
   onReasoning?: ChatInput['onReasoning'];
   onUsage?: (usage: ChatResult['usage']) => void;
+  onContextCompacted?: () => void;
   /** Credential-aware provider boundary. Null explicitly selects translated fallback.
    * The host must preserve provider queue/route accounting until the body is consumed. */
   nativeMessages?: (
@@ -114,14 +116,14 @@ function textBlocks(value: unknown): string {
  * endpoints and local chat templates expect system instructions separately at
  * the beginning. Preserve system block metadata and conversation/tool order. */
 function orderedSystemInstructions(body: Record<string, unknown>): Record<string, unknown> {
-  if (!Array.isArray(body.messages) || !body.messages.some(message => message?.role === 'system')) return body;
+  if (!Array.isArray(body.messages) || !body.messages.some((message) => message?.role === 'system')) return body;
   const blocks = (value: unknown): Record<string, unknown>[] => {
     if (value === undefined) return [];
     textBlocks(value); // Reject unsupported system content rather than losing it.
-    return typeof value === 'string' ? [{ type: 'text', text: value }] : [...value as Record<string, unknown>[]];
+    return typeof value === 'string' ? [{ type: 'text', text: value }] : [...(value as Record<string, unknown>[])];
   };
   const system = blocks(body.system);
-  const messages = body.messages.filter(message => {
+  const messages = body.messages.filter((message) => {
     if (message?.role !== 'system') return true;
     if (message.content === undefined) throw new ProjectGatewayError(400, 'A system message requires text content.');
     system.push(...blocks(message.content));
@@ -428,10 +430,23 @@ export class ProjectModelGateway {
       });
       return;
     }
-    const raw = orderedSystemInstructions(await readJson(request, signal));
+    let raw = orderedSystemInstructions(await readJson(request, signal));
     if (!allowedModels.has(String(raw.model)))
       throw new ProjectGatewayError(400, 'This SDK session cannot select another model.');
     signal.throwIfAborted();
+    try {
+      const projection = compactProjectGatewayRequest(raw, options.profile.contextLimit);
+      raw = projection.body;
+      if (projection.compacted) {
+        options.onContextCompacted?.();
+        options.onRoutingNotice?.('Compacted older tool context; full results remain saved.');
+      }
+    } catch (error) {
+      throw new ProjectGatewayError(
+        400,
+        error instanceof Error ? error.message : 'Required context could not be compacted safely.',
+      );
+    }
     if (options.nativeMessages) {
       const headers = Object.fromEntries(
         Object.entries(request.headers).filter(

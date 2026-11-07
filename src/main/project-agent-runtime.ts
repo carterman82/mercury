@@ -48,6 +48,7 @@ export interface ProjectAgentInput {
   onNotice?(notice: string): void;
   onRequestState?(state: 'queued' | 'running'): void;
   onUsage?(usage: { input?: number; output?: number } | undefined): void;
+  onContextCompacted?(): void;
 }
 export interface ProjectAgentRuntime {
   run(input: ProjectAgentInput): Promise<{ text: string; session: ProjectRuntimeSession }>;
@@ -124,6 +125,7 @@ export class ClaudeProjectRuntime implements ProjectAgentRuntime {
         onRequestState: input.onRequestState,
         onReasoning: input.onReasoning,
         onUsage: input.onUsage,
+        onContextCompacted: input.onContextCompacted,
         nativeMessages: this.provider.messages
           ? (body, signal, headers) =>
               this.provider.messages!({

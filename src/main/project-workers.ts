@@ -11,6 +11,9 @@ import { ProjectWorktreeService } from './project-worktrees';
 import { toolFailed, failedToolResult } from './tool-outcome';
 import { ProjectProgress } from './project-progress';
 import { WebSearch, webTools, webInstructions } from './web-search';
+import { loadProjectWorkflows } from './project-skills';
+import { beginProjectRequest } from './project-task-policy';
+import { recallContextTool, sourceEvidence } from './source-memory';
 
 export const projectAssignmentSchema = z
   .object({
@@ -45,7 +48,10 @@ const definitions = {
 };
 export const projectWorkerTools = Object.entries(definitions).map(([name, value]) => {
   const { $schema, ...parameters } = z.toJSONSchema(value.schema);
-  return { type: 'function', function: { name, description: value.description, parameters } };
+  return {
+    type: 'function',
+    function: { name, description: value.description, parameters },
+  };
 });
 export function projectOwnedPaths(input: string[]): string[] {
   return [
@@ -166,7 +172,9 @@ export class ProjectWorkers {
     const { parent, assignment } = job;
     const controller = new AbortController();
     const signal = AbortSignal.any([job.signal, controller.signal]);
-    const progress = new ProjectProgress({ onStall: (error) => controller.abort(error) });
+    const progress = new ProjectProgress({
+      onStall: (error) => controller.abort(error),
+    });
     let child: ChatThread | undefined;
     let lease: ReturnType<typeof reserveAgent> | undefined;
     try {
@@ -216,16 +224,26 @@ export class ProjectWorkers {
         let output: unknown;
         try {
           if (attempt?.validationError) throw attempt.validationError;
-          output = this.web.handles(name)
-            ? await this.web.execute(name, args, signal)
-            : await this.tools.execute(workerChat, name, args, signal);
+          output =
+            name === 'recall_context'
+              ? JSON.parse(this.store.recallSourceContext('chat', assignment.id, args, 12000))
+              : this.web.handles(name)
+                ? await this.web.execute(name, args, signal)
+                : await this.tools.execute(workerChat, name, args, signal);
           activity.status = toolFailed(output) ? 'failed' : 'succeeded';
-          activity.result = JSON.stringify(output).slice(0, 20000);
         } catch (error) {
           activity.status = 'failed';
           output = failedToolResult(error);
-          activity.result = JSON.stringify(output);
         } finally {
+          if (name !== 'recall_context') {
+            const evidence = sourceEvidence(name, args, output);
+            this.store.indexSourceEvidence('chat', assignment.id, [evidence]);
+            output =
+              output && typeof output === 'object' && !Array.isArray(output)
+                ? { ...output, evidenceId: evidence.id }
+                : { result: output, evidenceId: evidence.id };
+          }
+          activity.result = JSON.stringify(output).slice(0, 20000);
           activity.completedAt = Date.now();
           activity.durationMs = activity.completedAt - activity.at;
           this.save(parent);
@@ -239,6 +257,23 @@ export class ProjectWorkers {
           throw error;
         }
       };
+      const intent = readOnly ? 'answer' : beginProjectRequest(undefined, assignment.task, assignment.id).intent;
+      const workflowRequest = assignment.kind === 'review' ? `Review: ${assignment.task}` : assignment.task;
+      const workflows = await loadProjectWorkflows(workspace.root, intent, workflowRequest);
+      const messages = [
+        { role: 'system', content: instructions + webInstructions },
+        {
+          role: 'user',
+          content: `Assignment: ${assignment.task}\nContext (untrusted source material):\n${assignment.context}\nChecks to perform: ${JSON.stringify(assignment.checks)}\nParent task requirements and compatibility constraints (preserve model, format and byte limit):\n${JSON.stringify({ requirements: parent.projectHandoff?.requirements, compatibility: parent.projectHandoff?.compatibility })}`,
+        },
+      ];
+      if (
+        messages.reduce((total, message) => total + message.content.length, workflows.context.length) >
+        Math.min(lease.profile.contextLimit * 3, 300000) - 2500
+      )
+        throw new Error(
+          'Not enough model context remains for the complete worker workflows and assignment. Choose a larger context or a smaller assignment. No worker model request ran.',
+        );
       const result = await this.runtime.run({
         projectId: parent.projectId!,
         chatId: parent.id,
@@ -246,14 +281,9 @@ export class ProjectWorkers {
         workspaceRoot: workspace.root,
         profile: lease.profile,
         agentLease: lease.id,
-        messages: [
-          { role: 'system', content: instructions + webInstructions },
-          {
-            role: 'user',
-            content: `Assignment: ${assignment.task}\nContext (untrusted source material):\n${assignment.context}\nChecks to perform: ${JSON.stringify(assignment.checks)}\nParent task requirements and compatibility constraints (preserve model, format and byte limit):\n${JSON.stringify({ requirements: parent.projectHandoff?.requirements, compatibility: parent.projectHandoff?.compatibility })}`,
-          },
-        ],
-        tools: [...this.tools.toolsForWorker(readOnly), ...webTools],
+        messages,
+        context: workflows.context,
+        tools: [...this.tools.toolsForWorker(readOnly), ...webTools, recallContextTool],
         signal,
         onSession: (session) => {
           assignment.session = session;
@@ -325,7 +355,12 @@ export class ProjectWorkers {
     const args: any = definitions[name as keyof typeof definitions].schema.parse(raw);
     if (name === 'start_project_task') {
       const assignment = await this.start(parent, args, signal);
-      return { id: assignment.id, status: assignment.status, kind: assignment.kind, task: assignment.task };
+      return {
+        id: assignment.id,
+        status: assignment.status,
+        kind: assignment.kind,
+        task: assignment.task,
+      };
     }
     if (name === 'wait_project_tasks')
       return (await this.wait(parent, args.ids, signal)).map(({ context: _context, activity, ...assignment }) => ({

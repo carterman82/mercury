@@ -16,7 +16,7 @@ async function observe(name: string, args: object, output: object, changed = fal
   let nextOutput = output;
   const replies: any[] = [];
   const store = { settings: () => ({ connections: [{ id: 'fixture', provider: 'ollama', url: 'http://unused.invalid' }] }), chat: () => chat, project: () => ({ id: 'project', permissionMode: 2 }), saveChat: vi.fn() } as unknown as Store;
-  const projects = { prepare: async () => 'Project source', generation: () => generation, handles: () => true, execute: async () => { if (changed) generation++; return nextOutput; }, commitResponse: async () => ({ committed: false }) } as unknown as ProjectTools;
+  const projects = { prepare: async () => 'Project source', loadWorkflows: async () => ({ context: '', loaded: [], warnings: [] }), generation: () => generation, handles: () => true, execute: async () => { if (changed) generation++; return nextOutput; }, commitResponse: async () => ({ committed: false }) } as unknown as ProjectTools;
   let runs = 0;
   const runtime = { run: async input => {
     if (runs++ > 0) { input.onText?.("Checks remain incomplete."); return { text: "Checks remain incomplete." }; }
