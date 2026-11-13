@@ -557,9 +557,10 @@ export class LocalProviders implements ModelProvider {
     input.signal.addEventListener('abort', abort, { once: true });
     if (input.signal.aborted) abort();
     const tools = input.tools?.length ? { tools: input.tools } : {};
+    // Always disable thinking to prevent loops; sampling params ensure consistent behavior
     const body = isOllama
-      ? { model: input.profile.model, messages: localImageMessages(input.messages, true), ...tools, stream: true, ...(input.disableThinking && !policy.nonThinking ? { think: /gpt-oss/i.test(input.profile.model) ? 'low' : false } : {}), options: { num_ctx: input.profile.contextLimit, ...policy.sampling, num_predict: policy.maxOutputTokens } }
-      : { model: input.profile.model, messages: localImageMessages(input.messages, false), ...tools, ...policy.sampling, stream: true, ...(input.disableThinking && !policy.nonThinking ? { reasoning: { effort: 'none' } } : {}), max_tokens: policy.maxOutputTokens, ...(input.toolChoice ? { tool_choice: input.toolChoice.type === 'tool' ? { type: 'function', function: { name: input.toolChoice.name } } : input.toolChoice.type === 'any' ? 'required' : input.toolChoice.type, ...(input.toolChoice.disable_parallel_tool_use !== undefined ? { parallel_tool_calls: !input.toolChoice.disable_parallel_tool_use } : {}) } : {}) };
+      ? { model: input.profile.model, messages: localImageMessages(input.messages, true), ...tools, stream: true, think: false, options: { num_ctx: input.profile.contextLimit, ...policy.sampling, num_predict: policy.maxOutputTokens } }
+      : { model: input.profile.model, messages: localImageMessages(input.messages, false), ...tools, ...policy.sampling, stream: true, reasoning: { effort: 'none' }, max_tokens: policy.maxOutputTokens, ...(input.toolChoice ? { tool_choice: input.toolChoice.type === 'tool' ? { type: 'function', function: { name: input.toolChoice.name } } : input.toolChoice.type === 'any' ? 'required' : input.toolChoice.type, ...(input.toolChoice.disable_parallel_tool_use !== undefined ? { parallel_tool_calls: !input.toolChoice.disable_parallel_tool_use } : {}) } : {}) };
     try {
       const response = await abortable(fetch(isOllama ? `${base}/api/chat` : `${base}/v1/chat/completions`, {
         method: 'POST', headers: { 'content-type': 'application/json', ...this.headers(input.profile.connectionId) }, body: JSON.stringify(body), signal: controller.signal, redirect: 'error',

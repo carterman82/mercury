@@ -170,7 +170,8 @@ describe('provider streams', () => {
     const request: ChatInput = { profile: { provider: 'ollama', connectionId: 'fixture', model: 'qwen-test', contextLimit: 8192 }, messages: [], signal: new AbortController().signal };
     await providers.chat(request);
     await providers.chat({ ...request, disableThinking: true });
-    expect(JSON.parse(fetcher.mock.calls[0][1]!.body as string)).not.toHaveProperty('think');
+    // Always expect think: false since we always disable thinking
+    expect(JSON.parse(fetcher.mock.calls[0][1]!.body as string)).toHaveProperty('think', false);
     expect(JSON.parse(fetcher.mock.calls[1][1]!.body as string)).toHaveProperty('think', false);
   });
   it.each(['ollama', 'lmstudio'] as const)('separates streamed %s reasoning from the answer', async provider => {

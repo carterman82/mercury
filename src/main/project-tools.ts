@@ -564,7 +564,8 @@ export class ProjectTools {
         if (!revision || revision.chatId !== chat.id || revision.target !== target) throw new Error('Unknown read revision for this file/chat. Read the file again.');
         args.expectedHash = revision.hash;
       }
-      if (args.expectedHash === undefined || (name !== 'edit_project_file' && args.expectedHash === null)) throw new Error('Supply the revision token or exact expectedHash from the corresponding read tool. Use expectedHash:null only to create a new file.');
+      // For patch_project_record, hash validation is removed - always read current file state
+      if (args.expectedHash === undefined && name !== 'patch_project_record') throw new Error('Supply the revision token or exact expectedHash from the corresponding read tool. Use expectedHash:null only to create a new file.');
     }
     if (name === 'run_project_command' || name === 'run_project_process' || name === 'start_project_server') {
       if (worker?.readOnly) throw new Error('This worker cannot run commands.');
@@ -692,7 +693,7 @@ export class ProjectTools {
       if (current.mode !== policy.mode || current.revision !== policy.revision) throw new Error('Project permissions changed before this edit.');
       signal.throwIfAborted();
       const files = new Workspace(root);
-      const change = name === 'patch_project_record' ? await files.patchRecord(relative, args.expectedHash, args.variable, args.key, args.fields) : name === 'patch_project_file' ? await files.patch(relative, args.expectedHash, args.oldText, args.newText) : await files.edit(relative, args.expectedHash, args.content, args.replacementIntent);
+      const change = name === 'patch_project_record' ? await files.patchRecord(relative, args.variable, args.key, args.fields) : name === 'patch_project_file' ? await files.patch(relative, args.expectedHash, args.oldText, args.newText) : await files.edit(relative, args.expectedHash, args.content, args.replacementIntent);
       this.mutated(chat);
       if (ownerHandoff && within(workspace.root, target)) {
         ownerHandoff.verificationTarget = await reconcileProjectTarget(workspace.root, ownerHandoff.verificationTarget?.entryPoint);

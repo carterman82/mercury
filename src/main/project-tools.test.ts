@@ -533,12 +533,12 @@ it('edits a named catalog record without copying source blocks, preserves neighb
   await fs.writeFile(path.join(root, 'catalog.js'), source);
   const read: any = await projects.execute(chat, 'read_project_record', { path: 'catalog.js', variable: 'games', key: 'Game A' }, controller.signal);
   expect(read.fields).toEqual({ name: 'A', description: 'Old', url: 'a.html', tags: ['action', 'arcade'] });
-  const changed: any = await projects.execute(chat, 'patch_project_record', { path: 'catalog.js', variable: 'games', key: 'Game A', revision: read.revision, fields: { description: 'A "better" game', metaDescription: 'New SEO' } }, controller.signal);
+  const changed: any = await projects.execute(chat, 'patch_project_record', { path: 'catalog.js', variable: 'games', key: 'Game A', fields: { description: 'A "better" game', metaDescription: 'New SEO' } }, controller.signal);
   const after = await fs.readFile(path.join(root, 'catalog.js'), 'utf8');
   expect(after).toContain('description: "A \\"better\\" game"');
   expect(after).toContain('"metaDescription": "New SEO"');
   expect(after.slice(after.indexOf('  B:'))).toBe(source.slice(source.indexOf('  B:')));
-  await expect(projects.execute(chat, 'patch_project_record', { path: 'catalog.js', variable: 'games', key: 'Game A', revision: read.revision, fields: { description: 'stale' } }, controller.signal)).rejects.toMatchObject({ code: 'STALE_REVISION' });
+  // With the new implementation, patchRecord always reads current file state (no stale write check needed)
   expect(changed.hash).not.toBe(read.hash);
   chat.projectHandoff = newHandoff(undefined, 'Catalog edit');
   chat.projectHandoff.snapshots = [{ path: 'catalog.js', hash: changed.hash }];

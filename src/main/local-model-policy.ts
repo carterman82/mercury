@@ -11,7 +11,12 @@ export function localModelPolicy(profile: ModelProfile, requested?: number, cont
   const maxOutputTokens = Math.max(1, Math.min(LOCAL_GENERATION_LIMITS.outputTokens, requested ?? Infinity, available));
   return {
     nonThinking: coderNext,
-    sampling: coderNext ? { temperature: 1, top_p: 0.95, top_k: 40 } : {},
+    sampling: { 
+      temperature: 1,       // Always set for consistent behavior
+      top_p: 0.95,
+      top_k: 40,
+      repeat_penalty: 1.1   // Prevent token repetition loops
+    },
     maxOutputTokens,
   };
 }

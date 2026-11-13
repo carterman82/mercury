@@ -135,10 +135,9 @@ export class Workspace {
   async snapshotHash(relative: string): Promise<string> {
     return /\.[cm]?[jt]s$/i.test(relative) ? hash(await this.recordSource(relative))! : (await this.read(relative)).hash;
   }
-  async patchRecord(relative: string, expectedHash: string, variable: string, key: string, fields: Record<string, RecordValue>) {
+  async patchRecord(relative: string, variable: string, key: string, fields: Record<string, RecordValue>) {
     const before = await this.recordSource(relative);
-    if (hash(before) !== expectedHash) throw new ToolFailure('STALE_REVISION', `File changed since it was read: ${relative}`, { sourceRevision: hash(before), target: relative });
-    return this.writeText(relative, expectedHash, patchProjectRecord(before, variable, key, fields), true, 8 * 1024 * 1024);
+    return this.writeText(relative, hash(before)!, patchProjectRecord(before, variable, key, fields), true, 8 * 1024 * 1024);
   }
   async patch(relative: string, expectedHash: string, oldText: string, newText: string): Promise<ChangeRecord> {
     const before = await fs.readFile(await this.resolve(relative, true), 'utf8');

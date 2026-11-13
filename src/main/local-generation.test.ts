@@ -67,10 +67,15 @@ it.each(['ollama', 'lmstudio'] as const)(
       temperature: 1,
       top_p: 0.95,
       top_k: 40,
+      repeat_penalty: 1.1,
       [provider === 'ollama' ? 'num_predict' : 'max_tokens']: 8192,
     });
-    expect(body).not.toHaveProperty('reasoning');
-    expect(body).not.toHaveProperty('think');
+    if (provider === 'ollama') {
+      expect(body).toHaveProperty('think', false);
+    } else {
+      expect(body).not.toHaveProperty('think');
+      expect(body).toHaveProperty('reasoning', { effort: 'none' });
+    }
   },
 );
 
@@ -351,7 +356,10 @@ it('keeps native thinking budgets below the clamped output allowance for other m
   const body = JSON.parse(fetch.mock.calls[0][1].body);
   expect(body.max_tokens).toBe(8192);
   expect(body.thinking.budget_tokens).toBeLessThan(body.max_tokens);
-  expect(body).not.toHaveProperty('temperature');
+  // Sampling params are always sent now
+  expect(body.temperature).toBe(1);
+  expect(body.top_p).toBe(0.95);
+  expect(body.top_k).toBe(40);
 });
 
 it('also rejects repetitive nonstreaming native Messages content', async () => {
