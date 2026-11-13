@@ -10,6 +10,7 @@
     "package": "electron-forge package",
     "make": "electron-forge make",
     "test": "vitest run",
+    "test:packaging": "node --test scripts/runtime-packaging.test.mjs",
     "eval:fixture": "node scripts/evals/run.mjs --fixture",
     "test:eval": "node --test scripts/evals/evaluate.test.mjs",
     "test:e2e": "electron-forge package && playwright test",

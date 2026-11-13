@@ -3,7 +3,7 @@ import { MakerSquirrel } from '@electron-forge/maker-squirrel';
 import { VitePlugin } from '@electron-forge/plugin-vite';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
-import { createRequire, isBuiltin } from 'node:module';
+import { createRequire } from 'node:module';
 
 const resourceRoot = process.env.MERCURY_BUILD_RESOURCES ?? '.build-resources';
 const targetPlatform = process.env.MERCURY_BUILD_PLATFORM ?? process.platform;
@@ -13,9 +13,11 @@ async function copyRuntimePackages(target: string, dependencies = ['docx', 'exce
   const modules = path.resolve('node_modules');
   const copied = new Set<string>();
   const copy = async (name: string, from = process.cwd()): Promise<void> => {
-    if (name.startsWith('@types/') || isBuiltin(name)) return;
+    // Manifest dependencies are npm packages, even when their name also names a
+    // Node builtin (for example tr46 requires the separate `punycode/` package).
+    if (name.startsWith('@types/') || name.startsWith('node:')) return;
     const require = createRequire(path.join(from, 'package.json'));
-    for (const directory of require.resolve.paths(name) ?? []) {
+    for (const directory of require.resolve.paths(`${name}/`) ?? []) {
       const source = path.join(directory, name);
       const manifest = await fs.readFile(path.join(source, 'package.json'), 'utf8').then(raw => JSON.parse(raw), () => null);
       if (manifest?.name === name) {

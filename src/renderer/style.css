@@ -29,10 +29,17 @@
 
 .is-busy .settings-content{opacity:.3;filter:grayscale(1);pointer-events:none}.connection-progress-backdrop{position:fixed;inset:0;z-index:2000;background:#08070666;display:grid;place-items:center;padding:24px}.connection-progress{width:min(430px,100%);padding:30px;border:1px solid #735237;border-radius:14px;background:#211b16;box-shadow:0 20px 80px #000a;text-align:center;outline:none}.connection-progress h3{margin:18px 0 10px;font-size:18px}.connection-progress p{color:#c4b4a3;font-size:13px;line-height:1.7}.connection-progress button{margin-top:14px}.connection-spinner{display:inline-block;width:36px;height:36px;border:3px solid #59402c;border-top-color:var(--orange);border-radius:50%;animation:connection-spin .85s linear infinite}.model-load-group h4{margin:14px 0 5px;color:#bda58f;font-size:11px;text-transform:uppercase;letter-spacing:.07em}.model-load-group ul{margin:5px 0 10px}@keyframes connection-spin{to{transform:rotate(360deg)}}@media(prefers-reduced-motion:reduce){.connection-spinner{animation:none;border-style:dashed}}
 .project-maps-panel { width: min(1100px, 94vw); max-height: 90vh; overflow: auto; }
+.project-opening-status { display: flex; align-items: center; gap: 16px; padding: 18px 24px; border-bottom: 1px solid #59402c; background: #211b16; flex-shrink: 0; }
+.project-opening-status .connection-spinner { width: 24px; height: 24px; flex-shrink: 0; }
+.project-opening-status p { margin: 6px 0 0; color: #c4b4a3; font-size: 13px; line-height: 1.5; }
 .project-map-controls { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin: 12px 0; }
 .project-map-canvas { min-height: 260px; max-height: 55vh; overflow: auto; padding: 20px; border: 1px solid #444; border-radius: 10px; background: #151515; }
 .project-map-canvas svg { max-width: none; min-width: 200px; }
 .project-maps-panel pre { white-space: pre-wrap; overflow-wrap: anywhere; }
 .project-worker-activity { margin: 8px 20px; max-height: 240px; overflow: auto; }
-.project-worker-activity article { padding: 8px; border-bottom: 1px solid #444; }
+.chat-subagent-activity .subagent-entry { padding: 8px 0; }
+.chat-subagent-activity .subagent-entry + .subagent-entry { border-top: 1px solid var(--border); }
+.chat-subagent-activity .subagent-task { margin: 5px 0; overflow-wrap: anywhere; }
 .project-worker-activity small { display: block; opacity: .7; margin: 4px 0; }
+.chat-compaction { display: grid; gap: 8px; margin: 12px 0; color: var(--text-muted, #9ca3af); font-size: 13px; }
+.chat-compaction progress { width: 100%; height: 8px; accent-color: var(--accent, #8b8cf8); }

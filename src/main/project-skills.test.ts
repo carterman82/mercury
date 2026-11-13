@@ -18,6 +18,15 @@ const builtInNames = [
   'code-review',
   'performance',
   'test-driven-development',
+  'interview-me',
+  'spec-driven-development',
+  'api-and-interface-design',
+  'deprecation-and-migration',
+  'observability-and-instrumentation',
+  'documentation-and-adrs',
+  'source-driven-development',
+  'security-and-hardening',
+  'frontend-ui-engineering',
 ];
 async function directory() {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'mercury-skills-'));

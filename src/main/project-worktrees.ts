@@ -42,7 +42,7 @@ function eligible(relative: string): boolean {
     && !/\.(?:pem|p12|pfx|key)$/i.test(relative);
 }
 function aborted(signal?: AbortSignal): void { signal?.throwIfAborted(); }
-async function git(root: string, args: string[], signal?: AbortSignal): Promise<string> {
+async function git(root: string, args: string[], signal?: AbortSignal, input?: string): Promise<string> {
   aborted(signal);
   // Never discover or reuse the checkout's .git (including linked worktrees).
   const directory = path.join(root, '.mercury', 'git');
@@ -57,8 +57,15 @@ async function git(root: string, args: string[], signal?: AbortSignal): Promise<
   await fs.mkdir(path.dirname(directory), { recursive: true });
   return new Promise((resolve, reject) => {
     const env = mercuryGitEnvironment(process.env, path.join(root, '.mercury', 'identity'));
-    execFile('git', ['--literal-pathspecs', `--git-dir=${directory}`, `--work-tree=${root}`, '-c', 'core.hooksPath=', '-c', 'core.fsmonitor=false', '-c', 'submodule.recurse=false', '-c', 'commit.gpgSign=false', '-C', root, ...args], { signal, env, windowsHide: true, maxBuffer: 32 * 1024 * 1024 }, (error, stdout, stderr) => error ? reject(Object.assign(error, { stderr })) : resolve(stdout));
+    const child = execFile('git', ['--literal-pathspecs', `--git-dir=${directory}`, `--work-tree=${root}`, '-c', 'core.hooksPath=', '-c', 'core.fsmonitor=false', '-c', 'submodule.recurse=false', '-c', 'commit.gpgSign=false', '-C', root, ...args], { signal, env, windowsHide: true, maxBuffer: 32 * 1024 * 1024 }, (error, stdout, stderr) => error ? reject(Object.assign(error, { stderr })) : resolve(stdout));
+    child.stdin!.on('error', reject);
+    child.stdin!.end(input);
   });
+}
+function gitPaths(root: string, args: string[], paths: string[], signal?: AbortSignal): Promise<string> {
+  // Keep filenames out of argv: large projects exceed Windows' command limit.
+  // NUL separators and literal pathspecs preserve spaces, newlines and metacharacters.
+  return git(root, [...args, '--pathspec-from-file=-', '--pathspec-file-nul'], signal, paths.join('\0') + '\0');
 }
 async function succeeds(root: string, args: string[], signal?: AbortSignal): Promise<boolean> {
   try { await git(root, args, signal); return true; } catch { return false; }
@@ -87,7 +94,7 @@ export class ProjectWorktreeService {
   }
   private async stageEligible(root: string, signal?: AbortSignal): Promise<void> {
     const paths = await this.eligiblePaths(root, signal);
-    if (paths.length) await git(root, ['add', '-A', '--', ...paths], signal);
+    if (paths.length) await gitPaths(root, ['add', '-A'], paths, signal);
   }
   private async snapshotEligible(root: string, signal?: AbortSignal): Promise<Map<string, string>> {
     const snapshot = new Map<string, string>();
@@ -209,9 +216,10 @@ export class ProjectWorktreeService {
       const current = await this.snapshotEligible(workspace.projectRoot, signal);
       const changed = [...new Set([...baseline.keys(), ...current.keys()])].filter(relative => baseline.get(relative) !== current.get(relative)).sort();
       if (!changed.length) return { committed: false };
-      await git(workspace.projectRoot, ['add', '-A', '--', ...changed], signal);
-      if (await succeeds(workspace.projectRoot, ['diff', '--cached', '--quiet', '--', ...changed], signal)) return { committed: false };
-      await git(workspace.projectRoot, ['commit', '--no-verify', '--only', '-m', `Mercury: save response for ${workspace.chatId.slice(0, 8)}`, '--', ...changed], signal);
+      await gitPaths(workspace.projectRoot, ['add', '-A'], changed, signal);
+      const staged = new Set((await git(workspace.projectRoot, ['diff', '--cached', '--no-renames', '--name-only', '-z', '--'], signal)).split('\0'));
+      if (!changed.some(relative => staged.has(relative))) return { committed: false };
+      await gitPaths(workspace.projectRoot, ['commit', '--no-verify', '--only', '-m', `Mercury: save response for ${workspace.chatId.slice(0, 8)}`], changed, signal);
       return { committed: true, revision: (await git(workspace.projectRoot, ['rev-parse', '--short', 'HEAD'], signal)).trim() };
     });
   }

@@ -15,7 +15,12 @@ export class InactivityWatchdog {
 }
 
 export async function abortable<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
-  signal.throwIfAborted();
+  if (signal.aborted) {
+    // Callers may already have started fetch/read before observing cancellation.
+    // Observe its eventual rejection even though the signal wins immediately.
+    void promise.catch(() => {});
+    throw signal.reason;
+  }
   let stop = () => {};
   const interrupted = new Promise<never>((_, reject) => { stop = () => reject(signal.reason); signal.addEventListener('abort', stop, { once: true }); });
   try { return await Promise.race([promise, interrupted]); }

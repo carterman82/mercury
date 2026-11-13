@@ -24,7 +24,9 @@ afterEach(async () => {
   vi.useRealTimers();
   for (const close of cleanup.splice(0).reverse()) await close();
 });
-const profile = { provider: 'ollama' as const, connectionId: 'fixture', model: 'main', contextLimit: 16000 };
+// Full project workflows and tool definitions count toward the model window.
+// These tests exercise environment approvals, not small-context rejection.
+const profile = { provider: 'ollama' as const, connectionId: 'fixture', model: 'main', contextLimit: 32000 };
 
 async function fixture(mode: 1 | 2 | 3 = 2) {
   const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'mercury-python-setup-'));
@@ -146,16 +148,22 @@ async function begin(f: Awaited<ReturnType<typeof fixture>>) {
 }
 
 it.each([1, 2, 3] as const)(
-  'reviews interpreter, venv, exact packages and real network access once in mode %i',
+  'applies mode %i approvals to interpreter, venv, exact packages and real network access',
   async (mode) => {
     const f = await fixture(mode);
-    const { pending, approval } = await begin(f);
-    expect(f.execute).not.toHaveBeenCalled();
-    expect(approval.details).toContain(f.destination.replaceAll('\\', '\\\\'));
-    expect(approval.details).toContain('pytest>=8,<10');
-    expect(approval.details).toContain('network');
-    f.approvals.answer(approval.id, true);
-    const { value, error } = await pending;
+    let outcome: { value: any; error: any };
+    if (mode === 3) {
+      outcome = { value: await f.tools.execute(f.chat, 'setup_project_python_environment', f.input, f.controller.signal), error: undefined };
+    } else {
+      const { pending, approval } = await begin(f);
+      expect(f.execute).not.toHaveBeenCalled();
+      expect(approval.details).toContain(f.destination.replaceAll('\\', '\\\\'));
+      expect(approval.details).toContain('pytest>=8,<10');
+      expect(approval.details).toContain('network');
+      f.approvals.answer(approval.id, true);
+      outcome = await pending;
+    }
+    const { value, error } = outcome;
     expect(error).toBeUndefined();
     expect(value).toMatchObject({ ready: true, interpreter: f.python, version: '3.11.9', projectChanged: true });
     expect(value.nextAction.arguments).toMatchObject({ executable: f.python, args: ['-B', '-m', 'pytest', '-p', 'no:cacheprovider', '-v'], purpose: 'test' });
@@ -202,7 +210,7 @@ it.each([1, 2, 3] as const)(
 );
 
 it('returns a terminal actionable blocker and starts no subprocess after denial', async () => {
-  const f = await fixture(3);
+  const f = await fixture(2);
   const { pending, approval } = await begin(f);
   f.approvals.answer(approval.id, false);
   const { error } = await pending;
@@ -400,10 +408,8 @@ class EnvironmentSmoke(unittest.TestCase):
     const execution = new NativeExecution(path.join(f.root, 'unused-runtime'), path.join(f.root, 'scratch'));
     f.execute.mockImplementation((request) => execution.execute(request, f.controller.signal));
     try {
-      const { pending, approval } = await begin(f);
-      f.approvals.answer(approval.id, true);
-      const { value, error } = await pending;
-      expect(error, error?.message).toBeUndefined();
+      const value: any = await f.tools.execute(f.chat, 'setup_project_python_environment', f.input, f.controller.signal);
+      expect(f.approvals.snapshot()).toEqual([]);
       expect(value).toMatchObject({ ready: true, interpreter: f.python, packages: {}, imports: ['json'] });
       expect(f.execute.mock.calls.every(([request]) => request.network === 'deny')).toBe(true);
       const verify = await execution.execute(

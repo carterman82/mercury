@@ -46,6 +46,55 @@ async function fixture(repository = true) {
 afterEach(async () => { for (const directory of temporary.splice(0)) await fs.rm(directory, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
 
 describe('project Git safety', () => {
+  async function largeProject(root: string): Promise<string[]> {
+    const directory = 'source-with-a-long-directory-name-'.repeat(3);
+    await fs.mkdir(path.join(root, directory));
+    const names = Array.from({ length: 240 }, (_, index) => `${directory}/module-${String(index).padStart(4, '0')}-${'long-name-'.repeat(5)}.ts`);
+    expect(names.join('\0').length).toBeGreaterThan(32767);
+    await Promise.all(names.map(name => fs.writeFile(path.join(root, name), 'original\n')));
+    return names;
+  }
+
+  it('opens a project whose eligible filenames exceed the Windows command limit', async () => {
+    const { root, service } = await fixture(false);
+    const names = await largeProject(root);
+    await fs.writeFile(path.join(root, '.env.local'), 'TOKEN=secret');
+    await service.initialize(root);
+    const tracked = (await mercury(root, 'ls-files', '-z')).split('\0').filter(Boolean);
+    expect(tracked).toEqual(expect.arrayContaining(names));
+    expect(tracked).toHaveLength(names.length + 2); // app.ts and .gitignore
+    expect(tracked).not.toContain('.env.local');
+    expect(await mercury(root, 'log', '-1', '--format=%s')).toBe('Mercury safety baseline\n');
+  }, 30000);
+
+  it('saves a response whose changed filenames exceed the Windows command limit', async () => {
+    const { root, service } = await fixture(false);
+    const workspace = await service.prepare({ projectRoot: root, chatId: 'large-response' });
+    const names = await largeProject(root);
+    await fs.unlink(path.join(root, 'app.ts'));
+    const special = '-literal [file] café.ts';
+    await fs.writeFile(path.join(root, special), 'literal filename\n');
+    await fs.writeFile(path.join(root, '.env.local'), 'TOKEN=secret');
+    expect(await service.commitResponse(workspace)).toMatchObject({ committed: true });
+    const changed = (await mercury(root, 'diff', 'HEAD^', 'HEAD', '--name-only', '-z')).split('\0').filter(Boolean);
+    expect(changed).toEqual(expect.arrayContaining([...names, 'app.ts', special]));
+    expect(changed).toHaveLength(names.length + 2);
+    expect(await mercury(root, 'show', `HEAD:${special}`)).toBe('literal filename\n');
+    expect(await mercury(root, 'ls-files')).not.toContain('.env.local');
+  }, 30000);
+
+  it('saves a deletion when Git pairs it with an unrelated staged file as a rename', async () => {
+    const { root, service } = await fixture(false);
+    await service.initialize(root);
+    await fs.copyFile(path.join(root, 'app.ts'), path.join(root, 'unrelated.ts'));
+    await mercury(root, 'add', '--', 'unrelated.ts');
+    const workspace = await service.prepare({ projectRoot: root, chatId: 'staged-rename' });
+    await fs.unlink(path.join(root, 'app.ts'));
+    expect(await service.commitResponse(workspace)).toMatchObject({ committed: true });
+    expect((await mercury(root, 'diff', 'HEAD^', 'HEAD', '--name-only')).trim()).toBe('app.ts');
+    expect((await mercury(root, 'diff', '--cached', '--name-only')).trim()).toBe('unrelated.ts');
+  });
+
   it('reviews the latest saved response and working edits without modifying either history', async () => {
     const { root, service } = await fixture();
     const workspace = await service.prepare({ projectRoot: root, chatId: 'diff-review' });

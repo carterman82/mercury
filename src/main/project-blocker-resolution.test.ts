@@ -8,7 +8,8 @@ import type { ModelProvider } from './providers';
 import type { ProjectTools } from './project-tools';
 import type { ProjectAgentRuntime } from './project-agent-runtime';
 
-const profile = { provider: 'ollama' as const, connectionId: 'fixture', model: 'main', contextLimit: 16000 };
+// Blocker resolution runs after the complete tool catalog passes preflight.
+const profile = { provider: 'ollama' as const, connectionId: 'fixture', model: 'main', contextLimit: 32000 };
 
 it.each([
   { label: 'unchanged patch action', tool: 'patch_project_file', args: { path: 'app.ts' }, output: { hash: 'old', previousHash: 'old' }, action: true, cleared: true },

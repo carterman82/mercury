@@ -7,7 +7,8 @@ import type { ModelProvider } from './providers';
 import type { ProjectTools } from './project-tools';
 import type { ProjectAgentRuntime } from './project-agent-runtime';
 
-const profile = { provider: 'ollama' as const, connectionId: 'fixture', model: 'main', contextLimit: 16000 };
+// Observation behavior requires room for the complete registered tool catalog.
+const profile = { provider: 'ollama' as const, connectionId: 'fixture', model: 'main', contextLimit: 32000 };
 async function observe(name: string, args: object, output: object, changed = false, attempts = 1, following: { name: string; args: object; output: object }[] = [], runtimeError?: string, requirementStatus: 'passed' | 'not_run' = 'passed', afterObservations?: (input: Parameters<ProjectAgentRuntime['run']>[0], replies: any[], chat: ChatThread) => Promise<void>) {
   const handoff = newHandoff(undefined, 'Review source');
   handoff.requirements = [{ text: 'Reviewed', verification: 'inspection', status: requirementStatus, evidenceIds: ['prior'] }];

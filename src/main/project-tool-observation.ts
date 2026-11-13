@@ -17,6 +17,7 @@ interface ProjectToolObservation {
   getGeneration: () => number;
   notice: (message: string) => void;
   onStall: (error: ProjectStalledError) => void;
+  recordReadEvidence?: (result: unknown, evidenceId: string) => void;
 }
 
 /** Preserve observation order: failures, evidence, generation, handoff, recovery.
@@ -52,11 +53,12 @@ export function observeProjectTool(input: ProjectToolObservation) {
   // All verification evidence, including commands, gets a stable reference.
   const evidence = sourceEvidence(call.name, call.arguments, output);
   (response.sourceEvidence ??= []).push(evidence);
+  if (call.name === 'read_project_file') input.recordReadEvidence?.(output, evidence.id);
   const generation = getGeneration();
   if (generation !== observedGeneration) performedMutation = true;
   if (generation !== observedGeneration && toolFailed(output)) output = { ...(output as object), verificationUnknown: true };
   if (generation !== observedGeneration && (output as any)?.projectChange !== 'unknown' && ['run_project_command', 'run_project_process', 'setup_project_python_environment'].includes(call.name)) output = { ...(output as object), projectChanged: true };
-  if (generation !== observedGeneration && !['edit_project_file', 'patch_project_file', 'run_project_command', 'run_project_process', 'download_project_asset', 'setup_project_python_environment'].includes(call.name))
+  if (generation !== observedGeneration && !['edit_project_file', 'patch_project_file', 'patch_project_record', 'run_project_command', 'run_project_process', 'download_project_asset', 'setup_project_python_environment'].includes(call.name))
     recordProjectAction(chat.projectHandoff!, 'run_project_command', { command: 'Shared project changes (worker or another chat)' }, { projectChanged: true }, undefined, evidence.at);
   observedGeneration = generation;
   recordProjectAction(chat.projectHandoff!, call.name, call.arguments, output, evidence.id, evidence.at);
@@ -65,7 +67,7 @@ export function observeProjectTool(input: ProjectToolObservation) {
     const recovery = progress.observe(call.name, call.arguments, output);
     if (recovery) {
       notice('Repeated work detected. Trying one different approach.');
-      output = { ...(output as object), recovery, handoff: chat.projectHandoff };
+      output = { ...(output as object), recovery };
       response.metrics!.recoveries = progress.recoveries;
     }
   } catch (error) {

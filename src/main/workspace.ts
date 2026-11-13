@@ -6,6 +6,7 @@ import { extractPdfText, makePdf } from './pdf';
 import { ToolFailure } from './tool-outcome';
 import { diagnosePatchMismatch } from './workspace-patch-diagnostics';
 import { repositorySearch } from './repository-search';
+import { readProjectRecord, patchProjectRecord, listProjectRecords, type RecordValue } from './project-records';
 
 const MAX_FILE = 512_000;
 
@@ -94,8 +95,11 @@ export class Workspace {
     return results.length > 50 ? [...results.slice(0, 50), '[Search truncated after 50 matches; narrow the query.]'] : results;
   }
   async edit(relative: string, expectedHash: string | null, next: string, replacementIntent = false): Promise<ChangeRecord> {
+    return this.writeText(relative, expectedHash, next, replacementIntent, MAX_FILE);
+  }
+  private async writeText(relative: string, expectedHash: string | null, next: string, replacementIntent: boolean, maximum: number): Promise<ChangeRecord> {
     if (path.extname(relative).toLowerCase() === '.pdf') throw new Error('Use create_pdf for PDFs; existing binary PDFs are never overwritten.');
-    if (Buffer.byteLength(next) > MAX_FILE) throw new Error('Edit exceeds the 512 KB file limit.');
+    if (Buffer.byteLength(next) > maximum) throw new Error(`Edit exceeds the ${maximum} byte file limit.`);
     const filename = await this.resolve(relative, true);
     const before = await fs.readFile(filename, 'utf8').catch((error: any) => { if (error.code === 'ENOENT') return null; throw error; });
     if (expectedHash === null && before !== null)
@@ -110,6 +114,31 @@ export class Workspace {
       await fs.rename(temporary, filename);
     } finally { await fs.rm(temporary, { force: true }).catch(() => {}); }
     return { path: relative.replaceAll('\\', '/'), before, after: next, at: Date.now() };
+  }
+  private async recordSource(relative: string) {
+    if (!/\.[cm]?[jt]s$/i.test(relative)) throw new Error('Record tools support JavaScript and TypeScript catalogs only.');
+    const filename = await this.resolve(relative);
+    const stat = await fs.stat(filename);
+    if (!stat.isFile() || stat.size > 8 * 1024 * 1024) throw new Error('Record source exceeds the 8 MiB limit.');
+    const source = await fs.readFile(filename, 'utf8');
+    if (source.includes('\0')) throw new Error('Binary files are not supported.');
+    return source;
+  }
+  async readRecord(relative: string, variable: string, key: string) {
+    const source = await this.recordSource(relative);
+    return { fields: readProjectRecord(source, variable, key), hash: hash(source)! };
+  }
+  async listRecords(relative: string, variable: string, offset = 0, limit = 20) {
+    const source = await this.recordSource(relative);
+    return { ...listProjectRecords(source, variable, offset, limit), hash: hash(source)! };
+  }
+  async snapshotHash(relative: string): Promise<string> {
+    return /\.[cm]?[jt]s$/i.test(relative) ? hash(await this.recordSource(relative))! : (await this.read(relative)).hash;
+  }
+  async patchRecord(relative: string, expectedHash: string, variable: string, key: string, fields: Record<string, RecordValue>) {
+    const before = await this.recordSource(relative);
+    if (hash(before) !== expectedHash) throw new ToolFailure('STALE_REVISION', `File changed since it was read: ${relative}`, { sourceRevision: hash(before), target: relative });
+    return this.writeText(relative, expectedHash, patchProjectRecord(before, variable, key, fields), true, 8 * 1024 * 1024);
   }
   async patch(relative: string, expectedHash: string, oldText: string, newText: string): Promise<ChangeRecord> {
     const before = await fs.readFile(await this.resolve(relative, true), 'utf8');

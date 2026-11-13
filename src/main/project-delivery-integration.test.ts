@@ -7,11 +7,73 @@ import type { ModelProvider } from './providers';
 import type { ProjectTools } from './project-tools';
 import type { ProjectAgentRuntime } from './project-agent-runtime';
 
+it('finishes a cache-only stall with blocked delivery, saved evidence and no success notification', async () => {
+  const profile = { provider: 'ollama' as const, connectionId: 'fixture', model: 'main', contextLimit: 32000 };
+  const handoff = newHandoff(undefined, 'Implement story improvements');
+  handoff.requirements = [{ id: 'sanitize', text: 'Implement punctuation sanitization', status: 'not_run', evidenceIds: [] }];
+  const chat: ChatThread = { id: 'chat', projectId: 'p', title: 'Stories', profile, messages: [], status: 'idle', updatedAt: 1, projectHandoff: handoff };
+  const store = { settings: () => ({ connections: [{ id: 'fixture', provider: 'ollama', url: 'http://unused.invalid' }] }), chat: () => chat, project: () => ({ id: 'p', permissionMode: 2 }), saveChat: vi.fn() } as unknown as Store;
+  const execute = vi.fn(async () => ({ content: '1: original', hash: 'same', startLine: 1, endLine: 1, revision: 'current', readReuse: { kind: 'validated-cache' } }));
+  const projects = { prepare: async () => '', loadWorkflows: async () => ({ context: '', loaded: [], warnings: [] }), generation: () => 0, handles: () => true, execute } as unknown as ProjectTools;
+  let checkpoint = '';
+  const runtime = { shutdown: async () => {}, run: async input => {
+    for (let i = 0; i < 30; i++) {
+      const result: any = await input.execute('read_project_file', { path: 'main.py' });
+      if (result.recovery) checkpoint = result.recovery;
+    }
+    throw new Error('Unbounded exploration was allowed');
+  } } as ProjectAgentRuntime;
+  const completed = vi.fn();
+  await new ChatService(store, {} as ModelProvider, () => {}, () => false, undefined, undefined, projects, runtime, undefined, completed).send(chat.id, profile, 'Implement story improvements');
+  const response = chat.messages.at(-1)!;
+  expect(chat.status).toBe('idle');
+  expect(chat.error).toBeUndefined();
+  expect(response.delivery?.status).toBe('blocked');
+  expect(response.verification).toBe('blocked');
+  expect(response.content).toContain('Next action:');
+  expect(response.sourceEvidence?.length).toBeGreaterThan(1);
+  expect(checkpoint).toContain('MERCURY_RECOVERY_CHECKPOINT');
+  expect(checkpoint).not.toContain('failedApproaches');
+  expect(execute.mock.calls.length).toBeLessThanOrEqual(17);
+  expect(completed).not.toHaveBeenCalled();
+});
+
+it('continues a large unfinished task while each continuation applies a new batch', async () => {
+  const profile = { provider: 'ollama' as const, connectionId: 'fixture', model: 'main', contextLimit: 32000 };
+  const handoff = newHandoff(undefined, 'Update all four game batches');
+  const chat = { id: 'chat', projectId: 'p', title: 'All games', profile, messages: [], status: 'idle', updatedAt: 1, projectHandoff: handoff } as ChatThread;
+  const store = { settings: () => ({ connections: [{ id: 'fixture', provider: 'ollama', url: 'http://unused.invalid' }] }), chat: () => chat,
+    project: () => ({ id: 'p', permissionMode: 2 }), saveChat: vi.fn() } as unknown as Store;
+  let generation = 0, runs = 0;
+  const projects = { prepare: async () => 'Project', loadWorkflows: async () => ({ context: '', loaded: [], warnings: [] }),
+    generation: () => generation, handles: () => true,
+    execute: async () => ({ path: 'games.js', previousHash: String(generation), hash: String(++generation) }),
+    commitResponse: vi.fn(async () => ({ committed: false })),
+  } as unknown as ProjectTools;
+  const runtime = { run: async input => {
+    runs++;
+    if (runs === 1) await input.execute('update_project_task', { requirements: [{ text: 'Update all four batches', status: 'not_run', verification: 'inspection', evidenceIds: [] }], remaining: 'Four batches' });
+    if (runs <= 4) {
+      await input.execute('patch_project_file', { path: 'games.js', oldText: 'old', newText: `batch-${runs}` });
+    } else {
+      await input.execute('complete_project_requirements', { requirementIds: [handoff.requirements[0].id], note: 'All four batches implemented; verification remains unrun.' });
+    }
+    const text = runs <= 4 ? `Applied batch ${runs}; remaining batches still need implementation.` : 'All batches implemented.';
+    input.onText?.(text);
+    return { text };
+  } } as ProjectAgentRuntime;
+  await new ChatService(store, {} as ModelProvider, () => {}, () => false, undefined, undefined, projects, runtime).send(chat.id, profile, 'Update all four game batches');
+  expect(generation).toBe(4);
+  expect(runs).toBe(5);
+  expect(chat.status).toBe('idle');
+  expect(handoff.requirements[0].status).toBe('completed');
+});
+
 it.each(['verified', 'assessed', 'unfinished'])(
   'continues a premature final to test and close criteria, with bounded retries (repair=%s)',
   async (mode) => {
     const repair = mode !== 'unfinished';
-    const profile = { provider: 'ollama' as const, connectionId: 'fixture', model: 'main', contextLimit: 16000 };
+    const profile = { provider: 'ollama' as const, connectionId: 'fixture', model: 'main', contextLimit: 32000 };
     const handoff = newHandoff(undefined, 'Fix behavior');
     handoff.requirements = [
       { text: 'Regression test passes', verification: 'command', status: 'not_run', evidenceIds: [] },
@@ -108,7 +170,7 @@ it.each(['verified', 'assessed', 'unfinished'])(
 );
 
 it('answers an inspection follow-up without completing historical failed requirements or committing them', async () => {
-  const profile = { provider: 'ollama' as const, connectionId: 'fixture', model: 'main', contextLimit: 16000 };
+  const profile = { provider: 'ollama' as const, connectionId: 'fixture', model: 'main', contextLimit: 32000 };
   const handoff = newHandoff(undefined, 'Implement old feature');
   handoff.changedPaths = ['main.py']; handoff.generation = 2;
   handoff.requirements = [{ text: 'Old implementation tests', status: 'blocked', verification: 'command', evidenceIds: [] }];

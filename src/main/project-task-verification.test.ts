@@ -5,6 +5,12 @@ import { sourceEvidence } from './source-memory';
 function observation(tool: string, id: string, result: unknown) {
   return { ...sourceEvidence(tool, {}, result), id, at: 100, projectRevision: 0 };
 }
+it('does not treat cached source reuse as fresh verification or weaken the current contract', () => {
+  const handoff = newHandoff(undefined, 'Check source'); handoff.needsCurrentRequirements = true;
+  const before = structuredClone(handoff);
+  expect(() => updateProjectTask(handoff, { requirements: [{ text: 'Source verified', status: 'passed', verification: 'inspection', evidenceIds: ['cached'] }], remaining: '' }, [observation('read_project_file', 'cached', { content: 'unchanged', hash: 'same', readReuse: { kind: 'validated-cache' } })])).toThrow(/reus|cached/i);
+  expect(handoff).toEqual(before);
+});
 it.each([{}, { exitCode: 0, verificationUnknown: true }, { exitCode: 0, projectChange: 'unknown' }, { exitCode: null }])('rejects command evidence without a verified successful exit: %j', result => {
   const handoff = newHandoff(undefined, 'Check');
   expect(() => updateProjectTask(handoff, { requirements: [{ text: 'Check passes', status: 'passed', verification: 'command', evidenceIds: ['check'] }], remaining: '' }, [observation('run_project_process', 'check', result)])).toThrow();

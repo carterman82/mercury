@@ -6,17 +6,21 @@ import { documentTextMessages, documentUnsupported, hasDocuments, hasImages, ima
 import { ModelRequests } from './model-requests';
 import { AgentScheduler, type AgentLease } from './agent-scheduler';
 import { connectionGroups } from '../shared/connections';
-import { InactivityWatchdog } from './inactivity';
-import { ThinkingLimitError } from './thinking-guard';
+import { abortable, InactivityWatchdog } from './inactivity';
+import { GenerationGuard, LOCAL_GENERATION_LIMITS, ThinkingLimitError } from './thinking-guard';
+import { localModelPolicy } from './local-model-policy';
+import { RunLimitError, type RunBudget } from './run-budget';
 import { isSubscription, openAIRoutes } from '../shared/openai-routing';
 import { measureModelRequest } from './telemetry';
+import { contextOverflowMessage, isContextOverflow } from './model-context';
 
 export interface ChatResult { text: string; reasoning?: string; tools: ToolRequest[]; usage?: { input?: number; output?: number }; }
 export interface ProviderToolChoice { type: 'auto' | 'any' | 'tool' | 'none'; name?: string; disable_parallel_tool_use?: boolean; }
 export interface ChatInput { profile: ModelProfile; agentLease?: symbol; messages: unknown[]; tools?: unknown[]; signal: AbortSignal; inactivityMs?: number; maxOutputTokens?: number; toolChoice?: ProviderToolChoice; disableThinking?: boolean; onRoutingNotice?: (notice: string) => void; onRequestState?: (state: 'queued' | 'running') => void; onImageFallback?: (reason?: string) => void; onFileFallback?: (reason?: string) => void; onText?: (delta: string) => void; onReasoning?: (delta: string) => void; onToolProgress?: () => void; }
 export interface NativeMessagesInput { profile: ModelProfile; body: Record<string, unknown>; headers?: Record<string, string>; signal: AbortSignal; agentLease?: symbol; onRoutingNotice?: ChatInput['onRoutingNotice']; onRequestState?: ChatInput['onRequestState']; }
-export interface ChatInput { reportMode?: boolean; }
+export interface ChatInput { reportMode?: boolean; runBudget?: RunBudget; onToolOutput?: (delta: string) => void; }
 export interface ModelProvider {
+  readonly generationGuarded?: boolean;
   loadedContextLimit?(profile: ModelProfile, signal: AbortSignal): Promise<number | null>;
   reserveAgent?(profiles: ModelProfile[], avoid?: ModelProfile): AgentLease;
   discover(connection: ModelConnection): Promise<ModelInfo[]>;
@@ -46,21 +50,26 @@ export function endpoint(raw: string): string {
 }
 
 export async function requestJson(url: string, init?: RequestInit): Promise<any> {
-  const response = await fetch(url, { ...init, redirect: 'error' });
-  if (!response.ok) throw new ModelHttpError(response.status, (await response.text()).slice(0, 500));
-  return response.json();
+  const pending = fetch(url, { ...init, redirect: 'error' });
+  const response = init?.signal ? await abortable(pending, init.signal) : await pending;
+  if (!response.ok) throw new ModelHttpError(response.status, (await (init?.signal ? abortable(response.text(), init.signal) : response.text())).slice(0, 500));
+  return init?.signal ? abortable(response.json(), init.signal) : response.json();
 }
 
 export async function* streamLines(response: Response, signal: AbortSignal): AsyncGenerator<string> {
-  if (!response.ok) throw new ModelHttpError(response.status, (await response.text()).slice(0, 500));
+  if (!response.ok) throw new ModelHttpError(response.status, (await abortable(response.text(), signal)).slice(0, 500));
   if (!response.body) throw new Error('Model server did not provide a response stream.');
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
   let buffer = '';
+  let completed = false;
+  const cancel = () => { void reader.cancel(signal.reason).catch(() => {}); };
+  signal.addEventListener('abort', cancel, { once: true });
   try {
     while (true) {
       if (signal.aborted) throw new Error('Model request cancelled.');
-      const { value, done } = await reader.read();
+      const { value, done } = await abortable(reader.read(), signal);
+      signal.throwIfAborted();
       buffer += decoder.decode(value, { stream: !done });
       let index: number;
       while ((index = buffer.indexOf('\n')) >= 0) {
@@ -69,13 +78,18 @@ export async function* streamLines(response: Response, signal: AbortSignal): Asy
         if (line) yield line;
       }
       if (buffer.length > 2_000_000) throw new Error('Model server sent an oversized stream chunk.');
-      if (done) break;
+      if (done) { completed = true; break; }
     }
     if (buffer.trim()) yield buffer.trim();
-  } finally { reader.releaseLock(); }
+  } finally {
+    signal.removeEventListener('abort', cancel);
+    if (!completed) void reader.cancel(signal.reason).catch(() => {});
+    reader.releaseLock();
+  }
 }
 
 export class LocalProviders implements ModelProvider {
+  readonly generationGuarded = true;
   async loadedContextLimit(profile: ModelProfile, signal: AbortSignal): Promise<number | null> {
     if (profile.provider !== 'lmstudio') return null;
     try {
@@ -306,6 +320,7 @@ export class LocalProviders implements ModelProvider {
     let release: (() => void) | undefined;
     const controller = new AbortController();
     let idle: InactivityWatchdog | undefined;
+    let active: InactivityWatchdog | undefined;
     let nativeSignal: AbortSignal | undefined;
     let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
     let cleaned = false;
@@ -313,7 +328,7 @@ export class LocalProviders implements ModelProvider {
       if (cleaned) return; cleaned = true;
       input.signal.removeEventListener('abort', abort);
       nativeSignal?.removeEventListener('abort', nativeAborted);
-      idle?.dispose(); release?.(); finish();
+      idle?.dispose(); active?.dispose(); release?.(); finish();
     };
     const abort = () => {
       controller.abort(input.signal.reason);
@@ -327,47 +342,90 @@ export class LocalProviders implements ModelProvider {
       if (cleaned) { release(); input.signal.throwIfAborted(); throw new Error('Native model request was cancelled.'); }
       input.signal.throwIfAborted(); input.onRequestState?.('running');
       idle = new InactivityWatchdog(120_000, new ThinkingLimitError('timeout'));
-      nativeSignal = AbortSignal.any([input.signal, controller.signal, idle.signal]);
+      const local = input.profile.provider !== 'claude';
+      const guard = local ? new GenerationGuard() : undefined;
+      if (local) active = new InactivityWatchdog(LOCAL_GENERATION_LIMITS.activeMs, new ThinkingLimitError('duration'));
+      nativeSignal = AbortSignal.any([input.signal, controller.signal, idle.signal, ...(active ? [active.signal] : [])]);
       nativeSignal.addEventListener('abort', nativeAborted, { once: true });
       const requestSignal = nativeSignal;
       const forwarded = Object.fromEntries(Object.entries(input.headers ?? {}).filter(([name]) => name.toLowerCase().startsWith('anthropic-') || name.toLowerCase().startsWith('x-claude-code-')));
       const headers: Record<string, string> = { 'anthropic-version': '2023-06-01', ...forwarded, 'content-type': 'application/json' };
       if (input.profile.provider === 'claude') headers['x-api-key'] = await this.cloudToken(connection);
       else Object.assign(headers, this.headers(connection.id));
-      const response = await fetch(`${base}/v1/messages`, { method: 'POST', headers, body: JSON.stringify({ ...input.body, model: input.profile.model }), signal: requestSignal, redirect: 'error' });
+      const policy = localModelPolicy(input.profile, typeof input.body.max_tokens === 'number' ? input.body.max_tokens : undefined, input.body);
+      const body: Record<string, unknown> = { ...input.body, model: input.profile.model, ...(local ? { ...policy.sampling, max_tokens: policy.maxOutputTokens } : {}) };
+      if (local && policy.nonThinking) {
+        delete body.thinking;
+        if (body.output_config && typeof body.output_config === 'object') {
+          const { effort: _effort, ...remaining } = body.output_config as Record<string, unknown>;
+          if (Object.keys(remaining).length) body.output_config = remaining;
+          else delete body.output_config;
+        }
+      } else if (local && (body.thinking as any)?.type === 'enabled' && typeof (body.thinking as any).budget_tokens === 'number') {
+        body.thinking = policy.maxOutputTokens > 1024
+          ? { ...(body.thinking as object), budget_tokens: Math.min((body.thinking as any).budget_tokens, policy.maxOutputTokens - 1) }
+          : { type: 'disabled' };
+      }
+      if (local) input.onRoutingNotice?.(`Local generation settings: ${JSON.stringify({ model: input.profile.model, route: '/v1/messages', ...policy })}`);
+      const response = await abortable(fetch(`${base}/v1/messages`, { method: 'POST', headers, body: JSON.stringify(body), signal: requestSignal, redirect: 'error' }), requestSignal);
       if (input.profile.provider !== 'claude') {
         const unsupported = [404, 405, 501].includes(response.status) ||
-          ([400, 422].includes(response.status) && /(?:anthropic|messages (?:api|endpoint)|tool (?:choice|use)|thinking).{0,100}(?:not supported|unsupported|not implemented)/i.test(await response.clone().text()));
-        if (unsupported) { await response.body?.cancel(); cleanup(); return null; }
+          ([400, 422].includes(response.status) && /(?:anthropic|messages (?:api|endpoint)|tool (?:choice|use)|thinking).{0,100}(?:not supported|unsupported|not implemented)/i.test(await abortable(response.clone().text(), requestSignal)));
+        if (unsupported) { void response.body?.cancel().catch(() => {}); cleanup(); return null; }
       }
       if (!response.body) { cleanup(); return response; }
       reader = response.body.getReader();
       const upstream = reader;
       const decoder = new TextDecoder(); let lines = '';
+      const jsonResponse = response.headers.get('content-type')?.includes('application/json');
+      const contentParser = new ReasoningStream(delta => guard?.answer(delta), delta => guard?.thinking(delta));
+      const observe = (event: any) => {
+        const delta = event.delta ?? event.content_block ?? {};
+        if ((input.body.tool_choice as any)?.type === 'none' && event.content_block?.type === 'tool_use') throw new RunLimitError('The model attempted a tool action while only a final summary was allowed. Partial work is saved.');
+        if (typeof delta.thinking === 'string') guard?.thinking(delta.thinking);
+        if (typeof delta.text === 'string') contentParser.push(delta.text);
+        if (typeof delta.partial_json === 'string') guard?.tool(delta.partial_json);
+        if (event.type === 'content_block_start' && event.content_block?.type === 'tool_use') guard?.tool(JSON.stringify(event.content_block.input ?? {}));
+        if (local && delta.stop_reason === 'max_tokens') throw new ThinkingLimitError('output');
+        const content = delta.text ?? delta.thinking ?? delta.partial_json;
+        if ((typeof content === 'string' && content.trim()) || (event.type === 'content_block_start' && event.content_block?.type === 'tool_use')) idle?.progress();
+      };
       const progress = (chunk: Uint8Array) => {
         lines += decoder.decode(chunk, { stream: true });
         if (lines.length > 2_000_000) throw new Error('Native Messages response has an oversized frame.');
+        if (jsonResponse) return;
         let newline: number;
         while ((newline = lines.indexOf('\n')) >= 0) {
           const line = lines.slice(0, newline); lines = lines.slice(newline + 1);
           if (!line.startsWith('data:')) continue;
-          try {
-            const event = JSON.parse(line.slice(5).trim());
-            const content = event.delta?.text ?? event.delta?.thinking ?? event.delta?.partial_json;
-            if ((typeof content === 'string' && content.trim()) || (event.type === 'content_block_start' && event.content_block?.type === 'tool_use')) idle?.progress();
-          } catch { /* Preserve native bytes; malformed payloads are reported by the SDK. */ }
+          let event: any;
+          try { event = JSON.parse(line.slice(5).trim()); }
+          catch { continue; /* Malformed native payloads remain the SDK's responsibility. */ }
+          observe(event);
         }
       };
       const stream = new ReadableStream<Uint8Array>({
         async pull(target) {
           try {
             requestSignal.throwIfAborted();
-            const next = await upstream.read();
-            if (next.done) { cleanup(); target.close(); }
+            const next = await abortable(upstream.read(), requestSignal);
+            requestSignal.throwIfAborted();
+            if (next.done) {
+              if (jsonResponse && response.ok) {
+                const message = JSON.parse(lines + decoder.decode());
+                for (const block of message.content ?? []) observe({ type: 'content_block_start', content_block: block });
+                observe({ delta: { stop_reason: message.stop_reason } });
+              } else if (lines.trim()) progress(new TextEncoder().encode('\n'));
+              contentParser.finish(); cleanup(); target.close();
+            }
             else { progress(next.value); target.enqueue(next.value); }
-          } catch (error) { cleanup(); target.error(error); }
+          } catch (error) {
+            controller.abort(error);
+            void upstream.cancel(error).catch(() => {});
+            cleanup(); target.error(requestSignal.aborted ? requestSignal.reason : error);
+          }
         },
-        async cancel(reason) { try { controller.abort(reason); await upstream.cancel(reason); } finally { cleanup(); } },
+        cancel(reason) { controller.abort(reason); void upstream.cancel(reason).catch(() => {}); cleanup(); },
       });
       return new Response(stream, { status: response.status, statusText: response.statusText, headers: response.headers });
     } catch (error) {
@@ -384,7 +442,23 @@ export class LocalProviders implements ModelProvider {
       const release = await this.requests.acquire(key, { ...input.profile, endpoint: base }, limit, input.signal, () => input.onRequestState?.('queued'));
       try {
         input.signal.throwIfAborted(); input.onRequestState?.('running');
-        return await this.chatWithDocuments(input);
+        if (!['ollama', 'lmstudio'].includes(input.profile.provider)) return await this.chatWithDocuments(input);
+        const controller = new AbortController();
+        const active = new InactivityWatchdog(LOCAL_GENERATION_LIMITS.activeMs, new ThinkingLimitError('duration'));
+        const idle = new InactivityWatchdog(Math.min(input.inactivityMs ?? LOCAL_GENERATION_LIMITS.inactivityMs, LOCAL_GENERATION_LIMITS.inactivityMs), new ThinkingLimitError('timeout'));
+        const signal = AbortSignal.any([input.signal, controller.signal, active.signal, idle.signal]);
+        const guard = new GenerationGuard();
+        const inspect = (run: () => void) => {
+          signal.throwIfAborted();
+          try { run(); } catch (error) { controller.abort(error); throw error; }
+        };
+        try {
+          return await this.chatWithDocuments({ ...input, signal,
+            onText: delta => inspect(() => { guard.answer(delta); if (delta.trim()) idle.progress(); input.onText?.(delta); }),
+            onReasoning: delta => inspect(() => { guard.thinking(delta); if (delta.trim()) idle.progress(); input.onReasoning?.(delta); }),
+            onToolOutput: delta => inspect(() => { guard.tool(delta); if (delta.trim()) idle.progress(); input.onToolOutput?.(delta); }),
+          });
+        } finally { active.dispose(); idle.dispose(); }
       } finally { release(); }
     } finally { finish(); }
   }
@@ -449,16 +523,19 @@ export class LocalProviders implements ModelProvider {
       catch (error) { this.connectionFailed(); throw error; }
     }
     const base = this.url(input.profile);
+    const policy = localModelPolicy(input.profile, input.maxOutputTokens, { messages: input.messages, tools: input.tools });
+    input = { ...input, maxOutputTokens: policy.maxOutputTokens };
+    input.onRoutingNotice?.(`Local generation settings: ${JSON.stringify({ model: input.profile.model, route: input.reportMode ? '/api/v1/chat' : input.profile.provider === 'ollama' ? '/api/chat' : '/v1/chat/completions', ...policy })}`);
     if (input.reportMode && input.profile.provider === 'lmstudio' && !input.tools?.length) {
       const messages = input.messages as { role: string; content: string }[];
-      const body = { model: input.profile.model, system_prompt: messages.filter(message => message.role === 'system').map(message => message.content).join('\n'), input: messages.filter(message => message.role !== 'system').map(message => message.content).join('\n'), store: false, integrations: [], max_output_tokens: input.maxOutputTokens };
+      const body = { model: input.profile.model, ...policy.sampling, system_prompt: messages.filter(message => message.role === 'system').map(message => message.content).join('\n'), input: messages.filter(message => message.role !== 'system').map(message => message.content).join('\n'), store: false, integrations: [], max_output_tokens: input.maxOutputTokens };
       const request = (reasoning: boolean) => requestJson(`${base}/api/v1/chat`, {
         method: 'POST', headers: { 'content-type': 'application/json', ...this.headers(input.profile.connectionId) },
         signal: AbortSignal.any([input.signal, AbortSignal.timeout(input.inactivityMs ?? 600000)]),
         body: JSON.stringify({ ...body, ...(reasoning ? { reasoning: 'off' } : {}) }),
       });
       let response: any;
-      try { response = await request(true); }
+      try { response = await request(!policy.nonThinking); }
       catch (error) {
         // Some OpenAI-compatible LM Studio backends expose this endpoint but
         // reject its optional reasoning control. Retrying without it preserves
@@ -473,7 +550,7 @@ export class LocalProviders implements ModelProvider {
     }
     const isOllama = input.profile.provider === 'ollama';
     const controller = new AbortController();
-    const idle = new InactivityWatchdog(input.inactivityMs ?? 120_000, new ThinkingLimitError('timeout'));
+    const idle = new InactivityWatchdog(Math.min(input.inactivityMs ?? LOCAL_GENERATION_LIMITS.inactivityMs, LOCAL_GENERATION_LIMITS.inactivityMs), new ThinkingLimitError('timeout'));
     const idleAbort = () => controller.abort(idle.signal.reason);
     idle.signal.addEventListener('abort', idleAbort, { once: true });
     const abort = () => controller.abort(input.signal.reason);
@@ -481,12 +558,12 @@ export class LocalProviders implements ModelProvider {
     if (input.signal.aborted) abort();
     const tools = input.tools?.length ? { tools: input.tools } : {};
     const body = isOllama
-      ? { model: input.profile.model, messages: localImageMessages(input.messages, true), ...tools, stream: true, ...(input.disableThinking ? { think: /gpt-oss/i.test(input.profile.model) ? 'low' : false } : {}), options: { num_ctx: input.profile.contextLimit, ...(input.maxOutputTokens ? { num_predict: input.maxOutputTokens } : {}) } }
-      : { model: input.profile.model, messages: localImageMessages(input.messages, false), ...tools, stream: true, ...(input.disableThinking ? { reasoning: { effort: 'none' } } : {}), ...(input.maxOutputTokens ? { max_tokens: input.maxOutputTokens } : {}), ...(input.toolChoice ? { tool_choice: input.toolChoice.type === 'tool' ? { type: 'function', function: { name: input.toolChoice.name } } : input.toolChoice.type === 'any' ? 'required' : input.toolChoice.type, ...(input.toolChoice.disable_parallel_tool_use !== undefined ? { parallel_tool_calls: !input.toolChoice.disable_parallel_tool_use } : {}) } : {}) };
+      ? { model: input.profile.model, messages: localImageMessages(input.messages, true), ...tools, stream: true, ...(input.disableThinking && !policy.nonThinking ? { think: /gpt-oss/i.test(input.profile.model) ? 'low' : false } : {}), options: { num_ctx: input.profile.contextLimit, ...policy.sampling, num_predict: policy.maxOutputTokens } }
+      : { model: input.profile.model, messages: localImageMessages(input.messages, false), ...tools, ...policy.sampling, stream: true, ...(input.disableThinking && !policy.nonThinking ? { reasoning: { effort: 'none' } } : {}), max_tokens: policy.maxOutputTokens, ...(input.toolChoice ? { tool_choice: input.toolChoice.type === 'tool' ? { type: 'function', function: { name: input.toolChoice.name } } : input.toolChoice.type === 'any' ? 'required' : input.toolChoice.type, ...(input.toolChoice.disable_parallel_tool_use !== undefined ? { parallel_tool_calls: !input.toolChoice.disable_parallel_tool_use } : {}) } : {}) };
     try {
-      const response = await fetch(isOllama ? `${base}/api/chat` : `${base}/v1/chat/completions`, {
+      const response = await abortable(fetch(isOllama ? `${base}/api/chat` : `${base}/v1/chat/completions`, {
         method: 'POST', headers: { 'content-type': 'application/json', ...this.headers(input.profile.connectionId) }, body: JSON.stringify(body), signal: controller.signal, redirect: 'error',
-      });
+      }), controller.signal);
       let text = '';
       let reasoning = '';
       const thinking = (delta: unknown) => {
@@ -512,6 +589,7 @@ export class LocalProviders implements ModelProvider {
           const delta = chunk.message?.content ?? '';
           if (typeof delta === 'string') content.push(delta);
           for (const call of chunk.message?.tool_calls ?? []) {
+            input.onToolOutput?.(JSON.stringify(call));
             idle.progress();
             input.onToolProgress?.();
             const index = ollamaCallIndex++;
@@ -527,6 +605,7 @@ export class LocalProviders implements ModelProvider {
           thinking(delta.reasoning_content ?? delta.reasoning);
           if (typeof delta.content === 'string') content.push(delta.content);
           for (const item of delta.tool_calls ?? []) {
+            input.onToolOutput?.((item.function?.name ?? '') + (item.function?.arguments ?? ''));
             if (item.id || item.function?.name || item.function?.arguments?.trim()) idle.progress();
             input.onToolProgress?.();
             const prior = calls.get(item.index) ?? { id: `call_${item.index}`, name: '', arguments: '' };
@@ -547,6 +626,7 @@ export class LocalProviders implements ModelProvider {
       return { text, ...(reasoning ? { reasoning } : {}), tools: parsed, usage };
     } catch (error) {
       if (controller.signal.aborted) throw controller.signal.reason ?? new Error('Model request cancelled or timed out.');
+      if (isContextOverflow(error)) throw new ModelHttpError(400, contextOverflowMessage(error));
       if (error instanceof TypeError || /Model server returned HTTP (?:401|403|404|5\d\d)/.test(String(error))) this.connectionFailed();
       throw error;
     } finally {

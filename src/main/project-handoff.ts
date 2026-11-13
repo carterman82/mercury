@@ -4,6 +4,10 @@ import { browserEvidenceKind } from './browser-tool-registry';
 
 export function newHandoff(previous: ProjectHandoff | undefined, request: string): ProjectHandoff {
   return {
+    ...(previous?.executionPolicy ? { executionPolicy: previous.executionPolicy } : {}),
+    ...(previous?.needsCurrentRequirements !== undefined ? { needsCurrentRequirements: previous.needsCurrentRequirements } : {}),
+    ...(previous?.retiredRequirements ? { retiredRequirements: previous.retiredRequirements } : {}),
+    ...(previous?.retiredWorkPlans ? { retiredWorkPlans: previous.retiredWorkPlans } : {}),
     objective: previous?.objective ?? request.slice(0, 4000),
     requiresModelVerification: previous?.verificationTarget?.kind === 'browser_model',
     verificationTarget: previous?.verificationTarget,
@@ -29,6 +33,9 @@ export function recordProjectAction(
   at = Date.now(),
 ) {
   handoff.updatedAt = at;
+  if (['read_project_record', 'list_project_records'].includes(name) && !toolFailed(result)) {
+    handoff.snapshots = [...(handoff.snapshots ?? []).filter(item => item.path !== args.path), { path: args.path, hash: result.hash }].slice(-100);
+  }
   if (name === 'read_project_file' && !toolFailed(result)) {
     handoff.reads = [
       ...handoff.reads.filter(
@@ -43,7 +50,7 @@ export function recordProjectAction(
     ].slice(-50);
   }
   const mutation =
-    (['patch_project_file', 'edit_project_file', 'download_project_asset'].includes(name) && !toolFailed(result)) ||
+    (['patch_project_file', 'patch_project_record', 'edit_project_file', 'download_project_asset'].includes(name) && !toolFailed(result)) ||
     (['run_project_command', 'run_project_process', 'setup_project_python_environment'].includes(name) && result.projectChanged === true);
   if (mutation || result?.verificationUnknown) {
     if (result.path && result.hash) {

@@ -39,6 +39,7 @@ export async function projectCommandApprovalReason(
   cwd: string,
   input: CommandInput,
   inspectScope?: (text: string) => void,
+  reviewPermissions = true,
 ): Promise<string | undefined> {
   inspectScope?.([input.command, input.executable, ...(input.args ?? []), input.stdin].filter(Boolean).join(' '));
   const canonicalRoot = await fs.realpath(root);
@@ -48,6 +49,7 @@ export async function projectCommandApprovalReason(
   // An extension alone is not a reason to review project tooling. Resolve every
   // candidate independently so another external launch still requires approval.
   const classify = async (command: string, directory: string, network?: string) => {
+    if (!reviewPermissions) return undefined;
     const uncertainDirectory = /\b(?:cd|chdir|pushd)\b|\b(?:cmd|powershell|pwsh|sh|bash)(?:\.exe)?\s/i.test(command);
     const candidates =
       /"([^"\r\n]+\.(?:exe|com))"|'([^'\r\n]+\.(?:exe|com))'|([^\s"';&|()<>]+\.(?:exe|com))(?=$|[\s"';&|()<>])/gi;
@@ -91,6 +93,10 @@ export async function projectCommandApprovalReason(
     inspectScope?.(command);
     const risk = await classify(command, directory);
     if (risk) return risk;
+    // A single Windows directory listing consumes filenames as data. Do not
+    // inspect a listed .js file as a launch script. Composed commands and
+    // expansion still follow the conservative inspection below.
+    if (/^\s*dir(?:\s|$)/i.test(command) && !/[&|;<>\r\n^%!`$]/.test(command)) return undefined;
     if (depth > 8 || visited.size > 32)
       return 'Review this command: its local launch chain exceeds the inspection limit.';
     const scripts = [

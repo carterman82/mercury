@@ -1,4 +1,4 @@
-import { afterEach, expect, it } from 'vitest';
+import { afterEach, expect, it, vi } from 'vitest';
 import { DatabaseSync } from 'node:sqlite';
 import { mkdtempSync, rmSync } from 'node:fs';
 import os from 'node:os';
@@ -7,9 +7,60 @@ import type { ChatThread } from '../shared/types';
 import { Store } from './store';
 
 const roots: string[] = [];
-afterEach(() => { for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true }); });
+afterEach(() => { vi.restoreAllMocks(); for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true }); });
 const database = () => { const root = mkdtempSync(path.join(os.tmpdir(), 'mercury-project-store-')); roots.push(root); return path.join(root, 'data.sqlite'); };
 const thread = (id: string, projectId?: string): ChatThread => ({ id, projectId, title: 'Project request', profile: { provider: 'ollama', model: 'test', contextLimit: 32000 }, messages: [], status: 'idle', updatedAt: 1 });
+
+it('orders projects by last use, persists selection, and does not retimestamp streamed chat saves', () => {
+  const filename = database(), store = new Store(filename);
+  const clock = vi.spyOn(Date, 'now').mockReturnValue(100);
+  try {
+    store.saveProject({ id: 'one', name: 'One', path: '/one' });
+    store.saveProject({ id: 'two', name: 'Two', path: '/two' });
+    store.touchProject('one');
+    clock.mockReturnValue(200);
+    store.touchProject('two');
+    expect(store.projects().map(project => project.id)).toEqual(['two', 'one']);
+    clock.mockReturnValue(300);
+    store.touchProject('one');
+    clock.mockReturnValue(400);
+    store.saveChat(thread('active', 'two'));
+    expect(store.projects().map(project => project.id)).toEqual(['one', 'two']);
+    expect(store.project('two').lastUsedAt).toBe(200);
+    expect(() => store.touchProject('missing')).toThrow('Project not found');
+  } finally { store.close(); }
+  const restored = new Store(filename);
+  try { expect(restored.projects().map(project => project.id)).toEqual(['one', 'two']); } finally { restored.close(); }
+});
+
+it('uses historical chat and legacy session activity for projects without a saved last-use timestamp', () => {
+  const filename = database(), store = new Store(filename);
+  try {
+    store.saveProject({ id: 'unused', name: 'Unused', path: '/unused' });
+    store.saveProject({ id: 'chat', name: 'Chat', path: '/chat' });
+    store.saveProject({ id: 'legacy', name: 'Legacy', path: '/legacy' });
+    vi.spyOn(Date, 'now').mockReturnValue(100);
+    store.saveChat(thread('linked', 'chat'));
+    // Existing legacy rows have the same persisted project_id/updated_at fields.
+    const db = new DatabaseSync(filename);
+    try { db.prepare('INSERT INTO sessions VALUES (?,?,?,?)').run('legacy-session', 'legacy', 200, '{}'); } finally { db.close(); }
+    expect(store.projects().map(project => project.id)).toEqual(['legacy', 'chat', 'unused']);
+    expect(store.project('legacy').lastUsedAt).toBe(200);
+    expect(store.project('chat').lastUsedAt).toBe(100);
+  } finally { store.close(); }
+});
+
+it('keeps the latest selected project first even when visits share a clock millisecond', () => {
+  const store = new Store(database());
+  vi.spyOn(Date, 'now').mockReturnValue(100);
+  try {
+    store.saveProject({ id: 'one', name: 'One', path: '/one' });
+    store.saveProject({ id: 'two', name: 'Two', path: '/two' });
+    store.touchProject('one');
+    store.touchProject('two');
+    expect(store.projects().map(project => project.id)).toEqual(['two', 'one']);
+  } finally { store.close(); }
+});
 
 it('migrates version-three chats while preserving ordinary chats and legacy project defaults', () => {
   const filename = database();

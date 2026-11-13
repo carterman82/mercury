@@ -14,14 +14,22 @@ describe('project action policy', () => {
     expect(assessProjectAction(context, command, { reviewedNativeAvailable: true }).status).toBe('approval');
     expect(assessProjectAction(context, { kind: 'plugin' }, { reviewedNativeAvailable: true }).status).toBe('deny');
   });
-  it.each([1, 2, 3] as const)('allows ordinary workspace reads and edits in mode %i', mode => {
-    for (const kind of ['read', 'write'] as const) expect(assessProjectAction({ ...context, mode }, { kind, paths: [inside] }).status).toBe('allow');
+  it.each([1, 2, 3] as const)('applies the selected filesystem mode %i', mode => {
+    expect(assessProjectAction({ ...context, mode }, read).status).toBe('allow');
+    expect(assessProjectAction({ ...context, mode }, { kind: 'write', paths: [inside] }).status).toBe(mode === 1 ? 'approval' : 'allow');
   });
   it('distinguishes outside read and write authority and sibling prefixes', () => {
-    expect(assessProjectAction({ ...context, mode: 1 }, { kind: 'read', paths: [outside] }).status).toBe('approval');
+    expect(assessProjectAction({ ...context, mode: 1 }, { kind: 'read', paths: [outside] }).status).toBe('allow');
     expect(assessProjectAction(context, { kind: 'read', paths: [outside] }).status).toBe('allow');
     expect(assessProjectAction(context, { kind: 'write', paths: [inside, outside] }).status).toBe('approval');
     expect(assessProjectAction({ ...context, mode: 3 }, { kind: 'write', paths: [outside] }).status).toBe('allow');
+  });
+  it('allows enforced read-only commands and reviews writes or networking in restricted modes', () => {
+    const diagnostic: ProjectAction = { ...command, readOnly: true, network: 'deny' };
+    expect(assessProjectAction({ ...context, mode: 1 }, diagnostic, { isolationAvailable: true }).status).toBe('allow');
+    expect(assessProjectAction({ ...context, mode: 1 }, { ...diagnostic, readOnly: false }, { isolationAvailable: true }).status).toBe('approval');
+    expect(assessProjectAction(context, { ...diagnostic, network: 'allow' }, { isolationAvailable: true }).status).toBe('approval');
+    expect(assessProjectAction({ ...context, mode: 3 }, { ...diagnostic, network: 'allow' }).status).toBe('allow');
   });
   it('denies restricted process execution even if its command looks safe', () => {
     for (const mode of [1, 2] as const) {
@@ -48,6 +56,12 @@ describe('project action policy', () => {
     }
     expect(assessProjectAction({ ...context, mode: 3 }, { kind: 'integrate' }).status).toBe('allow');
   });
+  it('reviews direct edits to protected project metadata in restricted modes', () => {
+    for (const name of ['.git', '.agents', '.codex', '.aws']) {
+      expect(assessProjectAction(context, { kind: 'write', paths: [path.join(root, name, 'config')] }).status).toBe('approval');
+    }
+    expect(assessProjectAction(context, { kind: 'write', paths: [path.join(root, '.github', 'workflow')] }).status).toBe('allow');
+  });
   it('fails closed for invalid context, relative paths, missing targets and unknown actions', () => {
     expect(assessProjectAction({ ...context, mode: 9 as 1 }, read).status).toBe('deny');
     expect(assessProjectAction({ ...context, revision: NaN }, read).status).toBe('deny');
@@ -67,6 +81,7 @@ describe('one-shot project approvals', () => {
       [{ ...context, workspaceRoot: outside }, command], [context, { ...command, command: 'npm test && erase-files' }],
       [context, { ...command, cwd: outside }], [context, { ...command, contentHash: 'changed' }],
       [context, { ...command, agentId: 'subagent' }], [context, { ...command, destructive: true }],
+      [context, { ...command, network: 'allow' }], [context, { ...command, readOnly: false }],
     ];
     const grants = new OneShotProjectGrants();
     for (const [changedContext, changedAction] of changes) {

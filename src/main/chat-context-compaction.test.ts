@@ -1,7 +1,27 @@
 import { expect, it } from 'vitest';
 import { compactChatMessages, projectContextCheckpoint, readChatHistory } from './chat-context-compaction';
-import { newHandoff } from './project-handoff';
+import { newHandoff, recordProjectAction } from './project-handoff';
+import { readProjectTask } from './project-task-state';
 import type { ChatThread } from '../shared/types';
+
+it('preserves catalog pagination and revisions in fresh-session checkpoints and task recovery', () => {
+  const handoff = newHandoff(undefined, 'Research and edit every game');
+  for (const startLine of [1, 201, 401]) {
+    recordProjectAction(handoff, 'read_project_file', { path: 'gamesinfo.js', start: startLine, end: 500 },
+      { hash: 'catalog-revision', startLine, endLine: startLine + 199 });
+  }
+  recordProjectAction(handoff, 'read_project_record', { path: 'gamesinfo.js', key: 'slope' }, { hash: 'catalog-revision' });
+  for (const state of [JSON.parse(projectContextCheckpoint(handoff)), readProjectTask(handoff)]) {
+    expect(state.reads).toEqual(handoff.reads);
+    expect(state.reads.at(-1)).toMatchObject({ startLine: 401, endLine: 600, hash: 'catalog-revision' });
+    expect(state.snapshots).toEqual([{ path: 'gamesinfo.js', hash: 'catalog-revision' }]);
+  }
+  recordProjectAction(handoff, 'patch_project_record', { path: 'gamesinfo.js', key: 'slope' },
+    { path: 'gamesinfo.js', previousHash: 'catalog-revision', hash: 'edited-revision' });
+  const checkpoint = JSON.parse(projectContextCheckpoint(handoff));
+  expect(checkpoint.reads).toEqual([]);
+  expect(checkpoint.snapshots).toEqual([{ path: 'gamesinfo.js', hash: 'edited-revision' }]);
+});
 
 it('keeps user constraints, system policy and the latest parallel tool exchange intact', () => {
   const messages = [

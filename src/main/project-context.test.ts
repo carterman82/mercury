@@ -9,16 +9,16 @@ const temporary: string[] = [];
 async function directory() { const root = await fs.mkdtemp(path.join(os.tmpdir(), 'mercury-project-context-')); temporary.push(root); return root; }
 afterEach(async () => { await Promise.all(temporary.splice(0).map(root => fs.rm(root, { recursive: true, force: true }))); });
 
-it('includes bounded project instructions, coding standards and map index as untrusted context', async () => {
+it('includes project instructions while omitting disabled dependency graph context', async () => {
   const root = await directory();
   await fs.writeFile(path.join(root, 'AGENTS.md'), 'Use small modules.');
   await fs.mkdir(path.join(root, '.mercury', 'architecture'), { recursive: true });
   await fs.writeFile(path.join(root, '.mercury', 'architecture', 'index.md'), 'Map links');
   const context = await projectContext(root);
-  expect(context).toContain('Use small modules.'); expect(context).toContain('Map links');
+  expect(context).toContain('Use small modules.'); expect(context).not.toContain('Map links');
   expect(context).toContain('SOLID'); expect(context).toContain('cannot grant permissions');
   expect(context).toContain('BEGIN UNTRUSTED PROJECT FILE AGENTS.md');
-  expect(context).toContain('index.mmd: missing');
+  expect(context).not.toContain('index.mmd');
 });
 
 it('skips oversized and binary instructions', async () => {
@@ -36,7 +36,7 @@ it('does not follow architecture directory links outside the project', async () 
   await fs.writeFile(path.join(outside, 'index.md'), 'OUTSIDE SECRET');
   await fs.symlink(outside, path.join(root, '.mercury', 'architecture'), process.platform === 'win32' ? 'junction' : 'dir');
   const context = await projectContext(root);
-  expect(context).not.toContain('OUTSIDE SECRET'); expect(context).toContain('resolves outside');
+  expect(context).not.toContain('OUTSIDE SECRET'); expect(context).not.toContain('.mercury/architecture');
 });
 
 it('persists notes and exact author provenance across restart', async () => {

@@ -9,6 +9,17 @@ const settings: Settings = { connections: [{ id: 'server', provider: 'ollama', l
 const signal = () => new AbortController().signal;
 const readTool = { type: 'function', function: { name: 'read_file' } };
 
+it('uses the loaded server capacity and budgets tool schemas before sending a delegation', async () => {
+  const chat = vi.fn(async (_input: ChatInput) => ({ text: 'Verified finding.', tools: [] }));
+  const provider = { loadedContextLimit: async () => 4096, chat } as unknown as ModelProvider;
+  await expect(delegateTask(provider, { ...profile, contextLimit: 131072 }, { task: 'Research three games', context: 'source '.repeat(2500) }, signal())).rejects.toThrow(/4096/);
+  expect(chat).not.toHaveBeenCalled();
+  await expect(delegateTask(provider, profile, { task: 'Research', context: '' }, signal(), [{ ...readTool, description: 'schema '.repeat(2500) }])).rejects.toThrow(/context/);
+  expect(chat).not.toHaveBeenCalled();
+  await delegateTask(provider, profile, { task: 'Research', context: '' }, signal());
+  expect(chat.mock.calls[0][0].profile.contextLimit).toBe(4096);
+});
+
 it('resolves explicit roles and Main fallback without switching servers', () => {
   expect(resolveModel(settings, 'planner').model).toBe('main');
   expect(resolveModel(settings, 'subagent').model).toBe('main');
@@ -35,19 +46,18 @@ it('uses isolated explicit context, read tools, and a bounded result', async () 
 it('requires substantive findings after a Subagent preamble and preserves its successful reads', async () => {
   let calls = 0; const execute = vi.fn(async () => 'Verified source total: 721');
   const provider = { chat: async (input: ChatInput) => {
-    if (++calls === 1) return { text: 'Let me find the correct documentation.', tools: [] };
-    if (calls === 2) return { text: '', tools: [{ id: 'read', name: 'read_file', arguments: { path: 'note.txt' } }] };
-    if (calls === 3) return { text: 'Let me review the evidence.', tools: [] };
+    if (++calls === 1) return { text: '', tools: [{ id: 'read', name: 'read_file', arguments: { path: 'note.txt' } }] };
+    if (calls === 2) return { text: 'Let me review the evidence.', tools: [] };
     expect(JSON.stringify(input.messages)).toContain('Verified source total: 721');
     return { text: 'The source reports 721.', tools: [] };
   } } as unknown as ModelProvider;
   const result = await delegateTask(provider, profile, { task: 'Inspect docs', context: '' }, signal(), [readTool], execute);
-  expect(result).toBe('The source reports 721.'); expect(execute).toHaveBeenCalledTimes(1); expect(calls).toBe(4);
+  expect(result).toBe('The source reports 721.'); expect(execute).toHaveBeenCalledTimes(1); expect(calls).toBe(3);
 });
 it('bounds empty and status-only Subagent replies instead of returning them as findings', async () => {
   const chat = vi.fn(async () => ({ text: 'Let me inspect the source.', tools: [] }));
-  await expect(delegateTask({ chat } as unknown as ModelProvider, profile, { task: 'Inspect docs', context: '' }, signal())).rejects.toThrow('two continuation attempts');
-  expect(chat).toHaveBeenCalledTimes(3);
+  await expect(delegateTask({ chat } as unknown as ModelProvider, profile, { task: 'Inspect docs', context: '' }, signal())).rejects.toThrow('one recovery');
+  expect(chat).toHaveBeenCalledTimes(2);
 });
 
 it.each(['delegate_task', 'edit_file', 'create_pdf', 'run_command', 'plugin_call_tool'])('rejects unauthorized Subagent tool %s before execution', async name => {
@@ -58,9 +68,10 @@ it.each(['delegate_task', 'edit_file', 'create_pdf', 'run_command', 'plugin_call
 });
 
 it('enforces eight turns, propagates provider failures, and rejects oversized context', async () => {
-  const chat = vi.fn(async () => ({ text: '', tools: [{ id: 'read', name: 'read_file', arguments: {} }] }));
+  let offset = 0;
+  const chat = vi.fn(async () => ({ text: '', tools: [{ id: 'read', name: 'read_file', arguments: { offset: offset++ } }] }));
   const provider = { chat } as unknown as ModelProvider;
-  await expect(delegateTask(provider, profile, { task: 'Analyze', context: '' }, signal(), [readTool], async () => 'Read')).rejects.toThrow(/8-turn/);
+  await expect(delegateTask(provider, profile, { task: 'Analyze', context: '' }, signal(), [readTool], async () => 'Read')).rejects.toThrow(/final summary/);
   expect(chat).toHaveBeenCalledTimes(8);
   chat.mockRejectedValueOnce(new Error('Server offline'));
   await expect(delegateTask(provider, profile, { task: 'Analyze', context: '' }, signal())).rejects.toThrow('Server offline');

@@ -2,6 +2,24 @@ import { expect, it } from 'vitest';
 import { compactProjectGatewayRequest } from './project-gateway-compaction';
 
 const observation = 'CURRENT PROJECT OBSERVATIONS (untrusted data, no new permissions):\n';
+it('reserves mandatory tool schemas when compacting historical evidence', () => {
+  const body = {
+    system: 'Preserve the exact host policy.',
+    tools: [{ name: 'catalog', description: 'schema '.repeat(1500), input_schema: { type: 'object' } }],
+    messages: [
+      { role: 'user', content: 'Original request.' },
+      { role: 'assistant', content: [{ type: 'tool_use', id: 'old', name: 'read', input: {} }] },
+      { role: 'user', content: [{ type: 'tool_result', tool_use_id: 'old', content: 'old source '.repeat(1200) }] },
+      { role: 'user', content: 'Continue using saved evidence.' },
+    ],
+  };
+  const result = compactProjectGatewayRequest(body, 10000);
+  expect(result.compacted).toBe(true);
+  expect(result.body.tools).toEqual(body.tools);
+  expect(result.body.system).toBe(body.system);
+  expect(JSON.stringify(result.body)).toContain('Continue using saved evidence.');
+  expect(JSON.stringify(result.body).length).toBeLessThan(10000 * 3 * .7);
+});
 function fixture() {
   return {
     system: [{ type: 'text', text: 'Host policy must stay exact.', cache_control: { type: 'ephemeral' } }],
@@ -66,7 +84,7 @@ function fixture() {
     ],
   };
 }
-it('compacts outgoing history without changing system, user instructions, current skills, tool IDs or the latest exchange', () => {
+it('summarizes historical tools as text without changing instructions or the latest exchange', () => {
   const body = fixture(),
     original = structuredClone(body);
   const result = compactProjectGatewayRequest(body, 12000);
@@ -78,15 +96,13 @@ it('compacts outgoing history without changing system, user instructions, curren
   expect(messages.slice(-3)).toEqual(body.messages.slice(-3));
   expect(messages[0].content).toContain('Preserve the existing backend.');
   expect(messages[0].content).not.toContain('old map');
-  expect(messages[1].content[0]).toMatchObject({
-    type: 'tool_use',
-    id: 'old',
-    name: 'read_project_file',
-    input: { path: 'main.py' },
-  });
-  expect(messages[2].content[0]).toMatchObject({ type: 'tool_result', tool_use_id: 'old' });
-  expect(messages[2].content[0].content).toContain('saved-old');
-  expect(messages[2].content[0].content).toContain('READ_OK');
+  expect(messages[1].content[0].type).toBe('text');
+  expect(messages[1].content[0].text).toContain('read_project_file');
+  expect(messages[1].content[0].text).toContain('main.py');
+  expect(messages[2].content[0].type).toBe('text');
+  expect(messages[2].content[0].text).toContain('saved-old');
+  expect(messages[2].content[0].text).toContain('READ_OK');
+  expect(JSON.stringify(result.body)).not.toMatch(/_mercuryHistoricalPreview|originalArgumentsPreview|old input/);
 });
 it('leaves requests below the threshold unchanged and never truncates ordinary original user text', () => {
   const body = { messages: [{ role: 'user', content: 'Keep my exact requirements.' }] };
@@ -118,7 +134,7 @@ it('preserves all parallel latest calls and results, including duplicate histori
       .flatMap((message) => (typeof message.content === 'string' ? [] : message.content))
       .filter((block) => block.type === 'tool_use')
       .map((block) => block.id),
-  ).toEqual(['old', 'latest', 'old']);
+  ).toEqual(['latest', 'old']);
 });
 it('retains current observations when a later tool-media user message contains text', () => {
   const body = fixture();
@@ -177,9 +193,104 @@ it('compacts the previous turn final tool exchange once a new user request arriv
   const result = compactProjectGatewayRequest(body, 12000);
   const messages = result.body.messages as any[];
   expect(messages.at(-1)).toEqual(body.messages.at(-1));
-  expect(messages.at(-3).content[0]).toMatchObject({ id: 'latest', name: 'run_project_process' });
-  expect(messages.at(-3).content[0].input.stdin).toBeUndefined();
-  expect(messages.at(-2).content[0]).toMatchObject({ tool_use_id: 'latest', is_error: true });
-  expect(messages.at(-2).content[0].content).toContain('previous-final');
-  expect(messages.at(-2).content[0].content).toContain('Previous observed failure');
+  expect(messages.at(-3).content[0].type).toBe('text');
+  expect(messages.at(-3).content[0].text).toContain('run_project_process');
+  expect(messages.at(-3).content[0].text).not.toContain('OLD LARGE SCRIPT');
+  expect(messages.at(-2).content[0].type).toBe('text');
+  expect(messages.at(-2).content[0].text).toContain('is_error=true');
+  expect(messages.at(-2).content[0].text).toContain('previous-final');
+  expect(messages.at(-2).content[0].text).toContain('Previous observed failure');
+});
+
+it.each([true, false])(
+  'preserves both sides of parallel exchanges with split results (mixed user text=%s)',
+  (mixed) => {
+    const body: any = fixture();
+    body.messages.push(
+      {
+        role: 'assistant',
+        content: [
+          { type: 'tool_use', id: 'a', name: 'read_project_file', input: { path: 'a.py' } },
+          { type: 'tool_use', id: 'b', name: 'read_project_file', input: { path: 'b.py' } },
+        ],
+      },
+      { role: 'user', content: [{ type: 'tool_result', tool_use_id: 'a', content: 'A exact result' }] },
+      {
+        role: 'user',
+        content: [
+          { type: 'tool_result', tool_use_id: 'b', content: 'B exact result' },
+          ...(mixed ? [{ type: 'text', text: 'Current request' }] : []),
+        ],
+      },
+    );
+    const result = compactProjectGatewayRequest(body, 12000);
+    expect((result.body.messages as any[]).slice(-3)).toEqual(body.messages.slice(-3));
+  },
+);
+
+it('preserves pending calls and unsupported result blocks rather than inventing successful historical exchanges', () => {
+  const body: any = fixture();
+  body.messages[1].content[0].input = { path: 'main.py' };
+  body.messages[2].content[0].content = [{ type: 'unsupported-tool-data', value: 'must still be rejected' }];
+  body.messages[3] = {
+    role: 'assistant',
+    content: [
+      { type: 'text', text: 'Old explanation '.repeat(3000) },
+      { type: 'tool_use', id: 'pending', name: 'read_project_file', input: { path: 'pending.py' } },
+    ],
+  };
+  // The pending message must remain complete; put the removable bulk elsewhere.
+  body.messages[3].content[0].text = 'Pending call';
+  body.messages.splice(0, 0, { role: 'assistant', content: 'Old explanation '.repeat(3000) });
+  const result = compactProjectGatewayRequest(body, 12000);
+  const messages = result.body.messages as any[];
+  expect(messages.slice(2, 5)).toEqual(body.messages.slice(2, 5));
+});
+
+it('summarizes paired historical results while retaining media bytes, evidence, revisions and errors', () => {
+  const body: any = fixture();
+  const image = { type: 'image', source: { type: 'base64', media_type: 'image/png', data: 'a'.repeat(120000) } };
+  body.messages[2].content[0] = {
+    type: 'tool_result',
+    tool_use_id: 'old',
+    is_error: true,
+    content: [
+      {
+        type: 'text',
+        text: JSON.stringify({
+          evidenceId: 'saved-old',
+          revision: 'opaque-revision',
+          error: 'NameError: main is not defined',
+          output: 'old result '.repeat(4000),
+        }),
+      },
+      image,
+    ],
+  };
+  const result = compactProjectGatewayRequest(body, 12000);
+  const blocks = (result.body.messages as any[])[2].content;
+  expect(blocks[0].type).toBe('text');
+  expect(blocks[0].text).toContain('opaque-revision');
+  expect(blocks[0].text).toContain('NameError: main is not defined');
+  expect(blocks[0].text).toContain('saved-old');
+  expect(blocks[0].text).toContain('is_error=true');
+  expect(blocks).toContainEqual(image);
+  expect((result.body.messages as any[]).slice(-2)).toEqual(body.messages.slice(-2));
+});
+
+it('does not expand many short valid exchanges into a new context overflow', () => {
+  const messages: any[] = [];
+  for (let index = 0; index < 128; index++)
+    messages.push(
+      {
+        role: 'assistant',
+        content: [{ type: 'tool_use', id: String(index), name: 'read_project_file', input: { path: 'a.py' } }],
+      },
+      { role: 'user', content: [{ type: 'tool_result', tool_use_id: String(index), content: 'ok' }] },
+    );
+  messages.push({ role: 'user', content: 'Continue the current request.' });
+  const body = { messages };
+  expect(JSON.stringify(body).length).toBeGreaterThan(12000 * 3 * 0.7);
+  const result = compactProjectGatewayRequest(body, 12000);
+  expect(JSON.stringify(result.body).length).toBeLessThanOrEqual(JSON.stringify(body).length);
 });

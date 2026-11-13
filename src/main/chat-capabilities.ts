@@ -4,6 +4,8 @@ import { browserSchemas, browserTools, getBrowserTool } from './browser-tool-reg
 import { ChatPlugins } from './chat-plugins';
 import { WebSearch, webInstructions, webSchemas, webTools } from './web-search';
 import type { ProjectPluginPolicy } from './project-plugin-policy';
+import { planningToolAllowed } from './chat-planning';
+import { ToolFailure } from './tool-outcome';
 
 const tool = (name: string, description: string, schema: z.ZodType) => {
   const { $schema, ...parameters } = z.toJSONSchema(schema);
@@ -35,10 +37,11 @@ When the user asks to find or recommend plugins, actually call discover_plugins 
 `;
 
 export class ChatCapabilities {
-  constructor(private browser: ChatBrowser, private plugins: ChatPlugins, private web = new WebSearch()) {}
+  constructor(private browser: ChatBrowser, private plugins: ChatPlugins, private web = new WebSearch(), private planningChat: (id: string) => boolean = () => false) {}
   beginTurn(chatId: string): void { this.plugins.beginTurn(chatId); }
   handles(name: string): boolean { return Object.hasOwn(schemas, name); }
   async execute(chatId: string, name: string, raw: unknown, signal: AbortSignal, project?: ProjectPluginPolicy): Promise<unknown> {
+    if ((this.planningChat(chatId) || project?.collaborationMode === 'plan') && !planningToolAllowed(name, raw)) throw new ToolFailure('PLAN_MODE_READ_ONLY', 'This action is unavailable in Plan mode. Review and implement the plan first.');
     if (!this.handles(name)) throw new Error('Unknown chat capability.');
     if ((JSON.stringify(raw) ?? '').length > 100_000) throw new Error('Tool arguments exceed 100,000 characters.');
     const args: any = schemas[name as keyof typeof schemas].parse(raw);

@@ -26,7 +26,7 @@ it.each([
   'npm test && pip install foo',
   'npx some-tool',
   'powershell Start-Process app.exe',
-])('reviews executable launches and installations in every mode: %s', (command) => {
+])('keeps legacy command classifications from overriding full access: %s', (command) => {
   const approvalReason = commandApprovalReason({ command });
   expect(approvalReason).toBeTruthy();
   for (const mode of [1, 2, 3] as const)
@@ -36,7 +36,7 @@ it.each([
         { kind: 'command', command, cwd: path.resolve('.'), approvalReason },
         { isolationAvailable: true },
       ).status,
-    ).toBe('approval');
+    ).toBe(mode === 3 ? 'allow' : 'approval');
 });
 it('inspects package lifecycle hooks and local launch scripts before granting execution', async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'mercury-risk-'));
@@ -57,6 +57,16 @@ it('inspects package lifecycle hooks and local launch scripts before granting ex
   } finally {
     await fs.rm(root, { recursive: true, force: true });
   }
+});
+
+it('does not treat a directory listing as execution of the listed JavaScript file', async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'mercury-list-catalog-'));
+  try {
+    await fs.writeFile(path.join(root, 'gamesinfo.js'), 'const games = { description: "Install upgrades with npm" };');
+    expect(await projectCommandApprovalReason(root, root, { command: 'dir /s /b gamesinfo.js' })).toBeUndefined();
+    expect(await projectCommandApprovalReason(root, root, { command: 'node gamesinfo.js' })).toContain('approval');
+    expect(await projectCommandApprovalReason(root, root, { command: 'dir /s /b gamesinfo.js && node gamesinfo.js' })).toContain('approval');
+  } finally { await fs.rm(root, { recursive: true, force: true }); }
 });
 it('classifies structured commands, stdin scripts and network access', () => {
   expect(commandApprovalReason({ command: 'process', executable: 'python.exe', args: ['-m', 'pytest'] })).toBeTruthy();

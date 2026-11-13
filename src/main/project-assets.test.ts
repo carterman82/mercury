@@ -166,13 +166,14 @@ async function toolFixture() {
     serialized: true as const,
   };
   vi.spyOn(worktrees, 'prepare').mockResolvedValue(workspace);
-  const projects = new ProjectTools(store, new ChatApprovals(() => {}), worktrees, undefined, { execution });
+  const approvals = new ChatApprovals(() => {});
+  const projects = new ProjectTools(store, approvals, worktrees, undefined, { execution });
   await projects.prepare(chat, new AbortController().signal);
-  return { root, store, chat, execution, workspace, projects };
+  return { root, store, chat, execution, workspace, projects, approvals };
 }
 
 it('keeps a file-owned worker download confined to its assigned file and host temporary file', async () => {
-  const { root, store, chat, execution, workspace, projects } = await toolFixture();
+  const { root, store, chat, execution, workspace, projects, approvals } = await toolFixture();
   try {
     const worker = { ...chat, id: 'asset-worker' };
     await projects.prepareWorker(worker, chat, workspace, { ownedPaths: ['model.gguf'], readOnly: false });
@@ -189,12 +190,16 @@ it('keeps a file-owned worker download confined to its assigned file and host te
         confined: true,
       };
     });
-    await projects.execute(
+    const pending = projects.execute(
       worker,
       'download_project_asset',
       { url: 'https://example.invalid/model.gguf', destination: 'model.gguf', format: 'gguf', maxBytes: 100 },
       new AbortController().signal,
     );
+    await expect.poll(() => approvals.snapshot().length).toBe(1);
+    expect(execute).not.toHaveBeenCalled();
+    approvals.answer(approvals.snapshot()[0].id, true);
+    await pending;
     expect(execute).toHaveBeenCalledOnce();
     await expect(
       projects.execute(

@@ -10,10 +10,12 @@ import { ProjectModelGateway, type ProjectGatewaySession } from './project-gatew
 import { toolFailed, toolError, failedToolResult } from './tool-outcome';
 import { CallToolRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import { normalizeProjectToolInput } from './project-tool-input';
+import { ProjectContextRollover } from './project-context-rollover';
+import { RunBudget } from './run-budget';
 
 export const PROJECT_SDK_VERSION = '0.3.310';
-export const PROJECT_RECOVERY_POLICY = '2.0.0';
-export const PROJECT_RUNTIME_BUILD = 'mercury-project-runtime-2026-11-04-r1';
+export const PROJECT_RECOVERY_POLICY = '3.1.0';
+export const PROJECT_RUNTIME_BUILD = 'mercury-project-runtime-2026-11-11-context-recovery';
 export interface ProjectToolAttempt {
   id: string;
   validationError?: unknown;
@@ -26,6 +28,7 @@ export interface ProjectRuntimeSession {
   status: 'running' | 'completed' | 'interrupted';
 }
 export interface ProjectAgentInput {
+  runBudget?: RunBudget;
   projectId: string;
   chatId: string;
   agentId?: string;
@@ -49,6 +52,8 @@ export interface ProjectAgentInput {
   onRequestState?(state: 'queued' | 'running'): void;
   onUsage?(usage: { input?: number; output?: number } | undefined): void;
   onContextCompacted?(): void;
+  /** Runs between completed tools and the next inference; may request a safe rollover. */
+  onContextCheckpoint?(estimatedTokens: number): void;
 }
 export interface ProjectAgentRuntime {
   run(input: ProjectAgentInput): Promise<{ text: string; session: ProjectRuntimeSession }>;
@@ -115,6 +120,8 @@ export class ClaudeProjectRuntime implements ProjectAgentRuntime {
       const sdk = await this.sdk();
       controller.signal.throwIfAborted();
       route = await this.gateway.open({
+        runBudget: input.runBudget ?? new RunBudget(),
+        onGenerationFailure: error => controller.abort(error),
         projectId: input.projectId,
         chatId: input.chatId,
         agentId: worker,
@@ -126,6 +133,10 @@ export class ClaudeProjectRuntime implements ProjectAgentRuntime {
         onReasoning: input.onReasoning,
         onUsage: input.onUsage,
         onContextCompacted: input.onContextCompacted,
+        onContextCheckpoint: estimated => {
+          try { input.onContextCheckpoint?.(estimated); }
+          catch (error) { controller.abort(error); throw error; }
+        },
         nativeMessages: this.provider.messages
           ? (body, signal, headers) =>
               this.provider.messages!({
@@ -407,6 +418,7 @@ export class ClaudeProjectRuntime implements ProjectAgentRuntime {
                 .join('\n'),
             );
         } else if (event.type === 'result') {
+          if (event.subtype === 'error_max_turns') throw new ProjectContextRollover('turns');
           if (event.is_error || event.subtype !== 'success')
             throw new Error(event.errors?.join('\n') || `Project SDK run failed: ${event.subtype}`);
           if (!text && event.result) append(event.result);
@@ -420,6 +432,7 @@ export class ClaudeProjectRuntime implements ProjectAgentRuntime {
     } catch (error) {
       session.status = 'interrupted';
       input.onSession?.({ ...session });
+      if (controller.signal.aborted) throw controller.signal.reason;
       throw error;
     } finally {
       try {

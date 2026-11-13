@@ -14,8 +14,47 @@ import { ClaudeProjectRuntime } from './project-agent-runtime';
 import type { ChatThread } from '../shared/types';
 import type { ChatInput, ModelProvider } from './providers';
 import { projectTestRuntime } from './project-test-runtime';
+import { ThinkingLimitError } from './thinking-guard';
+import type { ProjectAgentRuntime } from './project-agent-runtime';
 
 const cleanup: (() => Promise<void>)[] = [];
+
+it.each([false, true])('retains completed worker evidence during one generation recovery (loops again=%s)', async loopsAgain => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'mercury-worker-loop-'));
+  cleanup.push(() => fs.rm(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }));
+  const store = new Store(path.join(root, 'state.sqlite'));
+  cleanup.push(async () => store.close());
+  const profile = { provider: 'ollama' as const, connectionId: 'fixture', model: 'local', contextLimit: 131072 };
+  store.saveSettings({ connections: [{ id: 'fixture', provider: 'ollama', label: 'Local', url: 'http://localhost:11434' }], mainModel: profile, subagentModel: profile, plannerModel: null });
+  const project = { id: randomUUID(), name: 'Loop', path: root, permissionMode: 3 as const };
+  store.saveProject(project);
+  const parent: ChatThread = { id: randomUUID(), projectId: project.id, title: 'Loop', profile, messages: [], status: 'idle', updatedAt: Date.now() };
+  store.saveChat(parent);
+  const tools = new ProjectTools(store, new ChatApprovals(() => {}), new ProjectWorktreeService(path.join(root, 'workspaces')));
+  await tools.prepare(parent, new AbortController().signal);
+  let runs = 0, effects = 0, budget: unknown;
+  const runtime: ProjectAgentRuntime = { shutdown: async () => {}, run: async input => {
+    if (++runs === 1) {
+      budget = input.runBudget;
+      await input.execute('web_fetch', { url: 'https://example.com/recorded' });
+      throw new ThinkingLimitError('repetition');
+    }
+    expect(input.runBudget).toBe(budget);
+    expect(JSON.stringify(input.messages)).toContain('Previously verified fact: 721');
+    expect(JSON.stringify(input.messages)).toContain('example.com/recorded');
+    if (loopsAgain) throw new ThinkingLimitError('repetition');
+    return { text: 'The recorded fact is 721.', session: { runtime: 'claude-agent-sdk', identity: input.chatId, version: 'test', status: 'completed' } };
+  } };
+  const workers = new ProjectWorkers(store, {} as ModelProvider, runtime, tools, new ProjectWorktreeService(path.join(root, 'workers')), () => {}, {
+    handles: () => true, execute: async () => { effects++; return { content: 'Previously verified fact: 721' }; },
+  } as any);
+  const assignment = await workers.start(parent, { kind: 'investigation', task: 'Inspect recorded evidence', context: '' }, new AbortController().signal);
+  await workers.wait(parent, [assignment.id]);
+  expect(runs).toBe(2);
+  expect(effects).toBe(1);
+  expect(assignment.status, assignment.error).toBe(loopsAgain ? 'failed' : 'completed');
+  if (loopsAgain) expect(assignment.error).toContain('one recovery');
+});
 
 it.each([false, true])(
   'recovers full worker tool evidence and rejects another assignment evidence (error=%s)',
@@ -118,9 +157,9 @@ it.each([false, true])(
   },
 );
 
-it.each([16000, 2048])(
-  'loads complete workflows for a read-only research worker or reports insufficient context (%i)',
-  async (contextLimit) => {
+it.each([{ contextLimit: 16000 }, { contextLimit: 2048 }, { contextLimit: 131072, loaded: 4096 }])(
+  'loads complete workflows within the actual worker capacity (%j)',
+  async ({ contextLimit, loaded }) => {
     const root = await fs.mkdtemp(path.join(os.tmpdir(), 'mercury-worker-web-'));
     cleanup.push(() =>
       fs.rm(root, {
@@ -183,6 +222,7 @@ it.each([16000, 2048])(
     await tools.prepare(parent, new AbortController().signal);
     let calls = 0;
     const provider = {
+      loadedContextLimit: async () => loaded ?? null,
       chat: async (input: ChatInput) => {
         expect(JSON.stringify(input.tools)).toContain('web_fetch');
         expect(JSON.stringify(input.tools)).not.toContain('edit_project_file');
@@ -221,9 +261,10 @@ it.each([16000, 2048])(
       new AbortController().signal,
     );
     await workers.wait(parent, [assignment.id]);
-    if (contextLimit === 2048) {
+    if (contextLimit === 2048 || loaded) {
       expect(assignment.status).toBe('failed');
       expect(assignment.error).toContain('Not enough model context');
+      expect(assignment.profile.contextLimit).toBe(loaded ?? contextLimit);
       expect(calls).toBe(0);
       return;
     }

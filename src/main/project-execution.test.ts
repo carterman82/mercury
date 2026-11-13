@@ -120,7 +120,7 @@ it.runIf(process.env.MERCURY_LIVE_MXC === '1')(
         'require("fs").writeFileSync("written.txt","你好 [data-view=] & quotes");console.log("structured confined success")',
       cwd: workspace,
       workspaceRoot: workspace,
-      mode: 1,
+      mode: 2,
       win32k: true,
     };
     const result = await adapter.execute(request, new AbortController().signal);
@@ -206,12 +206,13 @@ it('constructs a fixed native containment policy without DACL fallback or inheri
   expect(JSON.stringify(policy)).not.toContain('permissiveLearningMode');
 });
 
-it('limits level-one reads and preserves narrower worker write roots in full access', async () => {
+it('allows local reads but no project writes in read-only mode and preserves worker roots', async () => {
   const { adapter, request, root, workspace } = await fixture();
   const scratch = path.join(root, 'work');
   await fs.mkdir(scratch);
   const levelOne: any = await adapter.policy({ ...request, mode: 1 }, scratch);
-  expect(levelOne.filesystem.readonlyPaths).not.toContain(root);
+  expect(levelOne.filesystem.readonlyPaths).toContain(root);
+  expect(levelOne.filesystem.readwritePaths).toEqual([scratch]);
   const owned = path.join(workspace, 'owned.ts');
   const worker: any = await adapter.policy({ ...request, mode: 3, confined: true, writableRoots: [owned] }, scratch);
   expect(worker.filesystem.readwritePaths).toEqual([owned, scratch]);
@@ -229,6 +230,86 @@ it('removes environment test controls, diagnostic overrides, and model credentia
   expect(environment.WXC_FORCE_TIER).toBeUndefined();
   expect(environment.MXC_DIAG_CONSOLE).toBeUndefined();
 });
+
+it('retains nested metadata protections and explicit denials under broad writable roots', async () => {
+  const { adapter, request, root, workspace } = await fixture();
+  const scratch = path.join(root, 'protected-work');
+  await fs.mkdir(scratch);
+  const denied = path.join(workspace, 'secret.txt');
+  const policy: any = await adapter.policy({ ...request, deniedRoots: [denied] }, scratch);
+  for (const name of ['.git', '.agents', '.codex', '.aws']) expect(policy.filesystem.readonlyPaths).toContain(path.join(workspace, name));
+  expect(policy.filesystem.readwritePaths).toContain(workspace);
+  expect(policy.filesystem.deniedPaths).toEqual([denied]);
+  await expect(adapter.execute({ ...request, deniedRoots: [denied] }, new AbortController().signal)).rejects.toThrow('deny-path enforcement');
+});
+
+it.runIf(process.env.MERCURY_LIVE_MXC === '1')('enforces nested metadata protection, explicit denials and read-only commands on Windows', async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'mercury-native-policy-'));
+  temporary.push(root);
+  const workspace = path.join(root, 'workspace');
+  await fs.mkdir(workspace);
+  for (const name of ['.git', '.agents', '.codex', '.aws']) {
+    await fs.mkdir(path.join(workspace, name));
+    await fs.writeFile(path.join(workspace, name, 'marker'), 'original');
+  }
+  const denied = path.join(workspace, 'secret.txt');
+  await fs.writeFile(denied, 'must-not-be-readable');
+  const adapter = new ProjectExecutionAdapter(path.resolve('.build-resources/mxc-runtime'), path.join(root, 'scratch'));
+  const script = `const fs=require('node:fs');
+    for(const name of ['.git','.agents','.codex','.aws']) {
+      try {fs.writeFileSync(name+'/marker','changed'); throw new Error('PROTECTED WRITE SUCCEEDED: '+name)} catch(e) {if(!['EACCES','EPERM'].includes(e.code))throw e;}
+    }
+    try{fs.readFileSync('secret.txt');throw new Error('DENIED READ SUCCEEDED')}catch(e){if(!['EACCES','EPERM'].includes(e.code))throw e;}
+    fs.writeFileSync('ordinary.txt','allowed');console.log('native protections verified');`;
+  const request: ProjectExecutionRequest = { command: 'verify protected files', executable: process.execPath, args: ['-'], stdin: script, mode: 2, workspaceRoot: workspace, cwd: workspace, win32k: true, deniedRoots: [denied] };
+  const result = await adapter.execute(request, new AbortController().signal);
+  expect(result, JSON.stringify(result)).toMatchObject({ exitCode: 0, confined: true });
+  expect(result.output).toContain('native protections verified');
+  for (const name of ['.git', '.agents', '.codex', '.aws']) expect(await fs.readFile(path.join(workspace, name, 'marker'), 'utf8')).toBe('original');
+  expect(await fs.readFile(path.join(workspace, 'ordinary.txt'), 'utf8')).toBe('allowed');
+  const diagnostic = await adapter.execute({ ...request, mode: 1, stdin: `const fs=require('node:fs');try{fs.writeFileSync('forbidden.txt','bad');throw new Error('READONLY WRITE SUCCEEDED')}catch(e){if(!['EACCES','EPERM'].includes(e.code))throw e;}fs.writeFileSync(require('node:path').join(require('node:os').tmpdir(),'scratch.txt'),'ok');console.log('readonly verified');` }, new AbortController().signal);
+  expect(diagnostic, JSON.stringify(diagnostic)).toMatchObject({ exitCode: 0, confined: true });
+  expect(diagnostic.output).toContain('readonly verified');
+  await expect(fs.stat(path.join(workspace, 'forbidden.txt'))).rejects.toMatchObject({ code: 'ENOENT' });
+}, 60000);
+
+it.runIf(process.env.MERCURY_LIVE_MXC === '1' && Boolean(process.env.MERCURY_LIVE_PYTHON))('runs an installed Python under workspace-write and read-only confinement', async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'mercury-python-policy-'));
+  temporary.push(root);
+  const workspace = path.join(root, 'workspace');
+  await fs.mkdir(workspace);
+  const adapter = new ProjectExecutionAdapter(path.resolve('.build-resources/mxc-runtime'), path.join(root, 'scratch'));
+  const request: ProjectExecutionRequest = { command: 'Python sandbox smoke', executable: process.env.MERCURY_LIVE_PYTHON!, args: ['-I', '-B', '-c', 'import pathlib;pathlib.Path("python.txt").write_text("verified");print("python confined")'], mode: 2, workspaceRoot: workspace, cwd: workspace, win32k: true };
+  const written = await adapter.execute(request, new AbortController().signal);
+  expect(written, JSON.stringify(written)).toMatchObject({ exitCode: 0, confined: true });
+  expect(await fs.readFile(path.join(workspace, 'python.txt'), 'utf8')).toBe('verified');
+  const denied = await adapter.execute({ ...request, mode: 1 }, new AbortController().signal);
+  expect(denied.exitCode, denied.output).not.toBe(0);
+  expect(denied.output).toMatch(/PermissionError|denied/);
+}, 45000);
+
+it('terminates a timed-out native process before it can write later effects', async () => {
+  const { adapter, request, workspace } = await fixture();
+  const late = path.join(workspace, 'late.txt');
+  const executed = await adapter.execute({ ...request, mode: 3, timeoutMs: 200, executable: process.execPath, args: ['-e', `setTimeout(()=>require('node:fs').writeFileSync(${JSON.stringify(late)},'escaped'),1500)`] }, new AbortController().signal);
+  expect(executed).toMatchObject({ timedOut: true, confined: false });
+  await expect(fs.stat(late)).rejects.toMatchObject({ code: 'ENOENT' });
+});
+
+it.runIf(process.env.MERCURY_LIVE_MXC === '1')('ends sandbox descendants when their foreground owner exits', async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'mercury-descendants-'));
+  temporary.push(root);
+  const workspace = path.join(root, 'workspace');
+  await fs.mkdir(workspace);
+  const adapter = new ProjectExecutionAdapter(path.resolve('.build-resources/mxc-runtime'), path.join(root, 'scratch'));
+  const child = `require('node:fs').writeFileSync('started.txt','yes');console.log('ready');setTimeout(()=>require('node:fs').writeFileSync('escaped.txt','bad'),1500)`;
+  const parent = `const child=require('node:child_process').spawn(process.execPath,['-e',${JSON.stringify(child)}],{stdio:['ignore','pipe','inherit']});child.stdout.once('data',()=>process.exit(0));child.once('error',e=>{console.error(e);process.exit(1)});`;
+  const executed = await adapter.execute({ command: 'descendant lifetime smoke', executable: process.execPath, args: ['-'], stdin: parent, mode: 2, workspaceRoot: workspace, cwd: workspace, win32k: true }, new AbortController().signal);
+  expect(executed, JSON.stringify(executed)).toMatchObject({ exitCode: 0, confined: true });
+  expect(await fs.readFile(path.join(workspace, 'started.txt'), 'utf8')).toBe('yes');
+  await new Promise(resolve => setTimeout(resolve, 1800));
+  await expect(fs.stat(path.join(workspace, 'escaped.txt'))).rejects.toMatchObject({ code: 'ENOENT' });
+}, 45000);
 
 it.each([
   { tier: 'appcontainer-dacl', needsDaclAugmentation: true, probes: { baseContainerApiPresent: false } },
@@ -350,7 +431,7 @@ it.runIf(process.env.MERCURY_LIVE_MXC === '1')(
       command: 'echo native-project-write>inside.txt',
       cwd: workspace,
       workspaceRoot: workspace,
-      mode: 1,
+      mode: 2,
     };
     const support = await adapter.probe(base);
     expect(support, JSON.stringify(support)).toMatchObject({ available: true, tier: 'base-container' });
@@ -370,9 +451,9 @@ it.runIf(process.env.MERCURY_LIVE_MXC === '1')(
     expect(workerWrite.exitCode).not.toBe(0);
     expect(await fs.readFile(path.join(workspace, 'inside.txt'), 'utf8')).toContain('worker-owned');
     await expect(fs.stat(path.join(workspace, 'worker-out-of-scope.txt'))).rejects.toMatchObject({ code: 'ENOENT' });
-    const readOne = await adapter.execute({ ...base, command: `type "${outside}"` }, new AbortController().signal);
-    expect(readOne.exitCode).not.toBe(0);
-    expect(readOne.output).not.toContain('outside-read-marker');
+    const readOne = await adapter.execute({ ...base, mode: 1, command: `type "${outside}"` }, new AbortController().signal);
+    expect(readOne.exitCode).toBe(0);
+    expect(readOne.output).toContain('outside-read-marker');
     const readTwo = await adapter.execute(
       { ...base, mode: 2, command: `type "${outside}"` },
       new AbortController().signal,

@@ -81,7 +81,16 @@ export class Store {
       }
     }
   }
-  projects(): Project[] { return (this.db.prepare('SELECT data FROM projects').all() as any[]).map(row => ({ permissionMode: 2, policyRevision: 1, ...JSON.parse(row.data) })); }
+  projects(): Project[] {
+    const rows = this.db.prepare(`SELECT data, MAX(
+      COALESCE((SELECT MAX(updated_at) FROM chats WHERE project_id = projects.id), 0),
+      COALESCE((SELECT MAX(updated_at) FROM sessions WHERE project_id = projects.id), 0)
+    ) AS activity_at FROM projects`).all() as { data: string; activity_at: number }[];
+    return rows.map(row => {
+      const project: Project = { permissionMode: 2, policyRevision: 1, ...JSON.parse(row.data) };
+      return { ...project, lastUsedAt: project.lastUsedAt ?? row.activity_at };
+    }).sort((left, right) => right.lastUsedAt - left.lastUsedAt || left.name.localeCompare(right.name) || left.id.localeCompare(right.id));
+  }
   project(id: string): Project {
     const project = this.projects().find(item => item.id === id);
     if (!project) throw new Error('Project not found.');
@@ -102,6 +111,16 @@ export class Store {
     this.db.prepare('INSERT OR REPLACE INTO chats (id,updated_at,data,project_id) VALUES (?,?,?,?)').run(chat.id, chat.updatedAt, JSON.stringify(this.withoutChatEvidence(chat)), chat.projectId ?? null);
   }
   saveProject(project: Project): void { this.db.prepare('INSERT OR REPLACE INTO projects (id,data) VALUES (?,?)').run(project.id, JSON.stringify(project)); }
+  /** Record an explicit visit or user request, rather than each streaming update. */
+  touchProject(id: string): Project {
+    const projects = this.projects();
+    const project = projects.find(item => item.id === id);
+    if (!project) throw new Error('Project not found.');
+    const lastVisit = projects.reduce((latest, item) => Math.max(latest, item.lastUsedAt ?? 0), 0);
+    const touched = { ...project, lastUsedAt: Math.max(Date.now(), lastVisit + 1) };
+    this.saveProject(touched);
+    return touched;
+  }
   sessions(): Session[] { return (this.db.prepare('SELECT data FROM sessions ORDER BY updated_at DESC').all() as any[]).map(row => this.migrateSession(JSON.parse(row.data))); }
   session(id: string): Session {
     const row = this.db.prepare('SELECT data FROM sessions WHERE id = ?').get(id) as any;

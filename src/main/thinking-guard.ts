@@ -1,6 +1,54 @@
-export type ThinkingFailure = 'repetition' | 'budget' | 'timeout';
+export type ThinkingFailure = 'repetition' | 'budget' | 'timeout' | 'duration' | 'output';
 export class ThinkingLimitError extends Error {
-  constructor(readonly kind: ThinkingFailure) { super(`Thinking ${kind} limit reached.`); }
+  constructor(readonly kind: ThinkingFailure, message = `Model ${kind} limit reached. Partial work is saved; no incomplete tool actions were executed.`) { super(message); }
+}
+
+export const LOCAL_GENERATION_LIMITS = {
+  inactivityMs: 120_000, activeMs: 600_000, reasoningCharacters: 30_000,
+  outputCharacters: 128_000, outputTokens: 8192,
+};
+
+/** Bounded stream inspection. Code is exempt from prose repetition, never budgets. */
+export class GenerationGuard {
+  private reasoning = new ThinkingGuard(LOCAL_GENERATION_LIMITS.reasoningCharacters);
+  private prose = new ThinkingGuard(Infinity);
+  private characters = 0;
+  private pending = '';
+  private fence = '';
+  private lineStarted = false;
+  answer(delta: string): void {
+    this.output(delta);
+    this.pending += delta;
+    let newline: number;
+    while ((newline = this.pending.indexOf('\n')) >= 0) {
+      this.line(this.pending.slice(0, newline), true);
+      this.pending = this.pending.slice(newline + 1);
+    }
+    // A possible closing delimiter needs its whole line to distinguish it from
+    // literal code such as ```javascript inside an existing fenced block.
+    if (this.pending.length >= 256 && !(this.fence && !this.lineStarted && /^ {0,3}(`{3,}|~{3,})/.test(this.pending))) {
+      this.line(this.pending, false);
+      this.pending = '';
+    }
+  }
+  thinking(delta: string): void { this.output(delta); this.reasoning.push(delta); }
+  tool(delta: string): void { this.output(delta); }
+  private output(delta: string): void {
+    this.characters += delta.length;
+    if (this.characters > LOCAL_GENERATION_LIMITS.outputCharacters) throw new ThinkingLimitError('output');
+  }
+  private line(text: string, ended: boolean): void {
+    let delimiter = false;
+    if (!this.lineStarted) {
+      const match = text.match(/^ {0,3}(`{3,}|~{3,})/);
+      if (match && (!this.fence || (ended && match[1][0] === this.fence[0] && match[1].length >= this.fence.length && !text.slice(match[0].length).trim()))) {
+        this.fence = this.fence ? '' : match[1];
+        delimiter = true;
+      }
+    }
+    if (!this.fence && !delimiter) this.prose.push(text + (ended ? '\n' : ''));
+    this.lineStarted = !ended;
+  }
 }
 
 /** Check a bounded tail, independent of how the server splits streaming chunks. */

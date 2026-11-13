@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { CodexService, type CodexRpc } from './codex';
 import type { ProjectAgentInput, ProjectAgentRuntime, ProjectRuntimeSession } from './project-agent-runtime';
 import { failedToolResult, toolFailed } from './tool-outcome';
+import { estimateProjectRequestTokens } from './project-context-rollover';
 
 /** Opt-in native loop. Only registered Mercury dynamic tools can execute actions. */
 export class CodexProjectRuntime implements ProjectAgentRuntime {
@@ -144,6 +145,7 @@ export class CodexProjectRuntime implements ProjectAgentRuntime {
               if (request.turnId !== turnId) throw new Error('Tool request does not belong to the active Codex turn.');
               if (settled) return;
               input.signal.throwIfAborted();
+              input.onContextCheckpoint?.(0);
               const validator = validators.get(request.tool);
               let result: any;
               try {
@@ -225,7 +227,14 @@ export class CodexProjectRuntime implements ProjectAgentRuntime {
           }
           if (message.method === 'thread/tokenUsage/updated') {
             const latest = message.params.tokenUsage?.last;
-            if (latest) usage = { input: latest.inputTokens, output: latest.outputTokens };
+            if (latest) {
+              usage = { input: latest.inputTokens, output: latest.outputTokens };
+              input.onUsage?.(usage);
+              // Finish already-started host actions before requesting a rollover.
+              pending = pending.then(() => {
+                if (!settled) input.onContextCheckpoint?.(0);
+              }).catch(error => finish(error));
+            }
           }
           if (message.method === 'turn/completed') {
             if (message.params.turn.status !== 'completed')
@@ -240,6 +249,9 @@ export class CodexProjectRuntime implements ProjectAgentRuntime {
             url: `data:${image.mimeType};base64,${image.data}`,
           })),
         );
+        try {
+          input.onContextCheckpoint?.(estimateProjectRequestTokens({ system: input.context, messages: conversation, tools: input.tools }));
+        } catch (error) { finish(error); return; }
         turnStarted = rpc
           .request('turn/start', {
             threadId,
@@ -257,7 +269,6 @@ export class CodexProjectRuntime implements ProjectAgentRuntime {
           });
         void turnStarted.catch(finish);
       });
-      if (usage) input.onUsage?.(usage);
       session.status = 'completed';
       input.onSession?.({ ...session });
       return { text, session };

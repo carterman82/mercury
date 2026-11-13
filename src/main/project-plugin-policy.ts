@@ -1,5 +1,6 @@
 import type { ProjectExecutionAdapter, ProjectExecutionRequest } from './project-execution';
 export interface ProjectPluginPolicy {
+  collaborationMode?: 'plan' | 'default';
   mode: 1 | 2 | 3;
   workspaceRoot: string;
   execution?: ProjectExecutionAdapter;

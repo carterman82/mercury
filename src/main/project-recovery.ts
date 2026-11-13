@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { toolFailed, toolFailureCode } from './tool-outcome';
+import { ProjectProgressObservations } from './project-progress-observations';
 
 const fingerprint = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 function commandFailureFamily(name: string, args: any, code: string) {
@@ -31,6 +32,7 @@ export function projectActionIdentity(name: string, args: any, failureCode = 'CO
   return fingerprint([
     command ? 'project_command' : name,
     target,
+    ...(['read_project_record', 'patch_project_record'].includes(name) ? [[args.variable, args.key]] : []),
     command
       ? commandFailureFamily(name, args, failureCode === 'SCRIPT_SYNTAX' ? failureCode : 'COMMAND_EXIT_OPERATION')
       : undefined,
@@ -47,6 +49,7 @@ function stable(value: any): any {
   return value;
 }
 export class ProjectStalledError extends Error {}
+export class ProjectStagnationError extends ProjectStalledError {}
 
 export function verifiedPreviewRecovery(blocker: { name?: string; tool?: string; target: string } | undefined, name: string, target: string, result: any): boolean {
   const normalize = (value: string) => process.platform === 'win32' ? value.replaceAll('\\', '/').toLowerCase() : value;
@@ -115,7 +118,8 @@ function matchingHandoffAction({ blocker, name, args, target }: HandoffResolutio
     ? blocker.action === projectActionIdentity(name, args, blocker.code)
     : blocker.tool === name);
 }
-function changedHandoffSource({ blocker, target, result }: HandoffResolution): boolean {
+function changedHandoffSource({ blocker, target, result, name, args }: HandoffResolution): boolean {
+  if (['read_project_record', 'patch_project_record'].includes(blocker.tool) && blocker.action !== projectActionIdentity(name, args, blocker.code)) return false;
   return blocker.target === target && Boolean(result?.hash && result.hash !== blocker.sourceRevision);
 }
 function correctedPreviewDirectory({ blocker, name, args, target, result, failedArgs }: HandoffResolution): boolean {
@@ -167,6 +171,9 @@ export function resolvesHandoffBlocker(blocker: HandoffBlocker | undefined, name
 
 /** Per-response state: SDK/completion continuations cannot reset recovery allowance. */
 export class ProjectProgress {
+  private observations = new ProjectProgressObservations();
+  private stagnantDecisions = 0;
+  private stagnationRecovery = false;
   private calls: { failure?: string; read?: string }[] = [];
   private failures = new Map<string, number>();
   private evidence = new Set<string>();
@@ -186,13 +193,16 @@ export class ProjectProgress {
       now?: () => number;
       providerLimitMs?: number;
       maxAttempts?: number;
+      claimRecovery?: () => void;
+      checkpoint?: () => string;
     } = {},
   ) {}
   private now() {
     return this.options.now?.() ?? Date.now();
   }
   private stop(reason: string): never {
-    const error = (this.terminal ??= new ProjectStalledError(reason + ' Work is preserved; no model was switched.'));
+    const ErrorType = this.stagnationRecovery ? ProjectStagnationError : ProjectStalledError;
+    const error = (this.terminal ??= new ErrorType(reason + ' Work is preserved; no model was switched.'));
     this.dispose();
     this.options.onStall?.(error);
     throw error;
@@ -237,6 +247,8 @@ export class ProjectProgress {
   ): string {
     if (this.terminal) throw this.terminal;
     if (this.recoveries) this.stop(reason + ' after one recovery attempt.');
+    try { this.options.claimRecovery?.(); }
+    catch (error) { this.stop(error instanceof Error ? error.message : 'The shared recovery allowance was exhausted.'); }
     this.recoveries++;
     this.recoveryAt = this.now();
     this.remaining = this.options.providerLimitMs ?? 120000;
@@ -259,6 +271,16 @@ export class ProjectProgress {
     if (process.platform === 'win32') target = target.toLowerCase();
     const entry: { failure?: string; read?: string } = {};
     const failed = toolFailed(result);
+    const progress = this.observations.observe(name, args, result);
+    if (progress) {
+      this.stagnantDecisions = 0;
+      if (this.stagnationRecovery) {
+        this.blocker = undefined; this.stagnationRecovery = false;
+        this.runningSince = undefined;
+        if (this.timer) clearTimeout(this.timer);
+        this.timer = undefined;
+      }
+    } else this.stagnantDecisions++;
     let failureCode: string | undefined;
     if (failed) {
       const code = toolFailureCode(result);
@@ -269,10 +291,11 @@ export class ProjectProgress {
         code,
         result?.sourceRevision ?? 'unknown',
         commandFailureFamily(name, args, code),
+        ...(['read_project_record', 'patch_project_record'].includes(name) ? [[args.variable, args.key]] : []),
       ]);
       this.failures.set(entry.failure, (this.failures.get(entry.failure) ?? 0) + 1);
       if (this.failures.size > 256) this.failures.delete(this.failures.keys().next().value!);
-    } else if (/^(read_|list_|search_|query_|recall_)/.test(name)) {
+    } else if (name !== 'read_project_file' && /^(read_|list_|search_|query_|recall_)/.test(name)) {
       const clean = (value: any): any =>
         Array.isArray(value)
           ? value.map(clean)
@@ -295,7 +318,7 @@ export class ProjectProgress {
     }
     if (
       (!failed &&
-        ['patch_project_file', 'edit_project_file', 'download_project_asset'].includes(name) &&
+        ['patch_project_file', 'patch_project_record', 'edit_project_file', 'download_project_asset'].includes(name) &&
         typeof result?.hash === 'string' &&
         result.previousHash !== result.hash) ||
       result?.projectChanged === true
@@ -307,8 +330,12 @@ export class ProjectProgress {
     }
     const newEvidence = Boolean(entry.read && !this.evidence.has(entry.read));
     if (entry.read) {
-      this.duplicateReads = newEvidence ? 0 : this.duplicateReads + 1;
-      this.evidence.add(entry.read);
+      // Cached reads don't count toward duplicate detection
+      const isCachedRead = result?.readReuse?.kind === 'validated-cache';
+      if (!isCachedRead) {
+        this.duplicateReads = newEvidence ? 0 : this.duplicateReads + 1;
+        this.evidence.add(entry.read);
+      }
     }
     if (this.evidence.size > 512) this.evidence.delete(this.evidence.values().next().value!);
     const resolved = resolvesProgressBlocker(this.blocker, name, args, target, result, newEvidence);
@@ -339,6 +366,12 @@ export class ProjectProgress {
       );
     if (this.blocker && this.attempts >= (this.options.maxAttempts ?? 8))
       this.stop('Recovery exhausted eight further tool attempts without resolving its blocker.');
+    if (this.stagnantDecisions >= 8) {
+      this.stagnationRecovery = true;
+      const recovery = this.recover('No meaningful task progress after eight tool decisions', 'stagnation');
+      this.stagnantDecisions = 0;
+      return recovery + (this.options.checkpoint ? '\n' + this.options.checkpoint() : '');
+    }
   }
   dispose() {
     if (this.timer) clearTimeout(this.timer);

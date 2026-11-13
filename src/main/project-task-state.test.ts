@@ -1,10 +1,52 @@
 import { afterEach, expect, it, vi } from 'vitest';
 import { newHandoff, projectTaskInstructions, projectTaskReadTool, projectTaskTool, readProjectTask, updateProjectTask } from './project-progress';
-import { completeProjectRequirements, projectTaskCompleteTool } from './project-task-state';
+import { completeProjectRequirements, projectTaskCompleteTool, requireProjectContract } from './project-task-state';
+import { failedToolResult } from './tool-outcome';
 import { recordProjectAction } from './project-handoff';
 
 afterEach(() => vi.restoreAllMocks());
 const criterion = (text: string) => ({ text, status: 'not_run', verification: 'inspection', evidenceIds: [] });
+
+it('saves an initial contract with an unsupported completion claim as pending and returns its exact IDs', () => {
+  const handoff = newHandoff(undefined, 'Research and update all game descriptions');
+  const result = updateProjectTask(handoff, { requirements: [
+    { ...criterion('Research each game'), status: 'completed' },
+    criterion('Update each game description'),
+  ], remaining: 'Research and implement' }, []);
+  expect(result.implementationReady).toBe(true);
+  expect(result.requirements).toHaveLength(2);
+  expect(result.requirements.every(item => item.id && item.status === 'not_run' && !item.completionNote)).toBe(true);
+  expect(result.initializationWarnings).toEqual([{ requirementId: result.requirements[0].id, requestedStatus: 'completed', savedStatus: 'not_run', reason: 'New criterion has no completion note; saved as pending.' }]);
+  expect(() => requireProjectContract(handoff)).not.toThrow();
+  completeProjectRequirements(handoff, { requirementIds: [result.requirements[0].id], note: 'Research saved; descriptions still pending.' });
+  expect(handoff.requirements.map(item => item.status)).toEqual(['completed', 'not_run']);
+});
+
+it('returns an executable pending-contract recovery call for a blocked empty task', () => {
+  const handoff = newHandoff(undefined, 'Update descriptions and preserve game URLs');
+  let result: ReturnType<typeof failedToolResult> | undefined;
+  try { requireProjectContract(handoff); } catch (error) { result = failedToolResult(error); }
+  expect(result).toMatchObject({ code: 'NEED_TASK_CONTRACT', recoveryCall: { name: 'update_project_task' } });
+  const recovery = result!.recoveryCall as { name: string; arguments: unknown };
+  updateProjectTask(handoff, recovery.arguments, []);
+  expect(handoff.requirements[0]).toMatchObject({ text: handoff.objective, status: 'not_run', evidenceIds: [] });
+  expect(() => requireProjectContract(handoff)).not.toThrow();
+});
+
+it('returns actual IDs for unknown completions and repairs existing missing-note updates without mutating state', () => {
+  const handoff = newHandoff(undefined, 'Implement the feature');
+  updateProjectTask(handoff, { requirements: [criterion('Feature works')], remaining: 'Implement' }, []);
+  const before = structuredClone(handoff);
+  let completionFailure: unknown;
+  try { completeProjectRequirements(handoff, { requirementIds: ['invented'], note: 'Done' }); }
+  catch (error) { completionFailure = failedToolResult(error); }
+  expect(completionFailure).toMatchObject({ code: 'UNKNOWN_REQUIREMENT', availableRequirements: [{ id: handoff.requirements[0].id, text: 'Feature works', status: 'not_run' }], recoveryCall: { name: 'read_project_task', arguments: {} } });
+  let updateFailure: unknown;
+  try { updateProjectTask(handoff, { requirements: [{ ...handoff.requirements[0], status: 'completed' }], remaining: '' }, []); }
+  catch (error) { updateFailure = failedToolResult(error); }
+  expect(updateFailure).toMatchObject({ code: 'COMPLETION_NOTE_REQUIRED', requirementId: handoff.requirements[0].id, recoveryCall: { name: 'complete_project_requirements', arguments: { requirementIds: [handoff.requirements[0].id] } } });
+  expect(handoff).toEqual(before);
+});
 
 it('preserves the public task schemas, descriptions and instructions', () => {
   expect({ update: projectTaskTool, read: projectTaskReadTool, complete: projectTaskCompleteTool, instructions: projectTaskInstructions }).toMatchSnapshot();

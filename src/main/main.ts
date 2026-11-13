@@ -118,7 +118,7 @@ app.whenReady().then(async () => {
     return Boolean(chat.projectId && (store.project(chat.projectId).permissionMode ?? 2) >= 2);
   });
   const plugins = new ChatPlugins(path.join(app.getPath('userData'), 'plugins'), app.isPackaged ? path.join(process.resourcesPath, 'file-runtime') : app.getAppPath(), policy, approvals, process.env.LOCAL_PLAN_AGENT_USER_DATA ? process.env.MERCURY_TEST_PLUGIN_REGISTRY : undefined, process.execPath, { read: readSecret, write: writeSecret });
-  const capabilities = new ChatCapabilities(browser, plugins, web);
+  const capabilities = new ChatCapabilities(browser, plugins, web, id => store.chat(id).collaborationMode === 'plan');
   const execution = new ProjectExecutionAdapter(app.isPackaged ? path.join(process.resourcesPath, 'mxc-runtime') : path.join(app.getAppPath(), '.build-resources', 'mxc-runtime'), path.join(app.getPath('userData'), 'execution'), {
     runtimeReadRoots: [path.dirname(process.execPath)],
   });
@@ -217,6 +217,12 @@ app.whenReady().then(async () => {
       project = { id: randomUUID(), path: canonical, name: path.basename(canonical), permissionMode: 2, policyRevision: 1 };
       store.saveProject(project);
     }
+    project = store.touchProject(project.id);
+    notify();
+    return project;
+  });
+  handle('touchProject', (_event, rawId: string) => {
+    const project = store.touchProject(z.string().uuid().parse(rawId));
     notify();
     return project;
   });
@@ -364,11 +370,24 @@ app.whenReady().then(async () => {
     const completion = chats.send(z.string().uuid().nullable().parse(id), profileSchema.parse(profile), text || 'Please read the attached files.', ids, z.number().finite().nonnegative().optional().parse(rawSubmittedAt), z.string().uuid().optional().parse(rawProjectId));
     const started = chats.activeIds.find(chatId => !before.has(chatId));
     if (!started) return completion; // Validation failures still reach the caller.
+    const owner = store.chat(started).projectId;
+    if (owner) { store.touchProject(owner); notify(); }
     // Acknowledge creation immediately; streaming state and errors arrive through snapshots.
     void completion.catch(() => notify());
     return started;
   });
   handle('stopChat', (_event, id: string) => chats.stop(z.string().uuid().parse(id)));
+  handle('implementChatPlan', (_event, id: string, revision: number) => {
+    const chatId = z.string().uuid().parse(id);
+    const completion = chats.implementPlan(chatId, z.number().int().positive().parse(revision));
+    // Mode validation and starting the run happen synchronously before send yields.
+    // Return the streaming chat immediately, as sendChat does.
+    if (!chats.activeIds.includes(chatId)) return completion;
+    void completion.catch(() => notify());
+    return chatId;
+  });
+  handle('exitChatPlan', (_event, id: string) => chats.exitPlan(z.string().uuid().parse(id)));
+  handle('toggleChatPlanStep', (_event, id: string, stepId: string, completed: boolean, revision: number) => chats.togglePlanStep(z.string().uuid().parse(id), z.string().min(1).max(100).parse(stepId), z.boolean().parse(completed), z.number().int().positive().parse(revision)));
   handle('answerChatApproval', (_event, id: string, allow: boolean) => approvals.answer(z.string().uuid().parse(id), z.boolean().parse(allow)));
   handle('openLink', (_event, raw: string) => {
     const url = new URL(z.string().url().max(8000).parse(raw));

@@ -7,6 +7,16 @@ const service = (provider: Provider) => new LocalProviders(() => ({ connections:
 const stream = (provider: Provider, chunks: object[], done = false) => new Response(chunks.map(chunk => (provider === 'ollama' ? '' : 'data: ') + JSON.stringify(chunk) + '\n').join('') + (done ? 'data: [DONE]\n' : ''));
 afterEach(() => vi.unstubAllGlobals());
 
+it('reports a local context overflow as a configuration error without marking the connection unavailable', async () => {
+  const fetch = vi.fn().mockResolvedValue(new Response('request (7834 tokens) exceeds the available context size (4096 tokens)', { status: 500 }));
+  vi.stubGlobal('fetch', fetch);
+  const disconnected = vi.fn();
+  const provider = new LocalProviders(() => ({ connections: [{ id: 'fixture', provider: 'lmstudio', label: 'Fixture', url: 'http://127.0.0.1:1234' }], mainModel: null, plannerModel: null, subagentModel: null }), () => undefined, disconnected);
+  await expect(provider.chat(input('lmstudio'))).rejects.toMatchObject({ status: 400, message: expect.stringContaining('loaded context') });
+  expect(disconnected).not.toHaveBeenCalled();
+  expect(fetch).toHaveBeenCalledTimes(1);
+});
+
 it.each<Provider>(['ollama', 'lmstudio'])('rejects %s EOF after partial text instead of reporting completion or replaying it', async provider => {
   const fetch = vi.fn().mockResolvedValue(stream(provider, [provider === 'ollama' ? { message: { content: 'Let me find the docs.' } } : { choices: [{ delta: { content: 'Let me find the docs.' } }] }]));
   vi.stubGlobal('fetch', fetch); const onText = vi.fn();

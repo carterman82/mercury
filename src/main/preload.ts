@@ -19,6 +19,7 @@ const api: DesktopApi = {
     return () => ipcRenderer.removeListener('chat:update', listener);
   },
   openProject: () => call('openProject'),
+  touchProject: projectId => call('touchProject', projectId),
   updateProjectPermissions: (projectId, mode) => call('updateProjectPermissions', projectId, mode),
   projectMapStatus: id => call('projectMapStatus', id),
   generateProjectReport: (id, regenerate) => call('generateProjectReport', id, regenerate),
@@ -57,6 +58,9 @@ const api: DesktopApi = {
   previewChatFile: (id, page) => call('previewChatFile', id, page),
   previewChatBrowser: id => call('previewChatBrowser', id),
   sendChat: (id, profile, message, attachments, submittedAt, projectId) => call('sendChat', id, profile, message, attachments, submittedAt, projectId),
+  implementChatPlan: (id, revision) => call('implementChatPlan', id, revision),
+  exitChatPlan: id => call('exitChatPlan', id),
+  toggleChatPlanStep: (id, stepId, completed, revision) => call('toggleChatPlanStep', id, stepId, completed, revision),
   stopChat: id => call('stopChat', id),
   answerChatApproval: (id, allow) => call('answerChatApproval', id, allow),
   openLink: url => call('openLink', url),

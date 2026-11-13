@@ -7,7 +7,7 @@ import { CodexService } from './codex';
 import { CodexProjectRuntime, ProjectRuntimeRouter } from './project-codex-runtime';
 import type { ProjectAgentInput } from './project-agent-runtime';
 
-function fixture(options: { unknown?: boolean; native?: boolean; wait?: boolean } = {}) {
+function fixture(options: { unknown?: boolean; native?: boolean; wait?: boolean; usage?: boolean } = {}) {
   const requests: any[] = [];
   let interrupt = () => {};
   const launch = async () => {
@@ -25,6 +25,7 @@ function fixture(options: { unknown?: boolean; native?: boolean; wait?: boolean 
         const message = JSON.parse(line);
         requests.push(message);
         if (message.id === 'server-call') {
+          if (options.usage) notify('thread/tokenUsage/updated', { tokenUsage: { last: { inputTokens: 7400, outputTokens: 20 } } });
           notify('item/agentMessage/delta', { delta: 'Verified change' });
           notify('turn/completed', { turn: { status: 'completed' } });
         } else if (message.method === 'thread/start' || message.method === 'thread/resume')
@@ -79,6 +80,22 @@ function fixture(options: { unknown?: boolean; native?: boolean; wait?: boolean 
   };
   return { runtime, requests, input, interrupt: () => interrupt() };
 }
+
+it('checks native initial context before inference and propagates a safe usage checkpoint after tools settle', async () => {
+  const oversized = fixture();
+  const reason = new Error('checkpoint');
+  await expect(oversized.runtime.run({ ...oversized.input, onContextCheckpoint: () => { throw reason; } })).rejects.toBe(reason);
+  expect(oversized.requests.some(request => request.method === 'turn/start')).toBe(false);
+  const active = fixture({ usage: true });
+  let tokens = 0;
+  await expect(active.runtime.run({ ...active.input, onUsage: usage => { tokens = usage?.input ?? 0; }, onContextCheckpoint: () => {
+    if (tokens >= 7400) {
+      expect(active.input.execute).toHaveBeenCalledOnce();
+      throw reason;
+    }
+  } })).rejects.toBe(reason);
+  expect(tokens).toBe(7400);
+});
 
 it('streams native text, executes registered tools through the host, and resumes persistent threads', async () => {
   const f = fixture();

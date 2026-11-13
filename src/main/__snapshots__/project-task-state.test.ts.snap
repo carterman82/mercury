@@ -54,7 +54,7 @@ Before edits, commands or implementation assignments, call update_project_task t
   },
   "update": {
     "function": {
-      "description": "Persist concrete acceptance requirements and verification status. Send only NEW criteria or status updates; omitted criteria are retained. To check off implemented work easily, use complete_project_requirements with IDs and a note; no evidence is required for AI completion. Only status:passed claims verified success and requires current successful evidence IDs. Preserve original requirements. Set blocked/failed/not_run for unfinished work.",
+      "description": "Persist concrete acceptance requirements and verification status. Initialize NEW criteria with status:not_run and evidenceIds:[]; returned IDs are authoritative. New completed criteria without a completion note are saved as pending with an explicit warning. Send only NEW criteria or status updates; omitted criteria are retained. To check off implemented work easily, use complete_project_requirements with IDs and a note; no evidence is required for AI completion. Only status:passed claims verified success and requires current successful evidence IDs. Preserve original requirements. Set blocked/failed/not_run for unfinished work.",
       "name": "update_project_task",
       "parameters": {
         "additionalProperties": false,

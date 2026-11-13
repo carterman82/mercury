@@ -58,6 +58,18 @@ it('does not retry indefinitely when the second attempt also loops', async () =>
   expect(requests).toBe(2);
 });
 
+it('retains cloud repetition protection when the provider only guards local routes itself', async () => {
+  let requests = 0;
+  const provider = { generationGuarded: true, chat: async (request: ChatInput) => {
+    if (++requests === 1) request.onReasoning?.(loop.repeat(20));
+    return { text: 'Recovered answer.', tools: [] };
+  } } as unknown as ModelProvider;
+  const recovery = vi.fn();
+  await expect(generateChatTurn(provider, { ...input(), profile: { ...input().profile, provider: 'openai' } }, recovery)).resolves.toMatchObject({ text: 'Recovered answer.' });
+  expect(requests).toBe(2);
+  expect(recovery).toHaveBeenCalledExactlyOnceWith('repetition');
+});
+
 it('honors Stop without retrying and ignores late chunks from the aborted request', async () => {
   const controller = new AbortController();
   const recovery = vi.fn();
@@ -89,11 +101,11 @@ it('bounds silent thinking time, but allows a progressing tool call to complete'
   expect(recovery).toHaveBeenCalledTimes(1);
 });
 
-it('keeps progressing reasoning alive beyond the old time and character budgets', async () => {
+it('allows healthy progressing reasoning within the finite budget', async () => {
   vi.useFakeTimers(); let request!: ChatInput; let finish!: (value: any) => void;
   const provider = { chat: (current: ChatInput) => { request = current; return new Promise(resolve => { finish = resolve; }); } } as unknown as ModelProvider;
   const recovery = vi.fn(); const response = generateChatTurn(provider, input(), recovery);
-  for (let step = 0; step < 15; step++) {
+  for (let step = 0; step < 2; step++) {
     await vi.advanceTimersByTimeAsync(90_000);
     request.onReasoning?.(Array.from({ length: 600 }, (_, word) => `observation${step}number${word}`).join(' '));
     expect(request.signal.aborted).toBe(false);

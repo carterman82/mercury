@@ -6,6 +6,18 @@ import { ChatPanel } from './ChatPanel';
 
 const initial = (): Snapshot => ({ projects: [{ id: 'project', name: 'Mercury project', path: 'D:\\Mercury' }], sessions: [], chats: [], settings: { connections: [], mainModel: null, plannerModel: null, subagentModel: null }, activeRole: null, activeChatId: null });
 const render = (state: Snapshot, projectId?: string, chatId: string | null = null) => renderToStaticMarkup(<ChatPanel state={state} projectId={projectId} chatId={chatId} onSelect={() => {}} openSettings={() => {}} />);
+it('keeps verification bookkeeping out of chat while preserving replies and incomplete-work notices', () => {
+  const state = initial();
+  state.chats.push({ id: 'chat', projectId: 'project', title: 'Task', profile: { provider: 'ollama', model: 'test', contextLimit: 32000 }, status: 'idle', updatedAt: 1,
+    projectHandoff: { requirements: [{ text: 'Internal test criterion', status: 'not_run', verification: 'command', evidenceIds: [] }], reads: [], changedPaths: [], checks: [], completedSteps: [], remaining: '', updatedAt: 1 },
+    messages: [{ id: 'reply', role: 'assistant', content: 'Your changes are saved.', verification: 'not_run', metrics: { queuedMs: 0, providerMs: 100, toolMs: 10, recoveries: 0 }, delivery: { status: 'blocked', reason: 'The build could not finish.', at: 1 }, toolActivity: [{ name: 'update_project_task', status: 'succeeded', at: 1, result: 'Internal test criterion' }] }],
+  });
+  const html = render(state, undefined, 'chat');
+  for (const detail of ['Requirements and verification', 'Internal test criterion', 'Verification:', 'Run measurements', 'update_project_task']) expect(html).not.toContain(detail);
+  expect(html).toContain('Your changes are saved.');
+  expect(html).toContain('Work saved; not complete');
+  expect(html).toContain('The build could not finish.');
+});
 it('keeps a blocked historical response prominent even after a successful follow-up',()=>{
   const state=initial();state.chats.push({id:'chat',projectId:'project',title:'Task',profile:{provider:'ollama',model:'test',contextLimit:8192},status:'idle',updatedAt:1,messages:[{id:'blocked',role:'assistant',content:'Everything works perfectly.',delivery:{status:'blocked',reason:'Model loading failed; no inference was tested.',at:1}},{id:'later',role:'assistant',content:'Later response.'}]});
   const html=render(state,undefined,'chat');expect(html).toContain('Work saved; not complete');expect(html).toContain('Model loading failed');expect(html).not.toContain('<details>');expect(html).toContain('Everything works perfectly.');expect(html).toContain('Later response.');
@@ -24,6 +36,15 @@ it.each(['idle', 'streaming'] as const)('hides thinking in %s project replies wh
   expect(render(state, undefined, 'chat')).toContain('thinking-panel');
 });
 
+it('shows an accessible loading bar during automatic compaction and clears it after resume', () => {
+  const state = initial();
+  state.chats.push({ id: 'chat', projectId: 'project', title: 'Task', profile: { provider: 'ollama', model: 'test', contextLimit: 32000 }, messages: [{ id: 'reply', role: 'assistant', content: '', compaction: { phase: 'compacting', startedAt: 1000 } }], status: 'streaming', updatedAt: 1 });
+  expect(render(state, undefined, 'chat')).toContain('<progress');
+  expect(render(state, undefined, 'chat')).toContain('Compacting context');
+  state.chats[0].messages[0].compaction!.phase = 'completed';
+  expect(render(state, undefined, 'chat')).not.toContain('<progress');
+});
+
 it('shows the selected project, default restricted permissions, and current command limitation', () => {
   const html = render(initial(), 'project');
   expect(html).toContain('Mercury project');
@@ -32,7 +53,10 @@ it('shows the selected project, default restricted permissions, and current comm
   expect(html).toContain('value="2" selected=""');
   expect(html).toContain('Automatic isolated commands are unavailable');
   expect(html).toContain('You can approve individual commands to run with your user permissions.');
-  expect(html).toContain('External EXE launches and software installations always need approval.');
+  expect(html).toContain('1 · Read-only');
+  expect(html).toContain('2 · Workspace write');
+  expect(html).toContain('3 · Full access');
+  expect(html).not.toContain('installations always need approval');
 });
 
 it('hides generated file cards in projects while preserving uploads and ordinary chat cards', () => {

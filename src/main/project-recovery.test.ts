@@ -3,6 +3,46 @@ import { ProjectProgress, ProjectStalledError, projectActionIdentity, verifiedPr
 import { resolvesHandoffBlocker, resolvesProgressBlocker } from './project-recovery';
 import * as recoveryOwner from './project-recovery';
 import * as progressFacade from './project-progress';
+import { RunBudget } from './run-budget';
+
+it('recovers only after eight stagnant decisions and accepted diagnosis permits a fresh progress window', () => {
+  const budget = new RunBudget();
+  const progress = new ProjectProgress({ claimRecovery: () => budget.claimRecovery() });
+  try {
+    const read = () => progress.observe('read_project_file', { path: 'a.ts' }, { content: '1: old', hash: 'same', startLine: 1, endLine: 1 });
+    expect(read()).toBeUndefined();
+    for (let i = 0; i < 7; i++) expect(read()).toBeUndefined();
+    expect(budget.recoveries).toBe(0);
+    expect(read()).toContain('RECOVERY');
+    expect(progress.observe('record_project_diagnosis', {}, { executionConfirmed: true })).toBeUndefined();
+    for (let i = 0; i < 7; i++) expect(read()).toBeUndefined();
+    expect(() => read()).toThrow(/progress/i);
+  } finally { progress.dispose(); }
+});
+
+it('aborts progress recovery when a generation already consumed the shared allowance', () => {
+  const budget = new RunBudget();
+  budget.claimRecovery();
+  const stopped = vi.fn();
+  const progress = new ProjectProgress({ claimRecovery: () => budget.claimRecovery(), onStall: stopped });
+  try {
+    expect(() => progress.recover('Equivalent failing actions')).toThrow(ProjectStalledError);
+    expect(stopped).toHaveBeenCalledTimes(1);
+  } finally { progress.dispose(); }
+});
+
+it('keeps independent catalog-record failures separate and does not clear one with another edit', () => {
+  const first = { path: 'games.js', variable: 'games', key: 'A' };
+  const second = { ...first, key: 'B' };
+  expect(projectActionIdentity('patch_project_record', first)).not.toBe(projectActionIdentity('patch_project_record', second));
+  const blocker = { tool: 'patch_project_record', target: first.path, code: 'TOOL_ERROR', sourceRevision: 'old', action: projectActionIdentity('patch_project_record', first) };
+  expect(resolvesHandoffBlocker(blocker, 'patch_project_record', second, second.path, { previousHash: 'old', hash: 'new' })).toBe(false);
+  expect(resolvesHandoffBlocker(blocker, 'patch_project_record', first, first.path, { previousHash: 'old', hash: 'new' })).toBe(true);
+  const progress = new ProjectProgress();
+  try {
+    for (const key of ['A', 'B', 'C']) expect(progress.observe('patch_project_record', { ...first, key }, { error: 'Unsupported record', code: 'TOOL_ERROR' })).toBeUndefined();
+  } finally { progress.dispose(); }
+});
 
 it('resolves a verified preview after correcting its working directory only for the same command', () => {
   const blocker = { tool: 'start_project_server', target: 'static-export', code: 'SERVER_START_FAILED' };
@@ -190,4 +230,48 @@ it('keeps facade constructor identity after extraction', () => {
   expect(progressFacade.ProjectProgress).toBe(recoveryOwner.ProjectProgress);
   expect(progressFacade.ProjectStalledError).toBe(recoveryOwner.ProjectStalledError);
   expect(new progressFacade.ProjectStalledError('stalled')).toBeInstanceOf(recoveryOwner.ProjectStalledError);
+});
+
+it('resets stagnation after update_project_task establishes contract', () => {
+  const progress = new ProjectProgress();
+  try {
+    // Simulate 8 stagnant decisions
+    for (let i = 0; i < 8; i++) {
+      progress.observe('read_project_file', { path: 'app.ts' }, { content: '1: old', hash: 'same', startLine: 1, endLine: 1 });
+    }
+    // stagnantDecisions should be 8 at this point
+    
+    // Now update_project_task should reset stagnant decisions
+    progress.observe('update_project_task', {}, { requirements: [] });
+    
+    // Verify stagnantDecisions is reset (check via internal property)
+    expect((progress as any).stagnantDecisions).toBe(0);
+    
+    // Verify contractInitialized is true
+    expect((progress as any).observations.contractInitialized).toBe(true);
+  } finally { progress.dispose(); }
+});
+
+it('resets stagnation after update_project_task with existing requirements', () => {
+  const progress = new ProjectProgress();
+  try {
+    // Simulate 8 stagnant decisions
+    for (let i = 0; i < 8; i++) {
+      progress.observe('read_project_file', { path: 'app.ts' }, { content: '1: old', hash: 'same', startLine: 1, endLine: 1 });
+    }
+    
+    // Now update_project_task with requirements should reset stagnant decisions
+    progress.observe('update_project_task', {}, { 
+      requirements: [
+        { id: '1', text: 'Test something', status: 'not_run' },
+        { id: '2', text: 'Verify behavior', status: 'completed' }
+      ]
+    });
+    
+    // Verify stagnantDecisions is reset
+    expect((progress as any).stagnantDecisions).toBe(0);
+    
+    // Verify contractInitialized is true
+    expect((progress as any).observations.contractInitialized).toBe(true);
+  } finally { progress.dispose(); }
 });

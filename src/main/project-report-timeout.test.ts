@@ -8,7 +8,7 @@ const profile = { provider: 'lmstudio' as const, connectionId: 'test', endpoint:
 const settings = { connections: [{ id: 'test', provider: 'lmstudio' as const, url: profile.endpoint, label: 'Test' }], mainModel: null, plannerModel: null, subagentModel: null };
 const diagrams = [{ path: 'system.mmd', content: 'flowchart LR\nMain --> Formula\nFormula --> Storage' }];
 
-it('finishes a report after slow prefill and more than ten minutes of progressing reasoning', async () => {
+it('finishes a report after slow prefill and long reasoning within the generation safety limits', async () => {
   vi.useFakeTimers();
   try {
     let calls = 0;
@@ -18,12 +18,12 @@ it('finishes a report after slow prefill and more than ten minutes of progressin
       const stream = new ReadableStream({ start(controller) {
         const emit = (delta: object, finish_reason?: string) => controller.enqueue(new TextEncoder().encode('data: ' + JSON.stringify({ choices: [{ delta, finish_reason }] }) + '\n'));
         init.signal.addEventListener('abort', () => controller.error(init.signal.reason));
-        // No tokens for three minutes, then useful reasoning every minute.
-        for (let minute = 3; minute <= 14; minute++) setTimeout(() => emit({ reasoning_content: `Inspecting relationship ${minute}` }), minute * 60000);
+        // Ninety seconds of prefill, then useful reasoning each minute.
+        for (let minute = 1; minute <= 8; minute++) setTimeout(() => emit({ reasoning_content: `Inspecting relationship ${minute}` }), minute * 60000 + 30000);
         setTimeout(() => {
           emit({ content: request.messages[0].content.includes('canonical architecture') ? JSON.stringify(canonical) : 'Main evaluates formulas and stores results.' }, 'stop');
           controller.close();
-        }, 15 * 60000);
+        }, 9 * 60000);
       } });
       return new Response(stream);
     }));

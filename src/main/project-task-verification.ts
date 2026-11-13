@@ -20,7 +20,11 @@ export const requirementSchema = z
  * Runtime readiness and evidence remain separate, passed-only checks. */
 export function validateRequirementDefinition(requirement: ProjectRequirement): void {
   if (requirement.status === 'completed' && !requirement.completionNote?.trim())
-    throw new ToolFailure('COMPLETION_NOTE_REQUIRED', 'Explain the completed work and any verification limitations, or use complete_project_requirements.');
+    throw new ToolFailure('COMPLETION_NOTE_REQUIRED', 'Explain the completed work and any verification limitations, or leave unfinished work not_run. No requirements were changed.', {
+      requirementId: requirement.id,
+      nextAction: 'If implemented, supply a factual note using the recovery call. Replace its note with the work performed and actual verification limitations. If unfinished, retry update_project_task with status:not_run and evidenceIds:[].',
+      recoveryCall: { name: 'complete_project_requirements', arguments: { requirementIds: [requirement.id], note: 'REPLACE with completed work and actual verification limitations; do not submit until implemented.' } },
+    });
   if (requirement.stage && requirement.verification !== 'browser')
     throw new ToolFailure('VERIFICATION_KIND', 'Page/model/inference stages require browser verification.');
   if (requirement.stage === 'model' && (!requirement.selector?.trim() || !requirement.expectedText?.trim()))
@@ -62,6 +66,8 @@ export function verifyRequirement(handoff: ProjectHandoff, requirement: ProjectR
       throw new Error('Verification requires structured successful tool evidence.');
     }
     if (toolFailed(result)) throw new Error('Failed tool results cannot establish a passed requirement.');
+    if ((result as any)?.readReuse?.kind === 'validated-cache')
+      throw new ToolFailure('CACHED_EVIDENCE_NOT_VERIFICATION', 'Cached source reuse supplies context, not a fresh verification result. Cite the original still-current read for inspection, or run the relevant execution check.', { originEvidenceId: (result as any).readReuse.originEvidenceId });
   }
   if (
     requirement.verification === 'command' &&

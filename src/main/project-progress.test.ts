@@ -227,7 +227,7 @@ it('allows implementation with documented compatibility but requires all browser
   expect(()=>requireProjectContract(handoff)).not.toThrow();
   expect(()=>requireProjectContract(handoff,true)).toThrow('explicit stage fields');
 });
-it('recovers on the third unchanged read but permits new ranges, revisions and post-edit reads', () => {
+it('permits unchanged context reads alongside new ranges, revisions and post-edit progress', () => {
   const progress = new ProjectProgress();
   const read = (hash = 'a', startLine = 1) =>
     progress.observe(
@@ -239,7 +239,7 @@ it('recovers on the third unchanged read but permits new ranges, revisions and p
   read();
   read('b');
   read('a', 201);
-  expect(read()).toContain('MERCURY RECOVERY');
+  expect(read()).toBeUndefined();
   read();
   read();
   progress.observe('patch_project_file', { path: 'app.js' }, { hash: 'b' });

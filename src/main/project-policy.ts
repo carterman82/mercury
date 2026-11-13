@@ -22,6 +22,18 @@ export interface ProjectAction {
   destructive?: boolean;
   approvalReason?: string;
   tool?: string;
+  /** Host-derived effective command capabilities, never command-text guesses. */
+  readOnly?: boolean;
+  network?: 'deny' | 'allow';
+}
+
+export function projectProtectedPaths(workspaceRoot: string): string[] {
+  return ['.git', '.agents', '.codex', '.aws'].map(name => path.join(workspaceRoot, name));
+}
+
+/** Explicit roots are host-authorized per invocation; an empty list means scratch-only. */
+export function projectWritableRoots(mode: 1 | 2 | 3, workspaceRoot: string, explicit?: string[]): string[] {
+  return explicit ?? (mode === 1 ? [] : [workspaceRoot]);
 }
 
 export interface ProjectPolicyOptions {
@@ -31,6 +43,8 @@ export interface ProjectPolicyOptions {
   boundedLowRisk?: boolean;
   /** Main may request an explicit one-shot native launch when isolation is unavailable. */
   reviewedNativeAvailable?: boolean;
+  /** Canonical identities resolved by the host, including protected directory links. */
+  protectedReadOnlyRoots?: string[];
 }
 
 export interface ProjectPolicyDecision {
@@ -54,6 +68,7 @@ export function assessProjectAction(context: ProjectPolicyContext, action: Proje
   }
   if ((action.kind === 'read' || action.kind === 'write') && !action.paths?.length) return decision('deny', 'Filesystem actions require explicit paths.');
   if (action.kind === 'command' && (!action.command?.trim() || !action.cwd)) return decision('deny', 'Commands require a command and working directory.');
+  if (context.mode === 3 && action.kind === 'command' && !options.reviewedNativeAvailable) return decision('allow', 'Full access is enabled for this project.');
   if (action.approvalReason) return decision('approval', action.approvalReason);
   if (context.mode === 3) return decision('allow', 'Full access is enabled for this project.');
   if (action.kind === 'command' || action.kind === 'plugin') {
@@ -61,13 +76,14 @@ export function assessProjectAction(context: ProjectPolicyContext, action: Proje
       ? decision('approval', 'Isolated execution is unavailable. Review this one-time command running with your user permissions.')
       : decision('deny', 'Restricted execution is unavailable: no verified filesystem confinement adapter is installed.');
     if (action.kind === 'plugin') return decision('approval', 'Review the plugin and its requested capabilities.');
-    if (context.mode === 1 || action.destructive || !within(context.workspaceRoot, action.cwd!) || action.paths?.some(target => !within(context.workspaceRoot, target))) return decision('approval', 'This command requires review of its effects and scope.');
+    if ((context.mode === 1 && !action.readOnly) || action.network === 'allow' || action.destructive || !within(context.workspaceRoot, action.cwd!) || action.paths?.some(target => !within(context.workspaceRoot, target))) return decision('approval', 'This command requires review of its write, network or filesystem scope.');
     return decision('allow', 'The command is confined to the assigned workspace.');
   }
   if (action.kind === 'integrate') return decision('approval', 'Review the combined changes and verification before integration.');
   if (action.destructive) return decision('approval', 'Destructive filesystem actions require review.');
+  if (action.kind === 'write' && (context.mode === 1 || action.paths!.some(target => (options.protectedReadOnlyRoots ?? projectProtectedPaths(context.workspaceRoot)).some(root => within(root, target))))) return decision('approval', 'Read-only or protected project files require approval before editing.');
   const outside = action.paths!.some(target => !within(context.workspaceRoot, target));
-  if (outside && (action.kind === 'write' || context.mode === 1)) return decision('approval', 'Access outside the assigned workspace requires approval.');
+  if (outside && action.kind === 'write') return decision('approval', 'Access outside the assigned workspace requires approval.');
   return decision('allow', action.kind === 'read' ? 'Reading is allowed by the project policy.' : 'Ordinary workspace edits are allowed by the project policy.');
 }
 
@@ -75,7 +91,7 @@ function actionFingerprint(context: ProjectPolicyContext, action: ProjectAction)
   return createHash('sha256').update(JSON.stringify([
     context.projectId, context.chatId, context.mode, context.revision, context.workspaceRoot,
     action.kind, action.paths ?? [], action.command ?? null, action.cwd ?? null,
-    action.contentHash ?? null, action.agentId ?? null, action.destructive ?? false, action.approvalReason ?? null, action.tool ?? null,
+    action.contentHash ?? null, action.agentId ?? null, action.destructive ?? false, action.approvalReason ?? null, action.tool ?? null, action.readOnly ?? null, action.network ?? null,
   ])).digest('hex');
 }
 

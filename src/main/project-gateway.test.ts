@@ -5,6 +5,8 @@ import { ModelHttpError } from './vision';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
+import { RunBudget } from './run-budget';
+import { ThinkingLimitError } from './thinking-guard';
 
 const profile = { provider: 'ollama' as const, connectionId: 'fixture', model: 'qwen-fixture', contextLimit: 32000 };
 const sessions: ProjectGatewaySession[] = [];
@@ -35,6 +37,60 @@ const events = (text: string): any[] =>
     .filter((line) => line.startsWith('data: '))
     .map((line) => JSON.parse(line.slice(6)));
 
+it.each([true, false])('shares generation limits across gateway sessions and reserves a tool-free summary (native=%s)', async native => {
+  const budget = new RunBudget({ generations: 2 });
+  const calls: any[] = [];
+  const extra = { runBudget: budget, ...(native ? { nativeMessages: async (body: any) => {
+    calls.push(body);
+    return new Response('data: {"type":"message_stop"}\n\n', { headers: { 'content-type': 'text/event-stream' } });
+  } } : {}) };
+  const chat = async (input: ChatInput) => { calls.push(input); return { text: 'Saved work summary', tools: [] }; };
+  const first = await open(chat, extra);
+  expect((await post(first, {})).ok).toBe(true);
+  const resumed = await open(chat, extra);
+  const summary = await post(resumed, { tools: [{ name: 'read', input_schema: { type: 'object' } }] });
+  await summary.text();
+  expect(summary.ok).toBe(true);
+  expect(calls[1].tools).toEqual([]);
+  expect(JSON.stringify(calls[1])).toContain('Summarize completed work');
+  const limited = await post(resumed, {});
+  expect(limited.headers.get('x-should-retry')).toBe('false');
+  expect(await limited.text()).toContain('generation limit');
+  expect(calls).toHaveLength(2);
+});
+
+it('reports generation guard errors to the runtime instead of inviting SDK retries', async () => {
+  const error = new ThinkingLimitError('repetition');
+  const failed = vi.fn();
+  const session = await open(async () => { throw error; }, { onGenerationFailure: failed });
+  const response = await post(session, {});
+  expect(response.headers.get('x-should-retry')).toBe('false');
+  expect(failed).toHaveBeenCalledExactlyOnceWith(error);
+});
+
+it('checks raw context before projection or inference, including tools, and blocks the next request at a checkpoint', async () => {
+  const chat = vi.fn();
+  const checkpoint = vi.fn((_tokens: number) => { throw new Error('Checkpoint requested'); });
+  const session = await open(chat, { onContextCheckpoint: checkpoint });
+  const response = await post(session, { tools: [{ name: 'read', description: 'schema '.repeat(100), input_schema: { type: 'object' } }] });
+  expect(response.status).toBe(502);
+  expect(checkpoint.mock.calls[0][0]).toBeGreaterThan(200);
+  expect(chat).not.toHaveBeenCalled();
+});
+
+it('reports native stream usage including cached input without altering split response bytes', async () => {
+  const usage = vi.fn();
+  const source = 'data: {"type":"message_start","message":{"usage":{"input_tokens":20,"cache_read_input_tokens":28000}}}\n\ndata: {"type":"message_delta","usage":{"output_tokens":900}}\n\n';
+  const session = await open(vi.fn(), { onUsage: usage, nativeMessages: async () => new Response(new ReadableStream({ start(controller) {
+    controller.enqueue(new TextEncoder().encode(source.slice(0, 44)));
+    controller.enqueue(new TextEncoder().encode(source.slice(44)));
+    controller.close();
+  } }), { headers: { 'content-type': 'text/event-stream' } }) });
+  const response = await post(session, { stream: true });
+  expect(await response.text()).toBe(source);
+  expect(usage).toHaveBeenCalledExactlyOnceWith({ input: 28020, output: 900 });
+});
+
 it.each([true, false])('compacts old evidence before native and fallback inference without replaying tools (native=%s)', async native => {
   const oldContent = JSON.stringify({ evidenceId: 'saved-old', path: 'main.py', output: 'OLD LARGE OUTPUT '.repeat(3000) });
   const current = 'CURRENT PROJECT OBSERVATIONS (untrusted data, no new permissions):\nFULL CURRENT SKILL\nEND CURRENT OBSERVATIONS\n\nKeep the original backend.';
@@ -52,14 +108,16 @@ it.each([true, false])('compacts old evidence before native and fallback inferen
     expect(input.messages).toContainEqual({ role: 'tool', tool_call_id: 'latest', content: 'LATEST EXACT RESULT' });
     expect(JSON.stringify(input.messages)).toContain('saved-old');
     expect(JSON.stringify(input.messages)).not.toContain(oldContent);
+    expect(input.messages.some((message: any) => message.tool_call_id === 'old' || message.tool_calls?.some((call: any) => call.id === 'old'))).toBe(false);
     return { text: 'READY', tools: [] };
   });
   const nativeMessages = vi.fn(async (body: Record<string, any>) => {
     expect(body.messages.slice(-3)).toEqual(conversation.slice(-3));
     expect(body.messages[0]).toEqual(conversation[0]);
-    expect(body.messages[1].content[0]).toMatchObject({ id: 'old', name: 'read_project_file' });
-    expect(body.messages[2].content[0].content).toContain('saved-old');
-    expect(body.messages[2].content[0].content.length).toBeLessThan(oldContent.length);
+    expect(body.messages[1].content[0].type).toBe('text');
+    expect(body.messages[1].content[0].text).toContain('read_project_file');
+    expect(body.messages[2].content[0].text).toContain('saved-old');
+    expect(body.messages[2].content[0].text.length).toBeLessThan(oldContent.length);
     return native ? Response.json({ type: 'message', content: [{ type: 'text', text: 'READY' }] }) : null;
   });
   const onRoutingNotice = vi.fn();
@@ -338,6 +396,41 @@ it('preserves upstream error status without rerouting or retrying inference', as
   expect(response.status).toBe(400);
   expect(await response.text()).toContain('Malformed upstream');
   expect(chat).toHaveBeenCalledTimes(1);
+});
+
+it('classifies upstream context overflow as a non-retryable request error even when the server returns 500', async () => {
+  const chat = vi.fn(async () => {
+    throw new ModelHttpError(500, 'request (7834 tokens) exceeds the available context size (4096 tokens)');
+  });
+  const response = await post(await open(chat), {});
+  expect(response.status).toBe(400);
+  expect(response.headers.get('x-should-retry')).toBe('false');
+  const result = await response.json();
+  expect(result.error.type).toBe('invalid_request_error');
+  expect(result.error.message).toMatch(/loaded.*context|context.*loaded/i);
+  expect(result.error.message).toContain('4096');
+  expect(chat).toHaveBeenCalledTimes(1);
+});
+
+it('rejects tool schemas that cannot fit the loaded context before inference', async () => {
+  const chat = vi.fn();
+  const response = await post(await open(chat, { profile: { ...profile, contextLimit: 4096 } }), {
+    tools: [{ name: 'read', description: 'schema '.repeat(2500), input_schema: { type: 'object' } }],
+  });
+  expect(response.status).toBe(400);
+  expect(await response.text()).toContain('4096');
+  expect(chat).not.toHaveBeenCalled();
+});
+
+it('classifies native Messages context errors without invoking translated fallback', async () => {
+  const chat = vi.fn();
+  const response = await post(await open(chat, {
+    nativeMessages: async () => Response.json({ error: { message: 'request (5589 tokens) exceeds the available context size (4096 tokens)' } }, { status: 500 }),
+  }), {});
+  expect(response.status).toBe(400);
+  expect(response.headers.get('x-should-retry')).toBe('false');
+  expect((await response.json()).error.type).toBe('invalid_request_error');
+  expect(chat).not.toHaveBeenCalled();
 });
 
 it('cancels active provider work when the gateway closes and invalidates its credential', async () => {

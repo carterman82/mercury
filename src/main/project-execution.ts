@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { mercuryProjectGitEnvironment } from './project-git-environment';
+import { projectProtectedPaths, projectWritableRoots } from './project-policy';
 
 export const MXC_RUNTIME_VERSION = '1.0.1';
 export const MXC_CONTRACT_VERSION = '1.0.0';
@@ -19,6 +20,8 @@ export interface ProjectExecutionRequest {
   workspaceRoot: string;
   readableRoots?: string[];
   writableRoots?: string[];
+  /** Host-only explicit exclusions, enforced even under broader read/write roots. */
+  deniedRoots?: string[];
   network?: 'deny' | 'allow';
   loopback?: boolean;
   /** Reviewed Win32 initialization capability required by Node/.NET on Windows. */
@@ -305,13 +308,15 @@ export class ProjectExecutionAdapter {
       throw new Error('Execution timeout must be between 1 ms and one hour.');
     const workspace = await canonical(request.workspaceRoot);
     const cwd = await canonical(request.cwd);
-    const write = await Promise.all((request.writableRoots ?? [workspace]).map(canonical));
+    const write = await Promise.all(projectWritableRoots(request.mode, workspace, request.writableRoots).map(canonical));
+    const protectedRoots = await Promise.all(projectProtectedPaths(workspace).map(canonical));
+    const denied = await Promise.all((request.deniedRoots ?? []).map(canonical));
     const runtime = [
       process.env.SystemRoot,
       ...(request.executable ? [path.dirname(process.execPath)] : []),
       ...(this.options.runtimeReadRoots ?? []),
     ].filter((value): value is string => Boolean(value));
-    const device = request.mode === 2 || request.mode === 3 ? await this.volumes() : [];
+    const device = await this.volumes();
     const read = await Promise.all([workspace, ...runtime, ...device, ...(request.readableRoots ?? [])].map(canonical));
     const work = await canonical(scratch);
     const hostEnvironment = mxcHostEnvironment();
@@ -380,8 +385,9 @@ export class ProjectExecutionAdapter {
       containment: 'processcontainer',
       fallback: { allowDaclMutation: false },
       filesystem: {
-        readonlyPaths: [...new Set(read.filter((root) => !write.some((writable) => within(writable, root))))],
+        readonlyPaths: [...new Set([...read.filter(root => !write.includes(root)), ...protectedRoots])],
         readwritePaths: [...new Set([...write, work])],
+        deniedPaths: [...new Set(denied)],
       },
       network: {
         egress: { default: request.network ?? 'deny' },
@@ -444,6 +450,10 @@ export class ProjectExecutionAdapter {
       output = JSON.parse(result.stdout);
     } catch {
       return { available: false, version: MXC_RUNTIME_VERSION, reason: 'MXC returned an invalid capability response.' };
+    }
+    const policy = JSON.parse(await fs.readFile(config, 'utf8'));
+    if (policy.filesystem.deniedPaths?.length && output.probes?.baseContainerSupportsDenyPaths !== true) {
+      return { available: false, version: MXC_RUNTIME_VERSION, reason: 'Native Windows deny-path enforcement is unavailable for this policy.' };
     }
     if (
       output.tier !== 'base-container' ||

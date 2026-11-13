@@ -7,6 +7,10 @@ import type { ChatInput, ChatResult, ModelProvider } from './providers';
 import type { ChatDocument, ChatImage } from './vision';
 import { ModelHttpError } from './vision';
 import { compactProjectGatewayRequest } from './project-gateway-compaction';
+import { estimateProjectRequestTokens } from './project-context-rollover';
+import { assertContextCapacity, contextOverflowMessage, estimateContextTokens, isContextOverflow } from './model-context';
+import { FINAL_GENERATION_INSTRUCTION, RunBudget, RunLimitError } from './run-budget';
+import { ThinkingLimitError } from './thinking-guard';
 
 const MAX_REQUEST_BYTES = 32 * 1024 * 1024;
 const MAX_RESULT_CHARACTERS = 1_000_000;
@@ -52,6 +56,8 @@ const requestSchema = z
   .passthrough();
 
 export interface ProjectGatewayOptions {
+  runBudget?: RunBudget;
+  onGenerationFailure?: (error: ThinkingLimitError | RunLimitError) => void;
   projectId: string;
   chatId: string;
   agentId: string;
@@ -65,6 +71,7 @@ export interface ProjectGatewayOptions {
   onReasoning?: ChatInput['onReasoning'];
   onUsage?: (usage: ChatResult['usage']) => void;
   onContextCompacted?: () => void;
+  onContextCheckpoint?: (estimatedTokens: number) => void;
   /** Credential-aware provider boundary. Null explicitly selects translated fallback.
    * The host must preserve provider queue/route accounting until the body is consumed. */
   nativeMessages?: (
@@ -337,8 +344,11 @@ export class ProjectModelGateway {
       response.once('close', disconnected);
       void this.handle(request, response, { ...options, profile }, model, allowedModels, token, host, createdAt, signal)
         .catch((error) => {
+          const limited = error instanceof ThinkingLimitError || error instanceof RunLimitError;
+          if (limited) options.onGenerationFailure?.(error);
           if (response.destroyed || response.writableEnded) return;
-          const status = error instanceof ProjectGatewayError || error instanceof ModelHttpError ? error.status : 502;
+          const overflow = isContextOverflow(error);
+          const status = overflow ? 400 : error instanceof ProjectGatewayError || error instanceof ModelHttpError ? error.status : 502;
           const message =
             error instanceof z.ZodError
               ? 'Invalid SDK request schema.'
@@ -348,10 +358,11 @@ export class ProjectModelGateway {
           const payload = {
             type: 'error',
             error: {
-              type: error instanceof ProjectGatewayError ? error.type : 'api_error',
-              message: message.replaceAll(token, '[gateway credential]').slice(0, 2000),
+              type: overflow ? 'invalid_request_error' : error instanceof ProjectGatewayError ? error.type : 'api_error',
+              message: (overflow ? contextOverflowMessage(error) : message).replaceAll(token, '[gateway credential]').slice(0, 2000),
             },
           };
+          if ((overflow || limited) && !response.headersSent) response.setHeader('x-should-retry', 'false');
           if (response.headersSent) {
             event(response, payload);
             response.end();
@@ -434,9 +445,13 @@ export class ProjectModelGateway {
     if (!allowedModels.has(String(raw.model)))
       throw new ProjectGatewayError(400, 'This SDK session cannot select another model.');
     signal.throwIfAborted();
+    options.onContextCheckpoint?.(estimateProjectRequestTokens(raw));
     try {
       const projection = compactProjectGatewayRequest(raw, options.profile.contextLimit);
       raw = projection.body;
+      assertContextCapacity(options.profile, { system: raw.system, messages: raw.messages, tools: raw.tools }, Math.min(Number(raw.max_tokens) || 1024, 1024));
+      if (typeof raw.max_tokens === 'number')
+        raw = { ...raw, max_tokens: Math.min(raw.max_tokens, Math.max(1, options.profile.contextLimit - estimateContextTokens({ system: raw.system, messages: raw.messages, tools: raw.tools }) - 256)) };
       if (projection.compacted) {
         options.onContextCompacted?.();
         options.onRoutingNotice?.('Compacted older tool context; full results remain saved.');
@@ -447,6 +462,11 @@ export class ProjectModelGateway {
         error instanceof Error ? error.message : 'Required context could not be compacted safely.',
       );
     }
+    const summaryOnly = options.runBudget?.generation() ?? false;
+    if (summaryOnly) raw = { ...raw, tools: [], tool_choice: { type: 'none' }, system: [
+      ...(typeof raw.system === 'string' ? [{ type: 'text', text: raw.system }] : Array.isArray(raw.system) ? raw.system : []),
+      { type: 'text', text: FINAL_GENERATION_INSTRUCTION },
+    ] };
     if (options.nativeMessages) {
       const headers = Object.fromEntries(
         Object.entries(request.headers).filter(
@@ -456,6 +476,24 @@ export class ProjectModelGateway {
       ) as Record<string, string>;
       const upstream = await options.nativeMessages({ ...raw, model: options.profile.model }, signal, headers);
       if (upstream) {
+        if (!upstream.ok) {
+          const preview = upstream.clone().body?.getReader();
+          let detail = '';
+          if (preview) {
+            const decoder = new TextDecoder();
+            try {
+              while (detail.length < 4000) {
+                const chunk = await preview.read();
+                if (chunk.done) break;
+                detail += decoder.decode(chunk.value, { stream: true });
+              }
+            } finally { void preview.cancel().catch(() => {}); }
+          }
+          if (isContextOverflow(detail)) {
+            void upstream.body?.cancel().catch(() => {});
+            throw new ModelHttpError(upstream.status, detail.slice(0, 4000));
+          }
+        }
         const responseHeaders: Record<string, string> = {};
         upstream.headers.forEach((value, name) => {
           if (
@@ -467,6 +505,20 @@ export class ProjectModelGateway {
         response.writeHead(upstream.status, { ...responseHeaders, 'cache-control': 'no-store' });
         if (upstream.body) {
           const reader = upstream.body.getReader();
+          const decoder = new TextDecoder();
+          const streaming = upstream.headers.get('content-type')?.includes('text/event-stream');
+          let buffered = '';
+          let reported: { input?: number; output?: number } | undefined;
+          const observe = (text: string) => {
+            try {
+              const value = JSON.parse(text);
+              const usage = value.message?.usage ?? value.usage;
+              if (!usage) return;
+              reported ??= {};
+              if (typeof usage.input_tokens === 'number') reported.input = usage.input_tokens + (usage.cache_read_input_tokens ?? 0) + (usage.cache_creation_input_tokens ?? 0);
+              if (typeof usage.output_tokens === 'number') reported.output = usage.output_tokens;
+            } catch { /* Observation must never alter the native response protocol. */ }
+          };
           const cancel = () => {
             void reader.cancel(signal.reason).catch(() => {});
           };
@@ -476,6 +528,16 @@ export class ProjectModelGateway {
               signal.throwIfAborted();
               const next = await reader.read();
               if (next.done) break;
+              buffered += decoder.decode(next.value, { stream: true });
+              if (streaming) {
+                let newline: number;
+                while ((newline = buffered.indexOf('\n')) >= 0) {
+                  const line = buffered.slice(0, newline).trim();
+                  buffered = buffered.slice(newline + 1);
+                  if (line.startsWith('data:')) observe(line.slice(5).trim());
+                }
+              }
+              if (buffered.length > MAX_RESULT_CHARACTERS) buffered = '';
               if (!response.write(Buffer.from(next.value)))
                 await new Promise<void>((resolve, reject) => {
                   const drain = () => {
@@ -494,6 +556,10 @@ export class ProjectModelGateway {
                   signal.addEventListener('abort', aborted, { once: true });
                 });
             }
+            buffered += decoder.decode();
+            if (!streaming) observe(buffered);
+            else if (buffered.trim().startsWith('data:')) observe(buffered.trim().slice(5).trim());
+            if (reported) options.onUsage?.(reported);
           } finally {
             signal.removeEventListener('abort', cancel);
             reader.releaseLock();

@@ -98,7 +98,7 @@ it.each([
   expect(store.chat(id).messages.at(-1)?.content).toBe(answer);
 });
 
-it('continues into real search tools, preserves evidence, and does not replay tools after another preamble', async () => {
+it('stops a second preamble while preserving completed search evidence without replay', async () => {
   const store = fixture(); let calls = 0;
   const execute = vi.fn(async () => ({ results: [{ url: 'https://example.com/news', title: 'Source', snippet: 'New release' }] }));
   const capabilities = { beginTurn: () => {}, endTurn: async () => {}, handles: (name: string) => name === 'web_search', execute } as any;
@@ -111,7 +111,8 @@ it('continues into real search tools, preserves evidence, and does not replay to
     return { text: 'The source reports a new release. [Source](https://example.com/news)', tools: [] };
   } } as unknown as ModelProvider;
   const id = await new ChatService(store, provider, () => {}, () => false, undefined, capabilities).send(null, profile, 'Find the latest news');
-  expect(calls).toBe(4); expect(execute).toHaveBeenCalledTimes(1); expect(store.chat(id).status).toBe('idle');
+  expect(calls).toBe(3); expect(execute).toHaveBeenCalledTimes(1); expect(store.chat(id).status).toBe('failed');
+  expect(store.chat(id).error).toContain('one recovery');
   expect(store.chat(id).messages.at(-1)?.sourceEvidence?.[0].tool).toBe('web_search');
 });
 
@@ -130,8 +131,8 @@ it('does not treat an empty response after reading a source as a completed answe
 it('fails visibly after bounded status-only continuations instead of marking the request answered', async () => {
   const store = fixture(); const chat = vi.fn(async () => ({ text: 'Let me find the documentation.', tools: [] }));
   const id = await new ChatService(store, { chat } as unknown as ModelProvider, () => {}, () => false).send(null, profile, 'Find the docs');
-  expect(chat).toHaveBeenCalledTimes(3); expect(store.chat(id).status).toBe('failed');
-  expect(store.chat(id).error).toContain('two continuation attempts');
+  expect(chat).toHaveBeenCalledTimes(2); expect(store.chat(id).status).toBe('failed');
+  expect(store.chat(id).error).toContain('one recovery');
   expect(store.chat(id).messages.at(-1)?.completedAt).toBeDefined();
 });
 
@@ -647,6 +648,6 @@ it('does not repeat a completed file operation when subsequent thinking needs re
   const chat = store.chat(id);
   expect(renders).toBe(1);
   expect(chat.messages.at(-1)?.files).toHaveLength(1);
-  expect(chat.messages.at(-1)?.notice).toContain('Repetitive thinking detected');
+  expect(chat.messages.at(-1)?.notice).toContain('Repetitive generation detected');
   expect(chat.status).toBe('idle');
 });
